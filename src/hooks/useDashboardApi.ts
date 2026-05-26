@@ -1,0 +1,60 @@
+"use client"
+
+import { useState, useEffect, useCallback } from "react"
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8443"
+
+export interface AgentState {
+  inbox_count: number
+  working_count: number
+  outbox_count: number
+}
+
+export interface RouterStats {
+  decisions_count: number
+  model_breakdown: Record<string, number>
+  total_cost_usd: number
+}
+
+export interface WalTailEntry {
+  ts: string
+  agent: string
+  entries: string[]
+}
+
+export interface DashboardState {
+  ts: string
+  agents: Record<string, AgentState>
+  router: RouterStats
+  wal_tails: Record<string, string[]>
+}
+
+export function useDashboardApi(pollInterval = 7000) {
+  const [state, setState] = useState<DashboardState | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const fetchState = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/state`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data: DashboardState = await res.json()
+      setState(data)
+      setError(null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to fetch")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    fetchState()
+    const interval = setInterval(fetchState, pollInterval)
+    return () => clearInterval(interval)
+  }, [fetchState, pollInterval])
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  return { state, error, loading, refetch: fetchState }
+}
