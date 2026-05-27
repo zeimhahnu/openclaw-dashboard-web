@@ -32,6 +32,8 @@ if [ ! -d "$REPO_DIR/out" ] || [ -z "$(ls -A "$REPO_DIR/out" 2>/dev/null)" ]; th
     npm install
     npm run build
     rsync -av --delete "$BUILD_DIR/out/" "$WEB_DIR/"
+    cp "$BUILD_DIR/deploy/nginx-dashboard.conf" "/etc/nginx/sites-available/dashboard"
+    ln -sf /etc/nginx/sites-available/dashboard "$NGINX_ENABLED"
     rm -rf "$BUILD_DIR"
 else
     echo "==> Copying static files from out/..."
