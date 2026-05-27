@@ -1,6 +1,6 @@
 "use client"
 
-import { Brain, DollarSign, Activity, Terminal } from "lucide-react"
+import { DollarSign, Activity, Terminal } from "lucide-react"
 
 interface RouterStatsCardProps {
   data: {
@@ -100,7 +100,7 @@ export function RouterStatsCard({ data, isLoading }: RouterStatsCardProps) {
       {/* Model breakdown */}
       {Object.keys(data.model_breakdown).length > 0 && (
         <div>
-          <span className="font-code text-xs text-[var(--muted-foreground)] mb-2 block">// model breakdown</span>
+          <span className="font-code text-xs text-[var(--muted-foreground)] mb-2 block">{"// model breakdown"}</span>
           <ModelBreakdownBar breakdown={data.model_breakdown} />
         </div>
       )}

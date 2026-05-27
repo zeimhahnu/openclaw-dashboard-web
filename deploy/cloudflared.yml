@@ -1,0 +1,16 @@
+# Cloudflare Tunnel config for dashboard.vpszeimhahnu.uk
+# Tunnel: d652561f-2b76-42a0-91e6-fce07e6a9ee1
+# Credentials: /root/.cloudflared/d652561f-2b76-42a0-91e6-fce07e6a9ee1.json
+# Live copy: /etc/cloudflared/config.yml
+#
+# DNS: dashboard.vpszeimhahnu.uk CNAME d652561f-2b76-42a0-91e6-fce07e6a9ee1.cfargotunnel.com (proxied)
+# NOTE: must use cfargotunnel.com not cfargoid.net -- cfargoid.net is a deprecated Argo domain
+# and Cloudflare cannot resolve tunnel origin through it (causes 1016 error).
+
+tunnel: d652561f-2b76-42a0-91e6-fce07e6a9ee1
+credentials-file: /root/.cloudflared/d652561f-2b76-42a0-91e6-fce07e6a9ee1.json
+
+ingress:
+  - hostname: dashboard.vpszeimhahnu.uk
+    service: http://127.0.0.1:80
+  - service: http_status:404

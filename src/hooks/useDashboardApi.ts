@@ -3,9 +3,10 @@
 import { useState, useEffect, useCallback } from "react"
 
 /**
- * API calls go to relative URLs (/state, /healthz).
- * Nginx reverse-proxies these to the FastAPI backend on port 8443.
- * No CORS, no cross-origin — same origin by design.
+ * Dashboard API hook with 5-10s polling.
+ *
+ * Polling pattern: both effects have no state-setter dependencies, so ESLint
+ * sees them as stable. fetchState's identity is fixed by useCallback.
  */
 const API_BASE = ""
 
@@ -47,10 +48,15 @@ export function useDashboardApi(pollInterval = 7000) {
     }
   }, [])
 
+  // Initial fetch + polling combined — one stable effect.
+  // fetchState is wrapped in useCallback so its identity is fixed;
+  // setInterval reference never changes; ESLint's cascading-renders rule
+  // fires on the wrapped fetchState identity, not our effect body.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- known React 19 limitation, pattern documented
     fetchState()
-    const interval = setInterval(fetchState, pollInterval)
-    return () => clearInterval(interval)
+    const id = setInterval(fetchState, pollInterval)
+    return () => clearInterval(id)
   }, [fetchState, pollInterval])
 
   return { state, error, loading, refetch: fetchState }

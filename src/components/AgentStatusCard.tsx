@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Activity, CheckCircle2, Inbox, Send, Zap, ChevronDown, ChevronRight } from "lucide-react"
+import { useId, useState } from "react"
+import { Activity, Inbox, Send, Zap, ChevronDown, ChevronRight } from "lucide-react"
 
 interface AgentStatusCardProps {
   agentName: string
@@ -26,7 +26,9 @@ const AGENT_COLORS: Record<string, string> = {
 }
 
 function AgentPIDHeader({ agentName, working }: { agentName: string; working: boolean }) {
-  const pid = Math.floor(Math.random() * 90000) + 10000
+  // Stable ID derived from React's useId — deterministic per component instance.
+  const pid = useId().replace(/:/g, "").slice(0, 5)
+  const pidNum = parseInt(pid, 16) % 90000 + 10000
   const status = working ? "ACTIVE" : "IDLE"
   const color = working ? "text-[#00ff88]" : "text-[#64748b]"
 
@@ -35,7 +37,7 @@ function AgentPIDHeader({ agentName, working }: { agentName: string; working: bo
       <span className="font-code text-xs text-[var(--muted-foreground)]">[</span>
       <span className="font-code text-sm font-semibold text-[var(--foreground)]">{AGENT_LABELS[agentName] || agentName}</span>
       <span className="font-code text-xs text-[var(--muted-foreground)]">]</span>
-      <span className="font-code text-xs text-[var(--muted-foreground)]">PID:{pid}</span>
+      <span className="font-code text-xs text-[var(--muted-foreground)]">PID:{pidNum}</span>
       <span className={`ml-auto font-code text-xs font-semibold ${color} ${working ? "text-glow" : ""}`}>
         {status}
       </span>
@@ -43,7 +45,7 @@ function AgentPIDHeader({ agentName, working }: { agentName: string; working: bo
   )
 }
 
-function StatRow({ icon: Icon, label, value, accent }: { icon: any; label: string; value: number; accent?: boolean }) {
+function StatRow({ icon: Icon, label, value, accent }: { icon: React.ComponentType<{ className?: string }>; label: string; value: number; accent?: boolean }) {
   return (
     <div className="flex items-center justify-between py-1.5 border-b border-[var(--border)] last:border-0">
       <span className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">

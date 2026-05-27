@@ -32,7 +32,7 @@ export default function DashboardPage() {
                 OpenClaw Dashboard
               </h1>
               <p className="font-code text-xs text-[var(--muted-foreground)] mt-0.5">
-                <span className="text-[#00d4ff]">//</span> sprint_9 · s7-a_observability
+                <span className="text-[#00d4ff]">{"//"}</span> sprint_9 · s7-a_observability
               </p>
             </div>
           </div>
