@@ -1,8 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Activity, AlertCircle, CheckCircle2, Inbox, Send, Zap } from "lucide-react"
-import { formatRelativeTime } from "@/lib/utils"
+import { Activity, CheckCircle2, Inbox, Send, Zap, ChevronDown, ChevronRight } from "lucide-react"
 
 interface AgentStatusCardProps {
   agentName: string
@@ -15,25 +14,54 @@ interface AgentStatusCardProps {
 }
 
 const AGENT_LABELS: Record<string, string> = {
-  "lil-claw": "Lil Claw",
-  goop: "Goop",
-  mason: "Mason",
+  "lil-claw": "lil-claw",
+  goop: "goop",
+  mason: "mason",
 }
 
 const AGENT_COLORS: Record<string, string> = {
-  "lil-claw": "text-indigo-400",
-  goop: "text-cyan-400",
-  mason: "text-emerald-400",
+  "lil-claw": "text-[#a78bfa]",
+  goop: "text-[#00d4ff]",
+  mason: "text-[#00ff88]",
+}
+
+function AgentPIDHeader({ agentName, working }: { agentName: string; working: boolean }) {
+  const pid = Math.floor(Math.random() * 90000) + 10000
+  const status = working ? "ACTIVE" : "IDLE"
+  const color = working ? "text-[#00ff88]" : "text-[#64748b]"
+
+  return (
+    <div className="flex items-center gap-2 mb-4 border-b border-[var(--border)] pb-3">
+      <span className="font-code text-xs text-[var(--muted-foreground)]">[</span>
+      <span className="font-code text-sm font-semibold text-[var(--foreground)]">{AGENT_LABELS[agentName] || agentName}</span>
+      <span className="font-code text-xs text-[var(--muted-foreground)]">]</span>
+      <span className="font-code text-xs text-[var(--muted-foreground)]">PID:{pid}</span>
+      <span className={`ml-auto font-code text-xs font-semibold ${color} ${working ? "text-glow" : ""}`}>
+        {status}
+      </span>
+    </div>
+  )
+}
+
+function StatRow({ icon: Icon, label, value, accent }: { icon: any; label: string; value: number; accent?: boolean }) {
+  return (
+    <div className="flex items-center justify-between py-1.5 border-b border-[var(--border)] last:border-0">
+      <span className="flex items-center gap-2 text-xs text-[var(--muted-foreground)]">
+        <Icon className="h-3 w-3" />
+        <span>{label}</span>
+      </span>
+      <span className={`font-code text-sm ${accent && value > 0 ? "text-[#00ff88] text-glow" : "text-[var(--muted-foreground)]"}`}>
+        {value}
+      </span>
+    </div>
+  )
 }
 
 export function AgentStatusCard({ agentName, data, isLoading }: AgentStatusCardProps) {
-  const label = AGENT_LABELS[agentName] || agentName
-  const colorClass = AGENT_COLORS[agentName] || "text-gray-400"
-
   if (isLoading || !data) {
     return (
-      <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 animate-pulse">
-        <div className="h-4 bg-[var(--muted)] rounded w-24 mb-3" />
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded p-4 animate-pulse">
+        <div className="h-4 bg-[var(--muted)] rounded w-32 mb-3" />
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-3 bg-[var(--muted)] rounded w-full" />
@@ -43,39 +71,24 @@ export function AgentStatusCard({ agentName, data, isLoading }: AgentStatusCardP
     )
   }
 
+  const isWorking = data.working_count > 0
+  const accentClass = isWorking ? "border-accent-left" : "border-accent-left-cyan"
+
   return (
-    <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Activity className={`h-4 w-4 ${colorClass}`} />
-        <span className="font-semibold text-sm">{label}</span>
-        <span className="ml-auto">
-          {data.working_count > 0 ? (
-            <span className="flex items-center gap-1 text-xs text-[var(--warning)]">
-              <Zap className="h-3 w-3" /> Active
-            </span>
-          ) : (
-            <span className="flex items-center gap-1 text-xs text-[var(--muted-foreground)]">
-              <CheckCircle2 className="h-3 w-3" /> Idle
-            </span>
-          )}
-        </span>
+    <div className={`bg-[var(--card)] border border-[var(--border)] rounded p-4 ${accentClass}`}>
+      <AgentPIDHeader agentName={agentName} working={isWorking} />
+
+      <div className="space-y-0">
+        <StatRow icon={Inbox} label="inbox" value={data.inbox_count} accent={data.inbox_count > 0} />
+        <StatRow icon={Send} label="outbox" value={data.outbox_count} />
       </div>
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs">
-          <span className="flex items-center gap-1.5 text-[var(--muted-foreground)]">
-            <Inbox className="h-3 w-3" /> Inbox
-          </span>
-          <span className={data.inbox_count > 0 ? "text-[var(--warning)] font-medium" : "text-[var(--muted-foreground)]"}>
-            {data.inbox_count}
-          </span>
+
+      {data.inbox_count > 0 && (
+        <div className="mt-3 flex items-center gap-1.5">
+          <Zap className="h-3 w-3 text-[#f59e0b]" />
+          <span className="font-code text-xs text-[#f59e0b]">{data.inbox_count} pending</span>
         </div>
-        <div className="flex items-center justify-between text-xs">
-          <span className="flex items-center gap-1.5 text-[var(--muted-foreground)]">
-            <Send className="h-3 w-3" /> Outbox
-          </span>
-          <span className="text-[var(--muted-foreground)]">{data.outbox_count}</span>
-        </div>
-      </div>
+      )}
     </div>
   )
 }
@@ -90,7 +103,7 @@ export function ActivityFeed({ walTails, isLoading }: ActivityFeedProps) {
 
   if (isLoading || !walTails) {
     return (
-      <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 animate-pulse">
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded p-4 animate-pulse">
         <div className="h-4 bg-[var(--muted)] rounded w-20 mb-3" />
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
@@ -104,47 +117,62 @@ export function ActivityFeed({ walTails, isLoading }: ActivityFeedProps) {
   const agentNames = Object.keys(walTails)
   if (agentNames.length === 0) {
     return (
-      <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4">
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded p-4">
         <div className="flex items-center gap-2 mb-3">
-          <AlertCircle className="h-4 w-4 text-[var(--muted-foreground)]" />
-          <span className="font-semibold text-sm">Activity Feed</span>
+          <Activity className="h-4 w-4 text-[var(--muted-foreground)]" />
+          <span className="font-semibold text-sm">WAL Activity</span>
         </div>
-        <p className="text-xs text-[var(--muted-foreground)]">No recent activity</p>
+        <p className="text-xs font-code text-[var(--muted-foreground)]">{"// no recent entries"}</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Activity className="h-4 w-4 text-[var(--primary)]" />
-        <span className="font-semibold text-sm">Activity Feed</span>
+    <div className="bg-[var(--card)] border border-[var(--border)] rounded p-4">
+      <div className="flex items-center gap-2 mb-4 border-b border-[var(--border)] pb-3">
+        <Activity className="h-4 w-4 text-[#00ff88]" />
+        <span className="font-code text-sm font-semibold">WAL Activity</span>
+        <span className="ml-auto font-code text-xs text-[var(--muted-foreground)]">
+          {agentNames.length} agents
+        </span>
       </div>
-      <div className="space-y-2 max-h-64 overflow-y-auto">
+
+      <div className="space-y-2 max-h-72 overflow-y-auto">
         {agentNames.map((agent) => {
           const entries = walTails[agent] || []
           const isOpen = expandedAgent === agent
           const label = AGENT_LABELS[agent] || agent
-          const colorClass = AGENT_COLORS[agent] || "text-gray-400"
+          const agentColor = AGENT_COLORS[agent] || "text-gray-400"
 
           return (
-            <div key={agent} className="border-b border-[var(--border)] last:border-0 pb-2 last:pb-0">
+            <div key={agent} className="border border-[var(--border)] rounded p-2">
               <button
                 onClick={() => setExpandedAgent(isOpen ? null : agent)}
-                className="flex items-center justify-between w-full text-left py-1 hover:bg-[var(--muted)] rounded px-1 -mx-1 transition-colors"
+                className="flex items-center justify-between w-full text-left hover:bg-[var(--muted)] rounded px-1 -mx-1 py-1 transition-colors cursor-pointer"
               >
-                <span className={`text-xs font-medium ${colorClass}`}>{label}</span>
-                <span className="text-xs text-[var(--muted-foreground)]">
-                  {entries.length} {entries.length === 1 ? "entry" : "entries"}
+                <div className="flex items-center gap-2">
+                  {isOpen
+                    ? <ChevronDown className="h-3 w-3 text-[var(--muted-foreground)]" />
+                    : <ChevronRight className="h-3 w-3 text-[var(--muted-foreground)]" />
+                  }
+                  <span className={`font-code text-xs font-semibold ${agentColor}`}>{label}</span>
+                </div>
+                <span className="font-code text-xs text-[var(--muted-foreground)]">
+                  {entries.length} entries
                 </span>
               </button>
               {isOpen && (
-                <div className="mt-1 pl-2 border-l-2 border-[var(--primary)] space-y-1">
-                  {entries.slice(0, 10).map((entry, i) => (
-                    <p key={i} className="text-xs text-[var(--muted-foreground)] leading-relaxed">
-                      {entry.substring(0, 120)}
-                      {entry.length > 120 ? "…" : ""}
-                    </p>
+                <div className="mt-2 pl-4 border-l border-[var(--border)] space-y-1.5">
+                  {entries.slice(0, 12).map((entry, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <span className="font-code text-xs text-[var(--muted-foreground)] shrink-0">
+                        {String(i + 1).padStart(2, "0")}&gt;
+                      </span>
+                      <p className="font-code text-xs text-[var(--muted-foreground)] leading-relaxed">
+                        {entry.substring(0, 140)}
+                        {entry.length > 140 ? "\u2026" : ""}
+                      </p>
+                    </div>
                   ))}
                 </div>
               )}

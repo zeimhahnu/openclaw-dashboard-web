@@ -1,21 +1,22 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --background: #0f1117;
-  --foreground: #f9fafb;
-  --card: #1a1d27;
-  --card-foreground: #f9fafb;
-  --primary: #6366f1;
-  --primary-foreground: #ffffff;
-  --secondary: #2d3142;
-  --secondary-foreground: #9ca3af;
-  --muted: #1f2937;
-  --muted-foreground: #6b7280;
-  --border: #2d3142;
-  --success: #22c55e;
+  --background: #0a0a0a;
+  --foreground: #e2e8f0;
+  --card: #111113;
+  --card-foreground: #e2e8f0;
+  --primary: #00ff88;
+  --primary-foreground: #0a0a0a;
+  --secondary: #00d4ff;
+  --secondary-foreground: #0a0a0a;
+  --muted: #1a1a1f;
+  --muted-foreground: #64748b;
+  --border: #1e1e24;
+  --success: #00ff88;
   --warning: #f59e0b;
   --destructive: #ef4444;
-  --radius: 0.75rem;
+  --radius: 0.25rem;
 }
 
 * {
@@ -25,7 +26,29 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-family: 'Fira Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  position: relative;
+}
+
+/* Scanline overlay */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Fira Code for data values */
+.font-code {
+  font-family: 'Fira Code', ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace;
 }
 
 @theme inline {
@@ -43,8 +66,26 @@ body {
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-destructive: var(--destructive);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
   --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* Neon text glow for accent elements */
+.text-glow {
+  text-shadow: 0 0 8px rgba(0, 255, 136, 0.4);
+}
+
+.text-glow-cyan {
+  text-shadow: 0 0 8px rgba(0, 212, 255, 0.4);
+}
+
+/* Terminal-style border accent */
+.border-accent-left {
+  border-left: 3px solid var(--primary);
+}
+
+.border-accent-left-cyan {
+  border-left: 3px solid var(--secondary);
 }
