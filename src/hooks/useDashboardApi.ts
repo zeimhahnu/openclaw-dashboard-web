@@ -2,7 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8443"
+/**
+ * API calls go to relative URLs (/state, /healthz).
+ * Nginx reverse-proxies these to the FastAPI backend on port 8443.
+ * No CORS, no cross-origin — same origin by design.
+ */
+const API_BASE = ""
 
 export interface AgentState {
   inbox_count: number
@@ -14,12 +19,6 @@ export interface RouterStats {
   decisions_count: number
   model_breakdown: Record<string, number>
   total_cost_usd: number
-}
-
-export interface WalTailEntry {
-  ts: string
-  agent: string
-  entries: string[]
 }
 
 export interface DashboardState {
@@ -48,13 +47,11 @@ export function useDashboardApi(pollInterval = 7000) {
     }
   }, [])
 
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     fetchState()
     const interval = setInterval(fetchState, pollInterval)
     return () => clearInterval(interval)
   }, [fetchState, pollInterval])
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   return { state, error, loading, refetch: fetchState }
 }
