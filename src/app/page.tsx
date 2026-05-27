@@ -32,10 +32,10 @@ export default function DashboardPage() {
             </div>
             <div>
               <h1 className="font-code text-lg font-semibold tracking-tight text-glow">
-                OpenClaw Dashboard
+                [OPENCLAW] ops dashboard
               </h1>
               <p className="font-code text-xs text-[var(--muted-foreground)] mt-0.5">
-                <span className="text-[#00d4ff]">{"//"}</span> sprint_9 &#183; s7-a_observability
+                openclaw@vps ~ ops
               </p>
             </div>
           </div>
@@ -111,11 +111,9 @@ export default function DashboardPage() {
         {/* Footer */}
         <div className="mt-8 pt-4 border-t border-[var(--border)] text-center">
           <p className="font-code text-xs text-[var(--muted-foreground)]">
-            <span className="text-[#00ff88]">openclaw</span>
-            <span className="text-[var(--muted-foreground)]"> &#183; </span>
-            <span>dashboard_v1.1</span>
-            <span className="text-[var(--muted-foreground)]"> &#183; </span>
-            <span>5-panel poll + 7s refresh</span>
+            <span className="text-[#00ff88]">&gt; polling :8443 every 7s</span>
+            <span className="text-[var(--muted-foreground)]">&nbsp;|&nbsp;</span>
+            <span>uptime: {state ? formatRelativeTime(state.ts) : "--"}</span>
           </p>
         </div>
       </div>

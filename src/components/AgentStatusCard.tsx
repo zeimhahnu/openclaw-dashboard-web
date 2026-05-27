@@ -20,9 +20,15 @@ const AGENT_LABELS: Record<string, string> = {
 }
 
 const AGENT_COLORS: Record<string, string> = {
-  "lil-claw": "text-[#a78bfa]",
+  "lil-claw": "text-[#00ff88]",
   goop: "text-[#00d4ff]",
-  mason: "text-[#00ff88]",
+  mason: "text-[#a78bfa]",
+}
+
+const AGENT_ACCENTS: Record<string, string> = {
+  "lil-claw": "border-l-[4px] border-l-[#00ff88]",
+  goop: "border-l-[4px] border-l-[#00d4ff]",
+  mason: "border-l-[4px] border-l-[#a78bfa]",
 }
 
 function AgentPIDHeader({ agentName, working }: { agentName: string; working: boolean }) {
@@ -74,7 +80,7 @@ export function AgentStatusCard({ agentName, data, isLoading }: AgentStatusCardP
   }
 
   const isWorking = data.working_count > 0
-  const accentClass = isWorking ? "border-accent-left" : "border-accent-left-cyan"
+  const accentClass = AGENT_ACCENTS[agentName] ?? "border-l-[4px] border-l-[#00ff88]"
 
   return (
     <div className={`bg-[var(--card)] border border-[var(--border)] rounded p-4 ${accentClass}`}>

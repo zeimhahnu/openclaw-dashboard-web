@@ -1,21 +1,21 @@
-@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
 
 :root {
   --background: #0a0a0a;
-  --foreground: #e2e8f0;
-  --card: #111113;
-  --card-foreground: #e2e8f0;
+  --foreground: #e8ffe8;
+  --card: #0f0f0f;
+  --card-foreground: #e8ffe8;
   --primary: #00ff88;
   --primary-foreground: #0a0a0a;
   --secondary: #00d4ff;
   --secondary-foreground: #0a0a0a;
-  --muted: #1a1a1f;
-  --muted-foreground: #64748b;
-  --border: #1e1e24;
+  --muted: #111811;
+  --muted-foreground: #4a7a4a;
+  --border: #1a2a1a;
   --success: #00ff88;
   --warning: #f59e0b;
-  --destructive: #ef4444;
+  --destructive: #ff4444;
   --radius: 0.25rem;
 }
 
