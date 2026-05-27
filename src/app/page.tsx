@@ -3,6 +3,8 @@
 import { useDashboardApi } from "@/hooks/useDashboardApi"
 import { AgentStatusCard, ActivityFeed } from "@/components/AgentStatusCard"
 import { RouterStatsCard } from "@/components/RouterStatsCard"
+import { RouterUsageCard } from "@/components/RouterUsageCard"
+import { TaskActivityCard } from "@/components/TaskActivityCard"
 import { RefreshCw, AlertCircle, Terminal } from "lucide-react"
 import { formatRelativeTime } from "@/lib/utils"
 
@@ -16,7 +18,8 @@ export default function DashboardPage() {
         aria-hidden="true"
         className="fixed inset-0 pointer-events-none z-50"
         style={{
-          background: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px)",
+          background:
+            "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px)",
         }}
       />
 
@@ -32,7 +35,7 @@ export default function DashboardPage() {
                 OpenClaw Dashboard
               </h1>
               <p className="font-code text-xs text-[var(--muted-foreground)] mt-0.5">
-                <span className="text-[#00d4ff]">{"//"}</span> sprint_9 · s7-a_observability
+                <span className="text-[#00d4ff]">{"//"}</span> sprint_9 &#183; s7-a_observability
               </p>
             </div>
           </div>
@@ -53,7 +56,9 @@ export default function DashboardPage() {
                 className="p-2 rounded border border-[var(--border)] hover:bg-[var(--muted)] transition-colors cursor-pointer"
                 aria-label="Refresh dashboard"
               >
-                <RefreshCw className={`h-4 w-4 text-[var(--muted-foreground)] ${loading ? "animate-spin" : ""}`} />
+                <RefreshCw
+                  className={`h-4 w-4 text-[var(--muted-foreground)] ${loading ? "animate-spin" : ""}`}
+                />
               </button>
             </div>
           </div>
@@ -66,7 +71,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 bg-[#ef4444]/10 border border-[#ef4444]/30 rounded px-4 py-2">
             <AlertCircle className="h-4 w-4 text-[#ef4444] shrink-0" />
             <span className="font-code text-sm text-[#ef4444]">
-              ERR: api_unreachable · {error} · retrying...
+              ERR: api_unreachable &#183; {error} &#183; retrying&#8230;
             </span>
           </div>
         </div>
@@ -74,8 +79,8 @@ export default function DashboardPage() {
 
       {/* Main Grid */}
       <div className="max-w-7xl mx-auto px-6 py-6 relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Agent Status Cards */}
+        {/* Row 1: Agent status */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
           <AgentStatusCard
             agentName="lil-claw"
             data={state?.agents?.["lil-claw"] ?? null}
@@ -86,29 +91,31 @@ export default function DashboardPage() {
             data={state?.agents?.["goop"] ?? null}
             isLoading={loading}
           />
-          <AgentStatusCard
-            agentName="mason"
-            data={state?.agents?.["mason"] ?? null}
+          <RouterUsageCard
+            usage={state?.router_usage ?? null}
             isLoading={loading}
           />
+        </div>
 
-          {/* Router Stats */}
+        {/* Row 2: Router telemetry + Task activity */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <RouterStatsCard data={state?.router ?? null} isLoading={loading} />
+          <TaskActivityCard tasks={state?.tasks ?? null} isLoading={loading} />
+        </div>
 
-          {/* Activity Feed */}
-          <div className="md:col-span-2 lg:col-span-2">
-            <ActivityFeed walTails={state?.wal_tails ?? null} isLoading={loading} />
-          </div>
+        {/* Row 3: WAL Activity feed */}
+        <div className="grid grid-cols-1 gap-4">
+          <ActivityFeed walTails={state?.wal_tails ?? null} isLoading={loading} />
         </div>
 
         {/* Footer */}
         <div className="mt-8 pt-4 border-t border-[var(--border)] text-center">
           <p className="font-code text-xs text-[var(--muted-foreground)]">
             <span className="text-[#00ff88]">openclaw</span>
-            <span className="text-[var(--muted-foreground)]"> · </span>
-            <span>dashboard_v1.0</span>
-            <span className="text-[var(--muted-foreground)]"> · </span>
-            <span>Adaptive Router + WAL Telemetry</span>
+            <span className="text-[var(--muted-foreground)]"> &#183; </span>
+            <span>dashboard_v1.1</span>
+            <span className="text-[var(--muted-foreground)]"> &#183; </span>
+            <span>5-panel poll + 7s refresh</span>
           </p>
         </div>
       </div>
