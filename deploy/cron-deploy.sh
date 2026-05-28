@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 #
-# cron-deploy.sh — smart auto-deploy with lock
+# cron-deploy.sh — smart auto-deploy for dashboard-web only
 # Run via cron every 5 min, or directly via webhook.
 #
 set -euo pipefail
 
-APP_DIR="/home/openclaw/.openclaw/workspace/agents/goop/openclaw-dashboard-web"
+DASHBOARD_DIR="/home/openclaw/.openclaw/workspace/agents/goop/openclaw-dashboard-web"
 WEB_ROOT="/var/www/openclaw-dashboard-web/"
 LOCK="/tmp/dashboard-deploy.lock"
 LOG="/tmp/dashboard-deploy.log"
-DEPLOY_SCRIPT="$APP_DIR/deploy/deploy.sh"
+DEPLOY_SCRIPT="$DASHBOARD_DIR/deploy/deploy.sh"
 
 # --- Pre-exit checks ---
 # Already running?
@@ -18,8 +18,8 @@ if [ -f "$LOCK" ]; then
   exit 0
 fi
 
-# Any new commits on origin/main?
-cd "/home/openclaw/.openclaw/workspace"
+# Any new commits in the dashboard-web repo specifically?
+cd "$DASHBOARD_DIR"
 git fetch origin main
 LOCAL=$(git rev-parse HEAD)
 REMOTE=$(git rev-parse origin/main)
