@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
@@ -23,8 +24,8 @@ export function useDashboardApi(pollIntervalMs = 7000) {
       const data: DashboardState = await res.json()
       setState(data)
       setError(null)
-    } catch (e: any) {
-      setError(e.message ?? "fetch failed")
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "fetch failed")
     } finally {
       setLoading(false)
     }

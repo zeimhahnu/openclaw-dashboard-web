@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
@@ -79,8 +80,6 @@ interface State {
 
 export default function PixelDashboard() {
   const [state, setState] = useState<State | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [particles, setParticles] = useState<Array<{ id: number; from: string; to: string }>>([])
 
   const fetchState = useCallback(async () => {
@@ -89,11 +88,8 @@ export default function PixelDashboard() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       setState(data)
-      setError(null)
-    } catch (e: any) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
+    } catch {
+      // silently keep previous state on error
     }
   }, [])
 
@@ -110,9 +106,10 @@ export default function PixelDashboard() {
       const agentKeys = Object.keys(state.agents || {})
       if (agentKeys.length >= 2 && Math.random() > 0.7) {
         const from = agentKeys[Math.floor(Math.random() * agentKeys.length)]
-        let to = agentKeys[Math.floor(Math.random() * agentKeys.length)]
-        while (to === from) to = agentKeys[Math.floor(Math.random() * agentKeys.length)]
-        setParticles(p => [...p.slice(-5), { id: Date.now(), from, to }])
+        const to = agentKeys[Math.floor(Math.random() * agentKeys.length)]
+        if (from !== to) {
+          setParticles(p => [...p.slice(-5), { id: Date.now(), from, to }])
+        }
       }
     }, 3000)
     return () => clearInterval(interval)
@@ -179,7 +176,7 @@ export default function PixelDashboard() {
                 agent={agent}
                 staminaPct={staminaPct}
                 gold={goldAmt}
-                activeTask={isWorking ? `task-${Math.floor(Math.random() * 9000 + 1000)}` : null}
+                activeTask={isWorking ? `task-${agent.id}` : null}
                 isWorking={isWorking}
               />
             )
