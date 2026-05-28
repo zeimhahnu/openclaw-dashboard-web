@@ -36,11 +36,13 @@ export function A2AParticles({ workingAgents }: { workingAgents: string[] }) {
   const rafRef     = useRef<number | null>(null)
   const workingRef = useRef<string[]>([])
 
-  workingRef.current = workingAgents
+  useEffect(() => {
+    workingRef.current = workingAgents
+  }, [workingAgents])
 
-  // Spawn loop — independent of render loop
   useEffect(() => {
     const ALL_AGENTS = ["lil-claw", "goop", "mason"]
+
 
     const spawn = () => {
       const active = workingRef.current
