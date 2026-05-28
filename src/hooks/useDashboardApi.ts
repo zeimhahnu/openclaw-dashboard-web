@@ -1,14 +1,10 @@
 "use client"
-
+// eslint-disable react-hooks/set-state-in-effect -- fetchState() pattern: initial data load + polling is the correct React pattern here
 import { useState, useEffect, useCallback } from "react"
 
-/**
- * Dashboard API hook — polls FastAPI at /state + /router/usage + /tasks/*
- * with a fixed 7s interval.
- */
 const API_BASE = ""
 
-// ─── Shared types ───────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface AgentState {
   inbox_count: number
@@ -45,12 +41,28 @@ export interface TaskActivity {
   inbox: string[]
 }
 
+export interface TaskSummary {
+  id: string
+  type: string
+  status: string
+  priority: string
+  description: string
+  assignedBy: string
+  createdAt: string
+}
+
+export interface AgentTaskDetails {
+  inbox: TaskSummary[]
+  outbox: TaskSummary[]
+}
+
 export interface FullDashboardState extends DashboardState {
   router_usage: RouterUsage | null
   tasks: Record<string, TaskActivity>
+  task_details: Record<string, AgentTaskDetails> | null
 }
 
-// ─── Hook ───────────────────────────────────────────────────────────────────
+// ─── Hook ────────────────────────────────────────────────────────────────────
 
 export function useDashboardApi(pollInterval = 7000) {
   const [state, setState] = useState<FullDashboardState | null>(null)
@@ -59,9 +71,10 @@ export function useDashboardApi(pollInterval = 7000) {
 
   const fetchState = useCallback(async () => {
     try {
-      const [stateRes, usageRes] = await Promise.all([
+      const [stateRes, usageRes, detailsRes] = await Promise.all([
         fetch(`${API_BASE}/state`),
         fetch(`${API_BASE}/router/usage`),
+        fetch(`${API_BASE}/tasks/details`),
       ])
 
       if (!stateRes.ok) throw new Error(`state HTTP ${stateRes.status}`)
@@ -72,7 +85,11 @@ export function useDashboardApi(pollInterval = 7000) {
         routerUsage = await usageRes.json()
       }
 
-      // Tasks — call in parallel
+      let task_details: Record<string, AgentTaskDetails> | null = null
+      if (detailsRes.ok) {
+        task_details = await detailsRes.json()
+      }
+
       const [activeRes, inboxRes] = await Promise.all([
         fetch(`${API_BASE}/tasks/active`),
         fetch(`${API_BASE}/tasks/inbox`),
@@ -84,17 +101,11 @@ export function useDashboardApi(pollInterval = 7000) {
         const inboxData = await inboxRes.json()
         const agents = [...new Set([...Object.keys(activeData), ...Object.keys(inboxData)])]
         tasks = Object.fromEntries(
-          agents.map((a) => [
-            a,
-            {
-              active: activeData[a] ?? [],
-              inbox: inboxData[a] ?? [],
-            },
-          ])
+          agents.map((a) => [a, { active: activeData[a] ?? [], inbox: inboxData[a] ?? [] }])
         )
       }
 
-      setState({ ...dashState, router_usage: routerUsage, tasks })
+      setState({ ...dashState, router_usage: routerUsage, tasks, task_details })
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to fetch")
@@ -104,7 +115,7 @@ export function useDashboardApi(pollInterval = 7000) {
   }, [])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- known React 19 limitation, pattern documented
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch + polling is the correct React pattern
     fetchState()
     const id = setInterval(fetchState, pollInterval)
     return () => clearInterval(id)

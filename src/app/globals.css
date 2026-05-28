@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
@@ -12,11 +12,18 @@
   --secondary-foreground: #0a0a0a;
   --muted: #111811;
   --muted-foreground: #4a7a4a;
-  --border: #1a2a1a;
+  --border: #243624;
   --success: #00ff88;
   --warning: #f59e0b;
   --destructive: #ff4444;
   --radius: 0.25rem;
+
+  /* RPG / game mechanics */
+  --pixel-gold: #f59e0b;
+  --pixel-gold-dark: #92400e;
+  --pixel-hp-bg: #0d1a0d;
+  --pixel-hp-low: #ff4444;
+  --pixel-hp-warn: #f59e0b;
 }
 
 * {
@@ -30,7 +37,7 @@ body {
   position: relative;
 }
 
-/* Scanline overlay */
+/* CRT scanline overlay */
 body::before {
   content: "";
   position: fixed;
@@ -46,9 +53,13 @@ body::before {
   z-index: 9999;
 }
 
-/* Fira Code for data values */
+/* Font utilities */
 .font-code {
   font-family: 'Fira Code', ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace;
+}
+
+.font-pixel {
+  font-family: 'Press Start 2P', monospace;
 }
 
 @theme inline {
@@ -72,20 +83,74 @@ body::before {
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* Neon text glow for accent elements */
-.text-glow {
-  text-shadow: 0 0 8px rgba(0, 255, 136, 0.4);
+/* ── Glow utilities ─────────────────────────────────────────────────────────── */
+.text-glow        { text-shadow: 0 0 8px rgba(0, 255, 136, 0.4); }
+.text-glow-cyan   { text-shadow: 0 0 8px rgba(0, 212, 255, 0.4); }
+.text-glow-purple { text-shadow: 0 0 8px rgba(167, 139, 250, 0.4); }
+.text-glow-gold   { text-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
+
+/* ── Terminal cursor ────────────────────────────────────────────────────────── */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
 }
 
-.text-glow-cyan {
-  text-shadow: 0 0 8px rgba(0, 212, 255, 0.4);
+.cursor-blink {
+  animation: blink 1s step-end infinite;
+  display: inline-block;
 }
 
-/* Terminal-style border accent */
-.border-accent-left {
-  border-left: 3px solid var(--primary);
+/* ── Live pulse dot ─────────────────────────────────────────────────────────── */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(1.4); }
 }
 
-.border-accent-left-cyan {
-  border-left: 3px solid var(--secondary);
+.pulse-dot {
+  animation: pulse-dot 1.5s ease-in-out infinite;
+  display: inline-block;
+}
+
+/* ── Agent sprite animations ────────────────────────────────────────────────── */
+@keyframes sprite-idle {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-2px); }
+}
+
+@keyframes sprite-work {
+  0%   { transform: translateY(0px) rotate(0deg); }
+  20%  { transform: translateY(-3px) rotate(-4deg); }
+  40%  { transform: translateY(-1px) rotate(2deg); }
+  60%  { transform: translateY(-4px) rotate(-2deg); }
+  80%  { transform: translateY(-1px) rotate(3deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
+}
+
+.sprite-idle    { animation: sprite-idle 2.4s ease-in-out infinite; }
+.sprite-working { animation: sprite-work 0.6s ease-in-out infinite; }
+
+/* ── HP / stamina segment glow ──────────────────────────────────────────────── */
+@keyframes hp-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
+}
+
+.hp-critical { animation: hp-pulse 0.8s ease-in-out infinite; }
+
+/* ── Skeleton shimmer ───────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #111811 25%,
+    #1a2a1a 50%,
+    #111811 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  border-radius: 2px;
 }

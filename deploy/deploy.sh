@@ -1,66 +1,49 @@
-#!/bin/bash
-#───────────────────────────────────────────────────────────────────────────────
-# S7-A: Deploy static Next.js dashboard via Nginx on VPS
-# Usage: sudo bash deploy.sh [/path/to/repo]
-#───────────────────────────────────────────────────────────────────────────────
-
+#!/usr/bin/env bash
+#
+# Deterministic dashboard deploy. One command, no ping-pong.
+#
+#   ssh root@<vps> "bash /home/openclaw/.openclaw/workspace/agents/goop/openclaw-dashboard-web/deploy/deploy.sh"
+#
+# What it does (idempotent, safe to re-run):
+#   1. Fetch origin/main and force the dashboard source to the canonical pushed
+#      version — never builds from a messy working tree or a stuck autostash.
+#   2. Remove any /pixel prototype route (one-dashboard rule).
+#   3. Build as the openclaw user (root-run builds leave root-owned .next -> blocks
+#      future builds; this avoids that class of failure).
+#   4. rsync --delete to the web root (clears stale files like old pixel.html).
+#   5. Verify the live URL returns 200, or exit non-zero.
+#
 set -euo pipefail
 
-WEB_DIR="/var/www/openclaw-dashboard-web"
-NGINX_CONF="/etc/nginx/sites-available/dashboard"
-NGINX_ENABLED="/etc/nginx/sites-enabled/dashboard"
-REPO_DIR="${1:-.}"
+WORKSPACE="/home/openclaw/.openclaw/workspace"
+APP_DIR="$WORKSPACE/agents/goop/openclaw-dashboard-web"
+WEB_ROOT="/var/www/openclaw-dashboard-web/"
+LIVE_URL="https://dashboard.vpszeimhahnu.uk/"
+BUILD_USER="openclaw"
 
-echo "==> Checking prerequisites..."
-if [ "$(uname -s)" != "Linux" ]; then
-    echo "ERROR: This script must be run on the VPS (Linux)"
-    exit 1
-fi
+echo "==> [1/5] Fetch + force dashboard source to origin/main"
+cd "$WORKSPACE"
+git fetch origin main
+git checkout origin/main -- agents/goop/openclaw-dashboard-web/
 
-echo "==> Installing Nginx..."
-apt-get update -qq && apt-get install -y nginx
+echo "==> [2/5] Remove /pixel prototype route if present"
+rm -rf "$APP_DIR/src/app/pixel"
 
-echo "==> Creating web directory..."
-mkdir -p "$WEB_DIR"
-
-# Build if out/ doesn't exist (gitignored — not in the repo)
-if [ ! -d "$REPO_DIR/out" ] || [ -z "$(ls -A "$REPO_DIR/out" 2>/dev/null)" ]; then
-    echo "==> out/ not found — cloning repo and building fresh..."
-    BUILD_DIR=$(mktemp -d)
-    git clone https://github.com/zeimhahnu/openclaw-dashboard-web.git "$BUILD_DIR"
-    cd "$BUILD_DIR"
-    npm install
-    npm run build
-    rsync -av --delete "$BUILD_DIR/out/" "$WEB_DIR/"
-    cp "$BUILD_DIR/deploy/nginx-dashboard.conf" "/etc/nginx/sites-available/dashboard"
-    ln -sf /etc/nginx/sites-available/dashboard "$NGINX_ENABLED"
-    rm -rf "$BUILD_DIR"
+echo "==> [3/5] Build as $BUILD_USER"
+if [ "$(id -un)" = "$BUILD_USER" ]; then
+  ( cd "$APP_DIR" && npm run build )
 else
-    echo "==> Copying static files from out/..."
-    rsync -av --delete "$REPO_DIR/out/" "$WEB_DIR/"
+  su -s /bin/bash "$BUILD_USER" -c "cd '$APP_DIR' && npm run build"
 fi
 
-echo "==> Installing Nginx config..."
-cp "$REPO_DIR/deploy/nginx-dashboard.conf" "$NGINX_CONF"
-ln -sf "$NGINX_CONF" "$NGINX_ENABLED"
+echo "==> [4/5] Deploy to $WEB_ROOT"
+rsync -a --delete "$APP_DIR/out/" "$WEB_ROOT"
 
-# Disable default site
-if [ -L /etc/nginx/sites-enabled/default ]; then
-    rm /etc/nginx/sites-enabled/default
+echo "==> [5/5] Verify $LIVE_URL"
+code="$(curl -s -o /dev/null -w '%{http_code}' "$LIVE_URL")"
+if [ "$code" = "200" ]; then
+  echo "OK: dashboard live (HTTP $code)"
+else
+  echo "FAIL: dashboard returned HTTP $code" >&2
+  exit 1
 fi
-
-echo "==> Testing Nginx config..."
-nginx -t
-
-echo "==> Reloading Nginx..."
-systemctl reload nginx
-
-echo ""
-echo "✓ Deployment complete!"
-echo "  Dashboard: http://dashboard.vpszeimhahnu.uk"
-echo "  (Static files in: $WEB_DIR)"
-echo ""
-echo "To rebuild after changes:"
-echo "  1. npm run build   (run on VPS or local machine)"
-echo "  2. rsync -av --delete ./out/ $WEB_DIR/"
-echo ""
