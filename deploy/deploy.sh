@@ -21,6 +21,26 @@ WEB_ROOT="/var/www/openclaw-dashboard-web/"
 LIVE_URL="https://dashboard.vpszeimhahnu.uk/"
 BUILD_USER="openclaw"
 
+# Loud failure: never die silently into a log nobody reads. The 2026-05-28
+# incident was an rsync permission error buried in /tmp/dashboard-deploy.log
+# for hours. Any non-zero exit now prints an unmistakable banner.
+trap 'echo "============================================================"; echo "DEPLOY FAILED at line $LINENO (exit $?). Dashboard NOT updated."; echo "============================================================" >&2' ERR
+
+echo "==> [0/5] Preflight: web root ownership invariant"
+# The deploy runs as $BUILD_USER. If anything under the web root is owned by
+# another user (e.g. a stray root-owned file from a manual scp), rsync --delete
+# cannot remove it and the whole deploy fails. Detect early with the exact fix.
+if [ -d "$WEB_ROOT" ]; then
+  foreign="$(find "$WEB_ROOT" ! -user "$BUILD_USER" 2>/dev/null | head -5 || true)"
+  if [ -n "$foreign" ]; then
+    echo "FAIL: web root has files NOT owned by $BUILD_USER — rsync will be denied." >&2
+    echo "Offending (first 5):" >&2; echo "$foreign" >&2
+    echo "Remediation (run as root): chown -R $BUILD_USER:$BUILD_USER $WEB_ROOT" >&2
+    echo "Root cause: deploy ONLY via this script as $BUILD_USER. Never scp as root." >&2
+    exit 1
+  fi
+fi
+
 echo "==> [1/5] Fetch + force dashboard source to origin/main"
 cd "$WORKSPACE"
 git fetch origin main
