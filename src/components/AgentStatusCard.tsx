@@ -274,7 +274,7 @@ export function AgentStatusCard({ agentName, data, taskDetails, isLoading }: Age
     )
   }
 
-  const isWorking   = data.working_count > 0
+  const isWorking   = (taskDetails?.inbox ?? []).some(t => t.status === "working")
   const inboxWarn   = data.inbox_count > 5
   const failedTasks = (taskDetails?.inbox ?? []).filter(t => t.status === "failed")
   const isWounded   = failedTasks.length > 0
