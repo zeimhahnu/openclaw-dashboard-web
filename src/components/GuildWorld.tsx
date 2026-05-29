@@ -350,6 +350,17 @@ export function GuildWorld({ agents, taskDetails }: GuildWorldProps) {
       monstersRef.current = monstersRef.current.filter(m => {
         m.wobble += 0.06
 
+        // C3: Dynamic monster drift for lurking monsters
+        if (m.phase === "lurking") {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const mm = m as any
+          if (!('vx' in mm)) { mm.vx = (Math.random() - 0.5) * 0.8; mm.vy = (Math.random() - 0.5) * 0.5 }
+          mm.x += mm.vx; mm.y += mm.vy
+          if (mm.x < 270 || mm.x > LOGICAL_W - 30) mm.vx *= -1
+          if (mm.y < 20  || mm.y > LOGICAL_H - 30) mm.vy *= -1
+          if (m.cls === "chaos" && Math.random() < 0.02) mm.vx = (Math.random() - 0.5) * 0.8
+        }
+
         if (m.phase === "dying") {
           m.dyingT += 0.07
           if (m.dyingT >= 0.01 && m.dyingT < 0.08) {
@@ -618,9 +629,51 @@ function drawPixelTree(ctx: CanvasRenderingContext2D, cx: number, cy: number, si
 function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, sx: number, sy: number, time: number) {
   const divX = 270 * sx
 
-  // Camp background — slightly warmer dark
+  // ── C2: 5-Terrain Real Terrain ────────────────────────────────────────
+
+  // Grass base (camp area left + bottom)
   ctx.fillStyle = "#0b130b"; ctx.fillRect(0, 0, divX, h)
-  // Battlefield — cold dark
+  // Dark bog — x > 600 (battlefield right edge)
+  ctx.fillStyle = "#0a1b0a"; ctx.fillRect(600 * sx, 0, w - 600 * sx, h)
+  // Cracked earth patches near Crossroads (430-470, 165-195)
+  ctx.fillStyle = "#3d2911"
+  ctx.fillRect(430 * sx, 165 * sy, 40 * sx, 30 * sy)
+  // Crack lines on cracked earth
+  ctx.save()
+  ctx.strokeStyle = "#5c3d1e"; ctx.lineWidth = 1
+  for (let c = 0; c < 3; c++) {
+    ctx.beginPath()
+    ctx.moveTo((435 + c * 12) * sx, 165 * sy)
+    ctx.lineTo((440 + c * 10) * sx, 195 * sy)
+    ctx.stroke()
+  }
+  ctx.restore()
+
+  // Stone cobblestone path: camp → Crossroads → mason camp
+  // Stones as small staggered gray rectangles
+  const stonePath = [
+    // goop camp → Crossroads
+    [70,195],[90,192],[110,195],[130,193],[150,195],[170,193],[190,195],
+    [210,193],[230,195],[250,193],[270,195],[290,193],[310,195],[330,193],
+    [350,195],[370,193],[390,195],[410,193],[430,195],[450,193],
+    // Crossroads → mason camp
+    [450,195],[445,210],[450,225],[445,240],[450,255],[445,270],
+  ]
+  for (const [px, py] of stonePath) {
+    ctx.fillStyle = "#374151"
+    ctx.fillRect(px * sx - 3, py * sy - 2, 8 * sx, 5 * sy)
+    ctx.fillStyle = "#4b5563"
+    ctx.fillRect(px * sx - 2, py * sy - 3, 6 * sx, 4 * sy)
+  }
+
+  // Glowing floor at Crossroads center (400-500, 140-220) — faint cyan radial
+  const glowX = 450 * sx, glowY = 180 * sy
+  const glowR = ctx.createRadialGradient(glowX, glowY, 0, glowX, glowY, 60 * sx)
+  glowR.addColorStop(0, "rgba(125,211,252,0.10)")
+  glowR.addColorStop(1, "rgba(125,211,252,0)")
+  ctx.fillStyle = glowR; ctx.beginPath(); ctx.arc(glowX, glowY, 60 * sx, 0, Math.PI * 2); ctx.fill()
+
+  // Battlefield sky zone (cold dark)
   ctx.fillStyle = "#080d0d"; ctx.fillRect(divX, 0, w - divX, h)
 
   // Ground plane — subtle gradient at bottom third
@@ -801,6 +854,114 @@ function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number, sx:
   ctx.shadowColor = "#f59e0b"; ctx.shadowBlur = 8
   ctx.fillStyle = "rgba(245,158,11,0.45)"
   ctx.fillText("The Crossroads", 450 * sx, 162 * sy)
+  ctx.restore()
+
+  // [THE WILD] — battle zone label
+  ctx.save()
+  ctx.shadowColor = "#ef4444"; ctx.shadowBlur = 6
+  ctx.fillStyle = "rgba(239,68,68,0.40)"
+  ctx.fillText("[THE WILD]", 650 * sx, 20 * sy)
+  ctx.restore()
+
+  // [RUINS] — far right label
+  ctx.save()
+  ctx.shadowColor = "#6b7280"; ctx.shadowBlur = 4
+  ctx.fillStyle = "rgba(107,114,128,0.40)"
+  ctx.fillText("[RUINS]", 830 * sx, 20 * sy)
+  ctx.restore()
+
+  // ── C4: Stone archway at Crossroads ────────────────────────────────────────
+  const archX = 450 * sx, archY = 168 * sy
+  ctx.fillStyle = "#4b5563"
+  ctx.fillRect(archX - 14 * sx, archY - 18 * sy, 5 * sx, 24 * sy) // left pillar
+  ctx.fillRect(archX + 9 * sx, archY - 18 * sy, 5 * sx, 24 * sy) // right pillar
+  ctx.fillStyle = "#6b7280"
+  ctx.fillRect(archX - 16 * sx, archY - 22 * sy, 32 * sx, 5 * sy) // lintel
+  ctx.fillStyle = "#374151"
+  ctx.fillRect(archX - 14 * sx, archY - 20 * sy, 28 * sx, 3 * sy) // shadow line
+
+  // C4: Pixel rock cluster near RUINS (x≈780, y≈290)
+  ctx.fillStyle = "#4b5563"
+  ctx.fillRect(776 * sx, 287 * sy, 8 * sx, 6 * sy)
+  ctx.fillStyle = "#374151"
+  ctx.fillRect(785 * sx, 289 * sy, 6 * sx, 5 * sy)
+  ctx.fillStyle = "#6b7280"
+  ctx.fillRect(770 * sx, 290 * sy, 5 * sx, 4 * sy)
+
+  // C4: Rune circle at each agent camp — concentric rings
+  const runeCamps: [number, number, string][] = [
+    [120, 95, "#00d4ff"],  // lil-claw
+    [ 70, 195, "#00d4ff"], // goop
+    [165, 270, "#a78bfa"], // mason
+  ]
+  for (const [rx, ry, rc] of runeCamps) {
+    ctx.save()
+    ctx.globalAlpha = 0.25
+    ctx.strokeStyle = rc; ctx.lineWidth = 0.8
+    ctx.beginPath(); ctx.arc(rx * sx, ry * sy + 10 * sy, 20 * sx, 0, Math.PI * 2); ctx.stroke()
+    ctx.beginPath(); ctx.arc(rx * sx, ry * sy + 10 * sy, 14 * sx, 0, Math.PI * 2); ctx.stroke()
+    ctx.restore()
+  }
+
+  // C4: Distant mountain silhouettes (top-right battlefield)
+  ctx.save()
+  ctx.globalAlpha = 0.3
+  ctx.fillStyle = "#374151"
+  // Mountain 1
+  ctx.beginPath(); ctx.moveTo(580 * sx, 45 * sy); ctx.lineTo(620 * sx, 0); ctx.lineTo(660 * sx, 45 * sy); ctx.closePath(); ctx.fill()
+  // Mountain 2
+  ctx.beginPath(); ctx.moveTo(630 * sx, 45 * sy); ctx.lineTo(670 * sx, 5 * sy); ctx.lineTo(710 * sx, 45 * sy); ctx.closePath(); ctx.fill()
+  // Mountain 3
+  ctx.beginPath(); ctx.moveTo(700 * sx, 45 * sy); ctx.lineTo(750 * sx, 10 * sy); ctx.lineTo(800 * sx, 45 * sy); ctx.closePath(); ctx.fill()
+  ctx.restore()
+
+  // C4: Smoke wisps from Forge campfire (goop, x≈70, y≈180)
+  ctx.save()
+  for (let s = 0; s < 4; s++) {
+    const phase = (time * 0.6 + s * 1.2) % 3.5
+    const sx2 = 70 * sx + Math.sin(time * 1.3 + s * 2.1) * 4 * sx
+    const sy2 = 180 * sy - phase * 12 * sy
+    ctx.globalAlpha = Math.max(0, 1 - phase / 3.5) * 0.3
+    ctx.fillStyle = "#9ca3af"
+    ctx.beginPath(); ctx.arc(sx2, sy2, (2 + s * 0.5) * sx, 0, Math.PI * 2); ctx.fill()
+  }
+  ctx.restore()
+
+  // C4: Banner flags at each camp (animated sine wave)
+  const banners: [number, number, string][] = [
+    [120, 80, "#00ff88"],
+    [ 70, 180, "#00d4ff"],
+    [165, 255, "#a78bfa"],
+  ]
+  for (const [bx, by2, bc] of banners) {
+    const wave = Math.sin(time * 2.5 + bx * 0.05) * 3 * sx
+    ctx.save()
+    ctx.strokeStyle = bc; ctx.lineWidth = 1.2
+    ctx.beginPath(); ctx.moveTo(bx * sx, by2 * sy); ctx.lineTo(bx * sx, (by2 - 20) * sy); ctx.stroke()
+    ctx.fillStyle = bc; ctx.globalAlpha = 0.7
+    ctx.beginPath()
+    ctx.moveTo(bx * sx, (by2 - 20) * sy)
+    ctx.lineTo(bx * sx + 10 * sx + wave, (by2 - 17) * sy)
+    ctx.lineTo(bx * sx, (by2 - 14) * sy)
+    ctx.closePath(); ctx.fill()
+    ctx.restore()
+  }
+
+  // C4: Footpath stones — small tan dots connecting camps to Crossroads
+  ctx.save()
+  ctx.globalAlpha = 0.4
+  ctx.fillStyle = "#a8995e"
+  const footpath: [number, number][] = [
+    [85,200],[100,205],[115,200],[130,205],[145,200],[160,205],
+    [175,200],[190,205],[205,200],[220,205],[235,200],[250,205],
+    [265,200],[280,203],[295,200],[310,203],[325,200],[340,203],
+    [355,200],[370,203],[385,200],[400,203],[415,200],[430,203],
+    // branch to mason
+    [440,215],[430,228],[440,240],[430,252],[425,262],
+  ]
+  for (const [px, py] of footpath) {
+    ctx.fillRect(px * sx - 1, py * sy - 1, 3 * sx, 2 * sy)
+  }
   ctx.restore()
 
   ctx.restore()
