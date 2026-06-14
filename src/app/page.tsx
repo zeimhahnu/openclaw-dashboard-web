@@ -5,7 +5,7 @@ import { AgentStatusCard, ActivityFeed } from "@/components/AgentStatusCard"
 import { RouterStatsCard } from "@/components/RouterStatsCard"
 import { TokenBurnCard } from "@/components/TokenBurnCard"
 import { TaskActivityCard } from "@/components/TaskActivityCard"
-import { GuildWorld } from "@/components/GuildWorld"
+import PixelGuild from "@/components/PixelGuild"
 import { QuestPanel } from "@/components/QuestPanel"
 import { RefreshCw, AlertCircle, Terminal } from "lucide-react"
 import { formatRelativeTime } from "@/lib/utils"
@@ -68,10 +68,11 @@ export default function DashboardPage() {
 
       <div className="max-w-[1400px] mx-auto px-4 py-3 space-y-3">
 
-        {/* Row 0: The Guild — full-width scene, the narrative centrepiece */}
-        <GuildWorld
+        {/* Row 0: The Guild — full-width pixel scene */}
+        <PixelGuild
           agents={state?.agents ?? null}
           taskDetails={state?.task_details ?? null}
+          height={240}
         />
 
         {/* Row 1: Agent character sheets + quest log — 4 equal columns */}
