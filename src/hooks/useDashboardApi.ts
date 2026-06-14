@@ -10,6 +10,12 @@ export interface AgentState {
   inbox_count: number
   working_count: number
   outbox_count: number
+  // Phase 1 (2026-06-15) — richer truth surfaced from _collect_agent().
+  // Field names are the contract for Goop's Phase-3 scene wiring.
+  current_task: string | null
+  session_active: boolean
+  health: "green" | "amber" | "red"
+  completed_today: number
 }
 
 export interface RouterStats {
@@ -54,6 +60,11 @@ export interface TaskSummary {
 export interface AgentTaskDetails {
   inbox: TaskSummary[]
   outbox: TaskSummary[]
+  // Phase 1 (2026-06-15) — count-vs-list reconciliation.
+  // `total` is the source of truth (matches headline outbox_count on /state).
+  // `outbox` is the most recent `list_limit` files — label "recent" if listing.
+  total: { inbox: number; outbox: number; deadletter: number }
+  list_limit: number
 }
 
 export interface FullDashboardState extends DashboardState {
