@@ -124,8 +124,8 @@ export function TokenBurnCard({ usage, isLoading }: TokenBurnCardProps) {
       {/* Header */}
       <div className="flex items-center gap-2 mb-3 border-b border-[var(--border)] pb-2">
         <Flame className="h-3.5 w-3.5 text-[var(--warning)]" />
-        <span className="font-code text-xs font-semibold">token_burn</span>
-        <span className="ml-auto font-code text-[10px] text-[var(--muted-foreground)]">7d window</span>
+        <span className="font-code text-xs font-semibold">Upkeep</span>
+        <span className="ml-auto font-code text-[10px] text-[var(--muted-foreground)]">7d ledger</span>
       </div>
 
       {/* Today's cost + 7d avg + trend row */}
@@ -148,7 +148,7 @@ export function TokenBurnCard({ usage, isLoading }: TokenBurnCardProps) {
             <span className={`font-code text-sm font-bold ${
               trend === "rising" ? "text-[#c45a3a]" : trend === "falling" ? "text-[#7aad5a]" : "text-[#e8a935]"
             }`}>
-              {trend}
+              {trend === "rising" ? "up" : trend === "falling" ? "down" : "steady"}
             </span>
           </div>
           <div className="font-code text-[9px] text-[var(--muted-foreground)]">trend</div>
@@ -158,14 +158,14 @@ export function TokenBurnCard({ usage, isLoading }: TokenBurnCardProps) {
       {/* Peak day */}
       {peakDay && peakCost > 0 && (
         <div className="flex items-center justify-between mb-3 px-2 py-1 rounded bg-[var(--muted)] border border-[var(--border)]">
-          <span className="font-code text-[10px] text-[var(--muted-foreground)]">peak_day</span>
+          <span className="font-code text-[10px] text-[var(--muted-foreground)]">biggest spend</span>
           <span className="font-code text-[10px] font-bold">{peakDay.slice(5)} — {fmtCost(peakCost)}</span>
         </div>
       )}
 
       {/* Per-agent breakdown */}
       <div className="border-t border-[var(--border)] pt-2 space-y-1.5">
-        <div className="font-code text-[9px] text-[var(--muted-foreground)] mb-1">{"// per-agent (est.)"}</div>
+        <div className="font-code text-[9px] text-[var(--muted-foreground)] mb-1">{"// per-villager (est.)"}</div>
         {agentModels.map((agent) => (
           <div key={agent.id} className="flex items-center gap-2">
             <span className="font-code text-[10px] w-14 shrink-0" style={{ color: agent.color }}>
@@ -177,7 +177,7 @@ export function TokenBurnCard({ usage, isLoading }: TokenBurnCardProps) {
                 : agent.tier === "moderate" ? "text-[#e8a935]"
                 : "text-[#7aad5a]"
             }`}>
-              {agent.tier}
+              {agent.tier === "expensive" ? "pricy" : agent.tier === "moderate" ? "fair" : "thrifty"}
             </span>
           </div>
         ))}
@@ -186,7 +186,7 @@ export function TokenBurnCard({ usage, isLoading }: TokenBurnCardProps) {
       {/* No data state */}
       {Object.keys(by_day).length === 0 && (
         <p className="font-code text-[10px] text-[var(--muted-foreground)] mt-2">
-          {"// router usage log empty — no burn data yet"}
+          {"// the ledger is empty — no spending yet"}
         </p>
       )}
     </div>

@@ -12,6 +12,18 @@ import { formatRelativeTime } from "@/lib/utils"
 
 const AGENTS = ["lil-claw", "goop", "mason"] as const
 
+// Stable per-day counters (computed once at module load — no render-purity issues)
+const FARM_OPENED_AT = new Date("2026-04-01").getTime()
+const FARM_DAY = Math.max(1, Math.floor((Date.now() - FARM_OPENED_AT) / 86400000))
+function timeOfDayLabel(): string {
+  const h = new Date().getHours()
+  if (h < 6)  return "Night"
+  if (h < 12) return "Morning"
+  if (h < 18) return "Afternoon"
+  return "Evening"
+}
+const TIME_OF_DAY = timeOfDayLabel()
+
 export default function DashboardPage() {
   const { state, error, loading, refetch } = useDashboardApi(7000)
 
@@ -30,7 +42,7 @@ export default function DashboardPage() {
                 OPENCLAW<span className="cursor-blink text-[var(--primary)] ml-0.5">_</span>
               </h1>
               <p className="font-code text-[10px] text-[var(--muted-foreground)] mt-0.5">
-                guild of persistent memory · mission log
+                a small farm that never sleeps
               </p>
             </div>
           </div>
@@ -38,7 +50,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3">
             {state && (
               <span className="font-code text-[10px] text-[var(--muted-foreground)] hidden sm:block">
-                {formatRelativeTime(state.ts)}
+                Day {FARM_DAY} · {TIME_OF_DAY}
               </span>
             )}
             <span className={`font-code text-[10px] px-2 py-1 rounded border ${
@@ -46,7 +58,7 @@ export default function DashboardPage() {
               : error  ? "bg-[var(--destructive)]/10 text-[var(--destructive)] border-[var(--destructive)]/30"
               : "bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/30"
             }`}>
-              {loading ? "INIT" : error ? "ERR" : "LIVE"}
+              {loading ? "Waking" : error ? "Stormy" : "Sunny"}
             </span>
             <button onClick={refetch}
               className="p-1.5 rounded border border-[var(--border)] hover:bg-[var(--muted)] transition-colors cursor-pointer"
@@ -68,14 +80,14 @@ export default function DashboardPage() {
 
       <div className="max-w-[1400px] mx-auto px-4 py-3 space-y-3">
 
-        {/* Row 0: The Guild — full-width pixel scene */}
+        {/* Row 0: The Farm — full-width pixel scene */}
         <PixelGuild
           agents={state?.agents ?? null}
           taskDetails={state?.task_details ?? null}
           height={240}
         />
 
-        {/* Row 1: Agent character sheets + quest log — 4 equal columns */}
+        {/* Row 1: Agent character sheets + help-wanted board — 4 equal columns */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
           {AGENTS.map((agent) => (
             <AgentStatusCard
@@ -103,13 +115,13 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Row 3: Battle log — full width, compact */}
+        {/* Row 3: Farm journal — full width, compact */}
         <ActivityFeed walTails={state?.wal_tails ?? null} isLoading={loading} />
 
         {/* Footer */}
         <div className="border-t border-[var(--border)] pt-2 pb-1 flex items-center justify-between">
           <p className="font-code text-[9px] text-[var(--muted-foreground)]/60">
-            polling :8443 · 7s · {state ? formatRelativeTime(state.ts) : "--"}
+            {state ? formatRelativeTime(state.ts) : "—"} · harvest in full swing
           </p>
           <p className="font-code text-[9px] text-[var(--muted-foreground)]/60">
             <span style={{ color: "var(--pixel-gold)" }}>◈</span>

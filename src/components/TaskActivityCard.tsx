@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Zap, ChevronDown, ChevronRight, Send, Swords } from "lucide-react"
+import { Zap, ChevronDown, ChevronRight, Send, Sprout } from "lucide-react"
 import type { TaskSummary, AgentTaskDetails } from "@/hooks/useDashboardApi"
 
 interface TaskActivityCardProps {
@@ -16,11 +16,11 @@ const AGENT_COLORS: Record<string, string> = {
   mason:      "#9b87f0",
 }
 
-function QuestRankBadge({ priority }: { priority: string }) {
+function ChoreRankBadge({ priority }: { priority: string }) {
   const map: Record<string, { cls: string; label: string }> = {
-    high:   { cls: "text-[#c45a3a] border-[#c45a3a]/40 bg-[#c45a3a]/10", label: "HIGH" },
-    medium: { cls: "text-[#e8a935] border-[#e8a935]/40 bg-[#e8a935]/10", label: "MED"  },
-    low:    { cls: "text-[#7aad5a] border-[#7aad5a]/40",                  label: "LOW"  },
+    high:   { cls: "text-[#c45a3a] border-[#c45a3a]/40 bg-[#c45a3a]/10", label: "URGENT" },
+    medium: { cls: "text-[#e8a935] border-[#e8a935]/40 bg-[#e8a935]/10", label: "SOON"  },
+    low:    { cls: "text-[#7aad5a] border-[#7aad5a]/40",                  label: "IDLE"  },
   }
   const s = map[priority?.toLowerCase()] ?? {
     cls: "text-[var(--muted-foreground)] border-[var(--border)]",
@@ -33,16 +33,16 @@ function QuestRankBadge({ priority }: { priority: string }) {
   )
 }
 
-function RichQuestList({ items }: { items: TaskSummary[]; accentColor?: string }) {
+function RichChoreList({ items }: { items: TaskSummary[]; accentColor?: string }) {
   if (items.length === 0) {
-    return <p className="font-code text-[10px] text-[var(--muted-foreground)] pl-1">{/* empty */}</p>
+    return <p className="font-code text-[10px] text-[var(--muted-foreground)] pl-1">{"// empty row"}</p>
   }
   return (
     <div className="space-y-1">
       {items.slice(0, 8).map((t) => (
         <div key={t.id} className="border border-[var(--border)] rounded p-1.5 space-y-0.5">
           <div className="flex items-center gap-1.5">
-            <QuestRankBadge priority={t.priority} />
+            <ChoreRankBadge priority={t.priority} />
             <span className="font-code text-[9px] text-[var(--muted-foreground)] truncate flex-1">
               {t.id}
             </span>
@@ -68,9 +68,9 @@ function RichQuestList({ items }: { items: TaskSummary[]; accentColor?: string }
   )
 }
 
-function SimpleQuestList({ names }: { names: string[] }) {
+function SimpleChoreList({ names }: { names: string[] }) {
   if (names.length === 0) {
-    return <p className="font-code text-[10px] text-[var(--muted-foreground)] pl-1">{/* empty */}</p>
+    return <p className="font-code text-[10px] text-[var(--muted-foreground)] pl-1">{"// empty row"}</p>
   }
   return (
     <div className="space-y-1">
@@ -104,10 +104,10 @@ export function TaskActivityCard({ tasks, taskDetails, isLoading }: TaskActivity
     return (
       <div className="bg-[var(--card)] border border-[var(--border)] rounded p-4">
         <div className="flex items-center gap-2 mb-3">
-          <Swords className="h-4 w-4 text-[var(--muted-foreground)]" />
-          <span className="font-pixel text-[8px]">QUEST PIPELINE</span>
+          <Sprout className="h-4 w-4 text-[var(--muted-foreground)]" />
+          <span className="font-pixel text-[8px]">CHORE BOARD</span>
         </div>
-        <p className="font-code text-xs text-[var(--muted-foreground)]">{/* no active quests */}</p>
+        <p className="font-code text-xs text-[var(--muted-foreground)]">{"// the board is empty today"}</p>
       </div>
     )
   }
@@ -129,17 +129,17 @@ export function TaskActivityCard({ tasks, taskDetails, isLoading }: TaskActivity
     <div className="bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[var(--agent-goop)] rounded p-4">
       {/* Header */}
       <div className="flex items-center gap-2 mb-4 border-b border-[var(--border)] pb-3">
-        <Swords className="h-4 w-4 text-[var(--primary)]" />
-        <span className="font-pixel text-[8px] text-[var(--primary)]">QUEST PIPELINE</span>
+        <Sprout className="h-4 w-4 text-[var(--primary)]" />
+        <span className="font-pixel text-[8px] text-[var(--primary)]">CHORE BOARD</span>
         <div className="ml-auto flex items-center gap-3">
           {totalActive > 0 && (
-            <span className="font-code text-xs text-[#7aad5a]">{totalActive} in battle</span>
+            <span className="font-code text-xs text-[#7aad5a]">{totalActive} tending</span>
           )}
           {totalInbox > 0 && (
             <span className="font-code text-xs text-[#e8a935]">{totalInbox} queued</span>
           )}
           {totalOutbox > 0 && (
-            <span className="font-code text-xs text-[var(--muted-foreground)]">{totalOutbox} complete</span>
+            <span className="font-code text-xs text-[var(--muted-foreground)]">{totalOutbox} shipped</span>
           )}
         </div>
       </div>
@@ -172,14 +172,14 @@ export function TaskActivityCard({ tasks, taskDetails, isLoading }: TaskActivity
                 </div>
                 <div className="flex items-center gap-2">
                   {active.length > 0 && (
-                    <span className="font-code text-[10px] text-[#7aad5a]">{active.length} active</span>
+                    <span className="font-code text-[10px] text-[#7aad5a]">{active.length} tending</span>
                   )}
                   {inboxCount > 0 && (
                     <span className="font-code text-[10px] text-[#e8a935]">{inboxCount} queued</span>
                   )}
                   {richOutbox.length > 0 && (
                     <span className="font-code text-[10px] text-[var(--muted-foreground)]">
-                      {richOutbox.length} done
+                      {richOutbox.length} shipped
                     </span>
                   )}
                 </div>
@@ -189,8 +189,8 @@ export function TaskActivityCard({ tasks, taskDetails, isLoading }: TaskActivity
                 <div className="px-3 pb-3 border-t border-[var(--border)] pt-2 space-y-3">
                   {active.length > 0 && (
                     <div>
-                      <div className="font-pixel text-[7px] text-[#7aad5a] mb-1">IN BATTLE</div>
-                      <SimpleQuestList names={active} />
+                      <div className="font-pixel text-[7px] text-[#7aad5a] mb-1">TENDING</div>
+                      <SimpleChoreList names={active} />
                     </div>
                   )}
 
@@ -198,8 +198,8 @@ export function TaskActivityCard({ tasks, taskDetails, isLoading }: TaskActivity
                     <div>
                       <div className="font-pixel text-[7px] text-[#e8a935] mb-1">QUEUED</div>
                       {richInbox.length > 0
-                        ? <RichQuestList items={richInbox} accentColor={color} />
-                        : <SimpleQuestList names={fallbackInbox} />
+                        ? <RichChoreList items={richInbox} accentColor={color} />
+                        : <SimpleChoreList names={fallbackInbox} />
                       }
                     </div>
                   )}
@@ -208,9 +208,9 @@ export function TaskActivityCard({ tasks, taskDetails, isLoading }: TaskActivity
                     <div>
                       <div className="font-pixel text-[7px] text-[var(--muted-foreground)] mb-1 flex items-center gap-1">
                         <Send className="h-2.5 w-2.5" />
-                        DELIVERED
+                        SHIPPED
                       </div>
-                      <RichQuestList items={richOutbox} accentColor={color} />
+                      <RichChoreList items={richOutbox} accentColor={color} />
                     </div>
                   )}
                 </div>

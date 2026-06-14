@@ -1,6 +1,6 @@
 "use client"
 
-import { DollarSign, Activity, Wand2 } from "lucide-react"
+import { DollarSign, Activity, Wrench } from "lucide-react"
 
 interface RouterStatsCardProps {
   data: {
@@ -30,7 +30,7 @@ function modelAccentColor(model: string): string {
   return "#7aad5a"
 }
 
-function spellIcon(model: string): string {
+function toolIcon(model: string): string {
   // Only U+25xx geometric glyphs — Press Start 2P renders these; emoji-range
   // symbols (⚡ ★) tofu in this font.
   const m = model.toLowerCase()
@@ -42,7 +42,7 @@ function spellIcon(model: string): string {
   return "·"
 }
 
-function SpellBreakdownBar({ breakdown }: { breakdown: Record<string, number> }) {
+function ToolBreakdownBar({ breakdown }: { breakdown: Record<string, number> }) {
   const total  = Object.values(breakdown).reduce((a, b) => a + b, 0)
   if (total === 0) return null
 
@@ -54,7 +54,7 @@ function SpellBreakdownBar({ breakdown }: { breakdown: Record<string, number> })
         const pct   = Math.round((count / total) * 100)
         const label = normalizeModelLabel(model)
         const color = modelAccentColor(model)
-        const icon  = spellIcon(model)
+        const icon  = toolIcon(model)
         return (
           <div key={model} className="flex items-center gap-2">
             <span className="font-pixel text-[7px] shrink-0" style={{ color }}>{icon}</span>
@@ -118,9 +118,9 @@ export function RouterStatsCard({ data, isLoading }: RouterStatsCardProps) {
     <div className="bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[var(--primary)] rounded p-3">
       {/* Header */}
       <div className="flex items-center gap-2 mb-3 border-b border-[var(--border)] pb-2">
-        <Wand2 className="h-3.5 w-3.5 text-[var(--primary)]" />
-        <span className="font-pixel text-[8px] text-glow">SPELL REGISTRY</span>
-        <span className="ml-auto font-code text-[10px] text-[var(--primary)] text-glow">ONLINE</span>
+        <Wrench className="h-3.5 w-3.5 text-[var(--primary)]" />
+        <span className="font-pixel text-[8px] text-glow">WORKSHOP</span>
+        <span className="ml-auto font-code text-[10px] text-[var(--primary)] text-glow">Open</span>
       </div>
 
       {/* KPI row */}
@@ -128,7 +128,7 @@ export function RouterStatsCard({ data, isLoading }: RouterStatsCardProps) {
         <div className="bg-[var(--muted)] rounded p-2 border border-[var(--border)]">
           <div className="flex items-center gap-1 mb-0.5">
             <Activity className="h-3 w-3 text-[var(--secondary)]" />
-            <span className="font-code text-[10px] text-[var(--muted-foreground)]">casts</span>
+            <span className="font-code text-[10px] text-[var(--muted-foreground)]">tools used</span>
           </div>
           <span className="font-code text-xl font-bold text-[var(--secondary)] text-glow-green block">
             {data.decisions_count}
@@ -137,7 +137,7 @@ export function RouterStatsCard({ data, isLoading }: RouterStatsCardProps) {
         <div className="bg-[var(--muted)] rounded p-2 border border-[var(--border)]">
           <div className="flex items-center gap-1 mb-0.5">
             <DollarSign className="h-3 w-3" style={{ color: "var(--pixel-gold)" }} />
-            <span className="font-code text-[10px] text-[var(--muted-foreground)]">gold</span>
+            <span className="font-code text-[10px] text-[var(--muted-foreground)]">gold spent</span>
           </div>
           <span className="font-code text-xl font-bold text-glow-gold block"
             style={{ color: "var(--pixel-gold)" }}>
@@ -146,16 +146,16 @@ export function RouterStatsCard({ data, isLoading }: RouterStatsCardProps) {
         </div>
       </div>
 
-      {/* Spell breakdown */}
+      {/* Tool breakdown */}
       {Object.keys(data.model_breakdown).length > 0 ? (
         <div>
           <span className="font-pixel text-[7px] text-[var(--muted-foreground)] mb-2 block">
-            SPELLS CAST
+            TOOLS USED
           </span>
-          <SpellBreakdownBar breakdown={data.model_breakdown} />
+          <ToolBreakdownBar breakdown={data.model_breakdown} />
         </div>
       ) : (
-        <p className="font-pixel text-[7px] text-[var(--muted-foreground)]">{/* no casts yet */}</p>
+        <p className="font-pixel text-[7px] text-[var(--muted-foreground)]">{"// the workshop is quiet"}</p>
       )}
     </div>
   )

@@ -1,24 +1,20 @@
 "use client"
 
-import { useId, useState } from "react"
+import { useState } from "react"
 import { Activity, Inbox, Send, Zap, ChevronDown, ChevronRight } from "lucide-react"
-import type { TaskSummary, AgentTaskDetails } from "@/hooks/useDashboardApi"
+import type { TaskSummary, AgentTaskDetails, AgentState } from "@/hooks/useDashboardApi"
 
 // ─── Agent metadata ──────────────────────────────────────────────────────────
 
 interface AgentMeta { short: string; display: string; color: string; title: string }
 
 const AGENT_META: Record<string, AgentMeta> = {
-  "lil-claw": { short: "LC", display: "lil-claw", color: "#5ec27e", title: "COO / Chief of Staff" },
-  goop:       { short: "GP", display: "goop",     color: "#52b8d0", title: "Builder / Maker" },
-  mason:      { short: "MS", display: "mason",     color: "#9b87f0", title: "Advisor / Critic" },
+  "lil-claw": { short: "LC", display: "lil-claw", color: "#5ec27e", title: "Farm Manager" },
+  goop:       { short: "GP", display: "goop",     color: "#52b8d0", title: "Blacksmith & Carpenter" },
+  mason:      { short: "MS", display: "mason",     color: "#9b87f0", title: "Scholar of the Vale" },
 }
 
-function stableHash(s: string): number {
-  let h = 0
-  for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0
-  return Math.abs(h)
-}
+// (stableHash helper removed — was used to fake PID numbers, dropped in cozy pass)
 
 // ─── Pixel art sprites ───────────────────────────────────────────────────────
 // 8×12 grid: 0=transparent 1=main-color 2=shadow(#0a0a0a) 3=highlight(color+99)
@@ -143,11 +139,11 @@ function GoldCounter({ amount }: { amount: number }) {
 
 // ─── Quest drawer components ──────────────────────────────────────────────────
 
-function QuestBadge({ priority }: { priority: string }) {
+function ChoreBadge({ priority }: { priority: string }) {
   const map: Record<string, { cls: string; label: string }> = {
-    high:   { cls: "text-[#c45a3a] border-[#c45a3a]/40 bg-[#c45a3a]/10", label: "HIGH" },
-    medium: { cls: "text-[#e8a935] border-[#e8a935]/40 bg-[#e8a935]/10", label: "MED"  },
-    low:    { cls: "text-[#7aad5a] border-[#7aad5a]/40",                  label: "LOW"  },
+    high:   { cls: "text-[#c45a3a] border-[#c45a3a]/40 bg-[#c45a3a]/10", label: "URGENT" },
+    medium: { cls: "text-[#e8a935] border-[#e8a935]/40 bg-[#e8a935]/10", label: "SOON"  },
+    low:    { cls: "text-[#7aad5a] border-[#7aad5a]/40",                  label: "IDLE"  },
   }
   const s = map[priority?.toLowerCase()] ?? {
     cls: "text-[var(--muted-foreground)] border-[var(--border)]",
@@ -171,12 +167,12 @@ function TaskRow({ task }: { task: TaskSummary }) {
       }}
     >
       <div className="flex items-center gap-1.5">
-        <QuestBadge priority={task.priority} />
+        <ChoreBadge priority={task.priority} />
         <span className="font-code text-[9px] text-[var(--muted-foreground)] truncate flex-1">{task.id}</span>
         {isFailed && (
           <span className="font-pixel text-[6px] px-1 border rounded shrink-0"
             style={{ color: "#c45a3a", borderColor: "#c45a3a40" }}>
-            ERR
+            WILTED
           </span>
         )}
       </div>
@@ -211,15 +207,13 @@ function TaskSection({ label, tasks, color }: { label: string; tasks: TaskSummar
 
 interface AgentStatusCardProps {
   agentName:    string
-  data:         { inbox_count: number; working_count: number; outbox_count: number } | null
+  data:         AgentState | null
   taskDetails?: AgentTaskDetails | null
   isLoading:    boolean
 }
 
 export function AgentStatusCard({ agentName, data, taskDetails, isLoading }: AgentStatusCardProps) {
   const [expanded, setExpanded] = useState(false)
-  const id     = useId()
-  const pidNum = (stableHash(id) % 90000) + 10000
   const meta   = AGENT_META[agentName] ?? { short: "??", display: agentName, color: "#e8a935", title: "agent" }
   const color  = meta.color
 
@@ -274,29 +268,35 @@ export function AgentStatusCard({ agentName, data, taskDetails, isLoading }: Age
     )
   }
 
-  const isWorking   = (taskDetails?.inbox ?? []).some(t => t.status === "working")
-  const inboxWarn   = data.inbox_count > 5
-  const failedTasks = (taskDetails?.inbox ?? []).filter(t => t.status === "failed")
-  const isWounded   = failedTasks.length > 0
-  const totalTasks  = (taskDetails?.inbox?.length ?? 0) + (taskDetails?.outbox?.length ?? 0)
-  const hasDrawer   = totalTasks > 0
+  // Phase 1 truth: prefer session_active || working task || working_count
+  // (the old `working_count>0` signal is too transient to drive the UI alone)
+  const taskInFlight = (taskDetails?.inbox ?? []).some(t => t.status === "working")
+  const isWorking    = data.session_active === true || taskInFlight || (data.working_count ?? 0) > 0
+  const inboxWarn    = data.inbox_count > 5
+  const failedTasks  = (taskDetails?.inbox ?? []).filter(t => t.status === "failed")
+  const isWilted     = failedTasks.length > 0 || data.health === "red"
+  const health       = data.health ?? "green"
+  const currentTask  = data.current_task ?? null
+  const completedToday = data.completed_today ?? 0
+  const totalTasks   = (taskDetails?.inbox?.length ?? 0) + (taskDetails?.outbox?.length ?? 0)
+  const hasDrawer    = totalTasks > 0
 
-  const statusLabel = isWounded ? "WOUNDED" : isWorking ? "ACTIVE" : "IDLE"
-  const statusColor = isWounded ? "#c45a3a" : isWorking ? color : "#7aad5a"
-  const statusGlow  = isWounded ? "0 0 6px #c45a3a60" : isWorking ? `0 0 6px ${color}60` : "none"
+  const statusLabel = isWilted ? "WILTED" : isWorking ? "TENDING" : "RESTING"
+  const statusColor = isWilted ? "#c45a3a" : isWorking ? color : "#7aad5a"
+  const statusGlow  = isWilted ? "0 0 6px #c45a3a60" : isWorking ? `0 0 6px ${color}60` : "none"
 
   return (
     <div
       data-agent-id={agentName}
       className="bg-[var(--card)] border border-[var(--border)] rounded overflow-hidden"
-      style={{ borderLeft: `3px solid ${isWounded ? "#c45a3a" : color}` }}
+      style={{ borderLeft: `3px solid ${isWilted ? "#c45a3a" : color}` }}
     >
       {/* Header strip */}
       <div
         className="flex items-center justify-between px-3 py-2"
         style={{
           borderBottom: `1px solid ${color}20`,
-          backgroundColor: isWounded ? "#c45a3a08" : color + "08",
+          backgroundColor: isWilted ? "#c45a3a08" : color + "08",
         }}
       >
         <div className="flex items-center gap-2">
@@ -307,16 +307,22 @@ export function AgentStatusCard({ agentName, data, taskDetails, isLoading }: Age
             {meta.short}
           </span>
           <span className="font-code text-xs font-semibold text-[var(--foreground)]">{meta.display}</span>
-          <span className="font-code text-[9px] text-[var(--muted-foreground)] hidden sm:block">
-            PID:{pidNum}
-          </span>
         </div>
         <div className="flex items-center gap-1.5">
-          {isWorking && !isWounded && (
+          {isWorking && !isWilted && (
             <span className="pulse-dot w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
           )}
-          {isWounded && (
+          {isWilted && (
             <span className="pulse-dot w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "#c45a3a" }} />
+          )}
+          {health === "amber" && !isWilted && (
+            <span
+              className="font-code text-[7px] px-1 border rounded"
+              style={{ color: "#e8a935", borderColor: "#e8a93550", backgroundColor: "#e8a93510" }}
+              title="Agent health: needs care"
+            >
+              AMBER
+            </span>
           )}
           <span
             className="font-code text-[10px] font-bold tracking-widest"
@@ -327,7 +333,7 @@ export function AgentStatusCard({ agentName, data, taskDetails, isLoading }: Age
         </div>
       </div>
 
-      {/* Character sprite + RPG stats */}
+      {/* Character sprite + cozy stats */}
       <div
         className="flex items-center gap-3 px-3 py-2.5"
         style={{ borderBottom: `1px solid ${color}15` }}
@@ -335,24 +341,34 @@ export function AgentStatusCard({ agentName, data, taskDetails, isLoading }: Age
         <div
           className="shrink-0"
           style={{
-            filter: isWounded
+            filter: isWilted
               ? "drop-shadow(0 0 6px #ff444490)"
               : isWorking
               ? `drop-shadow(0 0 5px ${color}90)`
               : "none",
           }}
         >
-          <AgentSprite agentId={agentName} color={isWounded ? "#c45a3a" : color} isWorking={isWorking} />
+          <AgentSprite agentId={agentName} color={isWilted ? "#c45a3a" : color} isWorking={isWorking} />
         </div>
 
         <div className="flex-1 min-w-0 space-y-1.5">
           <p className="font-pixel text-[6px] truncate" style={{ color: color + "bb" }}>
             {meta.title}
           </p>
+          {currentTask && (
+            <p className="font-code text-[8px] truncate text-[var(--muted-foreground)]" title={currentTask}>
+              ◆ {currentTask.length > 36 ? currentTask.slice(0, 36) + "…" : currentTask}
+            </p>
+          )}
+          {completedToday > 0 && (
+            <p className="font-code text-[8px] text-[var(--muted-foreground)]/70">
+              {completedToday} shipped today
+            </p>
+          )}
 
           <div>
             <div className="flex items-center justify-between mb-0.5">
-              <span className="font-pixel text-[6px] text-[var(--muted-foreground)]">STA</span>
+              <span className="font-pixel text-[6px] text-[var(--muted-foreground)]">Energy</span>
               <span className="font-code text-[8px] text-[var(--muted-foreground)]">
                 {Math.max(0, 8 - data.inbox_count)}/8
               </span>
@@ -377,7 +393,7 @@ export function AgentStatusCard({ agentName, data, taskDetails, isLoading }: Age
             {inboxWarn && <Zap className="h-3 w-3 inline mb-0.5 mr-0.5 text-[#e8a935]" />}
             {data.inbox_count}
           </span>
-          <span className="font-code text-[8px] text-[var(--muted-foreground)] mt-1">quests</span>
+          <span className="font-code text-[8px] text-[var(--muted-foreground)] mt-1">chores</span>
         </div>
 
         <div className="flex flex-col items-center justify-center py-2.5 px-2 text-center">
@@ -391,7 +407,7 @@ export function AgentStatusCard({ agentName, data, taskDetails, isLoading }: Age
           >
             {data.working_count}
           </span>
-          <span className="font-code text-[8px] text-[var(--muted-foreground)] mt-1">active</span>
+          <span className="font-code text-[8px] text-[var(--muted-foreground)] mt-1">in field</span>
         </div>
 
         <div className="flex flex-col items-center justify-center py-2.5 px-2 text-center">
@@ -399,13 +415,13 @@ export function AgentStatusCard({ agentName, data, taskDetails, isLoading }: Age
           <span className="font-code text-xl font-bold leading-none text-[var(--muted-foreground)]">
             {data.outbox_count}
           </span>
-          <span className="font-code text-[8px] text-[var(--muted-foreground)] mt-1">done</span>
+          <span className="font-code text-[8px] text-[var(--muted-foreground)] mt-1">shipped</span>
         </div>
       </div>
 
-      {/* Expandable quest drawer */}
+      {/* Expandable chore drawer */}
       {hasDrawer && (
-        <div style={{ borderTop: `1px solid ${isWounded ? "#ff444430" : color + "20"}` }}>
+        <div style={{ borderTop: `1px solid ${isWilted ? "#ff444430" : color + "20"}` }}>
           <button
             onClick={() => setExpanded(!expanded)}
             className="flex items-center gap-1.5 w-full text-left px-3 py-2 hover:bg-[var(--muted)] transition-colors cursor-pointer"
@@ -415,17 +431,17 @@ export function AgentStatusCard({ agentName, data, taskDetails, isLoading }: Age
               : <ChevronRight className="h-3 w-3 text-[var(--muted-foreground)]" />
             }
             <span className="font-pixel text-[7px] text-[var(--muted-foreground)]">
-              QUESTS ({totalTasks})
+              Chore Board ({totalTasks})
             </span>
             {(taskDetails?.inbox?.length ?? 0) > 0 && (
               <span className="font-code text-[9px] ml-1" style={{ color: color + "99" }}>
-                {taskDetails!.inbox.length} pending
+                {taskDetails!.inbox.length} to do
               </span>
             )}
-            {isWounded && (
+            {isWilted && (
               <span className="font-pixel text-[7px] px-1 border rounded ml-auto"
                 style={{ color: "#c45a3a", borderColor: "#c45a3a40", backgroundColor: "#c45a3a10" }}>
-                {failedTasks.length} FAILED
+                {failedTasks.length} NEEDS CARE
               </span>
             )}
           </button>
@@ -433,10 +449,10 @@ export function AgentStatusCard({ agentName, data, taskDetails, isLoading }: Age
           {expanded && (
             <div className="px-3 pb-3 space-y-3" style={{ borderTop: `1px solid var(--border)` }}>
               <div className="pt-2">
-                <TaskSection label="inbox" tasks={taskDetails?.inbox ?? []} color={color} />
+                <TaskSection label="to do" tasks={taskDetails?.inbox ?? []} color={color} />
               </div>
               {(taskDetails?.outbox?.length ?? 0) > 0 && (
-                <TaskSection label="outbox" tasks={taskDetails?.outbox ?? []} color={color} />
+                <TaskSection label="shipped" tasks={taskDetails?.outbox ?? []} color={color} />
               )}
             </div>
           )}
@@ -446,7 +462,7 @@ export function AgentStatusCard({ agentName, data, taskDetails, isLoading }: Age
   )
 }
 
-// ─── Activity Feed (Battle Log) ───────────────────────────────────────────────
+// ─── Activity Feed (Farm Journal) ─────────────────────────────────────────────
 
 interface ActivityFeedProps {
   walTails:  Record<string, string[]> | null
@@ -480,9 +496,9 @@ export function ActivityFeed({ walTails, isLoading }: ActivityFeedProps) {
       <div className="bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[var(--primary)] rounded p-3">
         <div className="flex items-center gap-2 mb-2">
           <Activity className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
-          <span className="font-pixel text-[8px]">BATTLE LOG</span>
+          <span className="font-pixel text-[8px]">FARM JOURNAL</span>
         </div>
-        <p className="font-code text-xs text-[var(--muted-foreground)]">{"// no recent entries"}</p>
+        <p className="font-code text-xs text-[var(--muted-foreground)]">{"// a quiet morning on the farm"}</p>
       </div>
     )
   }
@@ -491,9 +507,9 @@ export function ActivityFeed({ walTails, isLoading }: ActivityFeedProps) {
     <div className="bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[var(--primary)] rounded p-3">
       <div className="flex items-center gap-2 mb-3 border-b border-[var(--border)] pb-2">
         <Activity className="h-3.5 w-3.5 text-[var(--primary)]" />
-        <span className="font-pixel text-[8px] text-glow">BATTLE LOG</span>
+        <span className="font-pixel text-[8px] text-glow">FARM JOURNAL</span>
         <span className="ml-auto font-code text-[10px] text-[var(--muted-foreground)]">
-          {agentNames.length} agents
+          {agentNames.length} villagers
         </span>
       </div>
 
