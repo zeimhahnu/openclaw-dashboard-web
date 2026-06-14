@@ -42,9 +42,18 @@ if [ -d "$WEB_ROOT" ]; then
 fi
 
 echo "==> [1/5] Fetch + force dashboard source to origin/main"
-cd "$WORKSPACE"
+# The dashboard is its OWN git repo ($APP_DIR / zeimhahnu/openclaw-dashboard-web),
+# separate from the workspace repo. Operate inside it and force the source to the
+# canonical pushed version so we never build from a messy working tree, a stuck
+# autostash, or unattended-agent edits. (Previously this ran in $WORKSPACE and did
+# `git checkout origin/main -- <dashboard path>`, which failed with "pathspec did
+# not match" because that path is not tracked in the workspace repo.)
+cd "$APP_DIR"
 git fetch origin main
-git checkout origin/main -- agents/goop/openclaw-dashboard-web/
+git reset --hard origin/main
+# Drop untracked source files (e.g. an unattended agent's orphan components). Scoped
+# to src/ and ignored build dirs (node_modules/.next/out) are preserved by gitignore.
+git clean -fd src/
 
 echo "==> [2/5] Remove /pixel prototype route if present"
 rm -rf "$APP_DIR/src/app/pixel"
