@@ -7,61 +7,65 @@ import { TokenBurnCard } from "@/components/TokenBurnCard"
 import { TaskActivityCard } from "@/components/TaskActivityCard"
 import PixelGuild from "@/components/PixelGuild"
 import { QuestPanel } from "@/components/QuestPanel"
-import { RefreshCw, AlertCircle, Terminal } from "lucide-react"
+import { RefreshCw, Sprout, Sun, Moon, CloudRain, AlertCircle } from "lucide-react"
 import { formatRelativeTime } from "@/lib/utils"
 
 const AGENTS = ["lil-claw", "goop", "mason"] as const
 
-// Stable per-day counters (computed once at module load — no render-purity issues)
 const FARM_OPENED_AT = new Date("2026-04-01").getTime()
 const FARM_DAY = Math.max(1, Math.floor((Date.now() - FARM_OPENED_AT) / 86400000))
-function timeOfDayLabel(): string {
+function timeOfDay(): { label: string; Icon: typeof Sun } {
   const h = new Date().getHours()
-  if (h < 6)  return "Night"
-  if (h < 12) return "Morning"
-  if (h < 18) return "Afternoon"
-  return "Evening"
+  if (h < 6)  return { label: "Night",     Icon: Moon }
+  if (h < 12) return { label: "Morning",   Icon: Sun }
+  if (h < 18) return { label: "Afternoon", Icon: Sun }
+  return { label: "Evening", Icon: Moon }
 }
-const TIME_OF_DAY = timeOfDayLabel()
+const TOD = timeOfDay()
+
+function Eyebrow({ children }: { children: React.ReactNode }) {
+  return <div className="eyebrow mb-2 px-0.5">{children}</div>
+}
 
 export default function DashboardPage() {
   const { state, error, loading, refetch } = useDashboardApi(7000)
+  const gold = state?.router?.total_cost_usd ?? 0
 
   return (
-    <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)]">
+    <main className="min-h-screen text-[var(--foreground)]">
 
-      {/* Header */}
-      <header className="border-b border-[var(--border)] px-4 py-3">
-        <div className="max-w-[1400px] mx-auto flex items-center justify-between">
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md">
+        <div className="max-w-[1320px] mx-auto flex items-center justify-between px-6 h-16">
           <div className="flex items-center gap-3">
-            <div className="bg-[var(--primary)]/10 border border-[var(--primary)]/30 rounded p-1.5">
-              <Terminal className="h-4 w-4 text-[var(--primary)]" />
+            <div className="grid place-items-center h-9 w-9 rounded-lg bg-[var(--primary)]/12 border border-[var(--primary)]/25 shadow-[0_0_20px_-6px_var(--primary)]">
+              <Sprout className="h-[18px] w-[18px] text-[var(--primary)]" />
             </div>
-            <div>
-              <h1 className="font-pixel text-[10px] tracking-tight text-glow">
-                OPENCLAW<span className="cursor-blink text-[var(--primary)] ml-0.5">_</span>
+            <div className="leading-none">
+              <h1 className="font-display text-[19px] font-semibold tracking-tight text-glow">
+                OpenClaw
               </h1>
-              <p className="font-code text-[10px] text-[var(--muted-foreground)] mt-0.5">
+              <p className="font-code text-[10.5px] text-[var(--muted-foreground)] mt-1">
                 a small farm that never sleeps
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            {state && (
-              <span className="font-code text-[10px] text-[var(--muted-foreground)] hidden sm:block">
-                Day {FARM_DAY} · {TIME_OF_DAY}
-              </span>
-            )}
-            <span className={`font-code text-[10px] px-2 py-1 rounded border ${
+          <div className="flex items-center gap-2.5">
+            <span className="hidden sm:flex items-center gap-1.5 font-code text-[11px] text-[var(--muted-foreground)] px-2.5 py-1.5 rounded-md border border-[var(--border)] bg-[var(--card)]/60">
+              <TOD.Icon className="h-3.5 w-3.5 text-[var(--primary)]" />
+              Day {FARM_DAY} · {TOD.label}
+            </span>
+            <span className={`flex items-center gap-1.5 font-code text-[11px] px-2.5 py-1.5 rounded-md border ${
               loading ? "bg-[var(--muted)] text-[var(--muted-foreground)] border-[var(--border)]"
-              : error  ? "bg-[var(--destructive)]/10 text-[var(--destructive)] border-[var(--destructive)]/30"
-              : "bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/30"
+              : error  ? "bg-[var(--destructive)]/12 text-[var(--destructive)] border-[var(--destructive)]/30"
+              : "bg-[var(--secondary)]/12 text-[var(--secondary)] border-[var(--secondary)]/30"
             }`}>
+              {error ? <CloudRain className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
               {loading ? "Waking" : error ? "Stormy" : "Sunny"}
             </span>
             <button onClick={refetch}
-              className="p-1.5 rounded border border-[var(--border)] hover:bg-[var(--muted)] transition-colors cursor-pointer"
+              className="grid place-items-center h-8 w-8 rounded-md border border-[var(--border)] hover:border-[var(--border-strong)] hover:bg-[var(--muted)] transition-colors cursor-pointer"
               aria-label="Refresh">
               <RefreshCw className={`h-3.5 w-3.5 text-[var(--muted-foreground)] ${loading ? "animate-spin" : ""}`} />
             </button>
@@ -69,65 +73,76 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {error && (
-        <div className="max-w-[1400px] mx-auto px-4 pt-2">
-          <div className="flex items-center gap-2 bg-[var(--destructive)]/10 border border-[var(--destructive)]/30 rounded px-3 py-1.5">
-            <AlertCircle className="h-3.5 w-3.5 text-[var(--destructive)] shrink-0" />
-            <span className="font-code text-xs text-[var(--destructive)]">ERR: api_unreachable · {error} · retrying…</span>
+      <div className="max-w-[1320px] mx-auto px-6 py-6 space-y-7">
+
+        {error && (
+          <div className="flex items-center gap-2 bg-[var(--destructive)]/10 border border-[var(--destructive)]/30 rounded-lg px-3.5 py-2">
+            <AlertCircle className="h-4 w-4 text-[var(--destructive)] shrink-0" />
+            <span className="font-code text-xs text-[var(--destructive)]">a storm rolled in — can&apos;t reach the farmhouse · {error} · retrying…</span>
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="max-w-[1400px] mx-auto px-4 py-3 space-y-3">
+        {/* ── The Farm (hero) ─────────────────────────────────────────────── */}
+        <section className="fade-rise">
+          <Eyebrow>The Homestead</Eyebrow>
+          <div className="surface overflow-hidden relative">
+            <PixelGuild
+              agents={state?.agents ?? null}
+              taskDetails={state?.task_details ?? null}
+              height={280}
+            />
+            {/* blend the scene into the page */}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[var(--card)] to-transparent" />
+          </div>
+        </section>
 
-        {/* Row 0: The Farm — full-width pixel scene */}
-        <PixelGuild
-          agents={state?.agents ?? null}
-          taskDetails={state?.task_details ?? null}
-          height={240}
-        />
+        {/* ── Villagers + Help-Wanted board ───────────────────────────────── */}
+        <section className="fade-rise">
+          <Eyebrow>The Villagers</Eyebrow>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            {AGENTS.map((agent) => (
+              <AgentStatusCard
+                key={agent}
+                agentName={agent}
+                data={state?.agents?.[agent] ?? null}
+                taskDetails={state?.task_details?.[agent] ?? null}
+                isLoading={loading}
+              />
+            ))}
+            <QuestPanel taskDetails={state?.task_details ?? null} isLoading={loading} />
+          </div>
+        </section>
 
-        {/* Row 1: Agent character sheets + help-wanted board — 4 equal columns */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-          {AGENTS.map((agent) => (
-            <AgentStatusCard
-              key={agent}
-              agentName={agent}
-              data={state?.agents?.[agent] ?? null}
-              taskDetails={state?.task_details?.[agent] ?? null}
+        {/* ── The Ledger ──────────────────────────────────────────────────── */}
+        <section className="fade-rise">
+          <Eyebrow>The Ledger</Eyebrow>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <RouterStatsCard data={state?.router ?? null} isLoading={loading} />
+            <TokenBurnCard usage={state?.router_usage ?? null} isLoading={loading} />
+            <TaskActivityCard
+              tasks={state?.tasks ?? null}
+              taskDetails={state?.task_details ?? null}
               isLoading={loading}
             />
-          ))}
-          <QuestPanel
-            taskDetails={state?.task_details ?? null}
-            isLoading={loading}
-          />
-        </div>
+          </div>
+        </section>
 
-        {/* Row 2: Infrastructure + pipeline — 3 columns, no orphan rows */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <RouterStatsCard data={state?.router ?? null} isLoading={loading} />
-          <TokenBurnCard usage={state?.router_usage ?? null} isLoading={loading} />
-          <TaskActivityCard
-            tasks={state?.tasks ?? null}
-            taskDetails={state?.task_details ?? null}
-            isLoading={loading}
-          />
-        </div>
+        {/* ── Farm journal ────────────────────────────────────────────────── */}
+        <section className="fade-rise">
+          <Eyebrow>The Journal</Eyebrow>
+          <ActivityFeed walTails={state?.wal_tails ?? null} isLoading={loading} />
+        </section>
 
-        {/* Row 3: Farm journal — full width, compact */}
-        <ActivityFeed walTails={state?.wal_tails ?? null} isLoading={loading} />
-
-        {/* Footer */}
-        <div className="border-t border-[var(--border)] pt-2 pb-1 flex items-center justify-between">
-          <p className="font-code text-[9px] text-[var(--muted-foreground)]/60">
-            {state ? formatRelativeTime(state.ts) : "—"} · harvest in full swing
+        {/* ── Footer ──────────────────────────────────────────────────────── */}
+        <footer className="border-t border-[var(--border)] pt-4 pb-2 flex items-center justify-between">
+          <p className="font-code text-[10px] text-[var(--faint)]">
+            {state ? `tended ${formatRelativeTime(state.ts)}` : "—"} · harvest in full swing
           </p>
-          <p className="font-code text-[9px] text-[var(--muted-foreground)]/60">
-            <span style={{ color: "var(--pixel-gold)" }}>◈</span>
-            {" "}{(state?.router?.total_cost_usd ?? 0).toFixed(4)} gold spent
+          <p className="font-code text-[10px] text-[var(--faint)] tnum">
+            <span style={{ color: "var(--pixel-gold)" }}>◈</span>{" "}
+            {gold.toFixed(4)} gold spent
           </p>
-        </div>
+        </footer>
 
       </div>
     </main>

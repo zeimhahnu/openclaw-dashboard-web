@@ -1,61 +1,77 @@
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Fira+Code:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
-  /* ── Earthy / cozy palette ───────────────────────────────────────────────── */
-  --background:          #130e07;   /* dark earth night */
-  --foreground:          #f5edd6;   /* warm parchment */
-  --card:                #1e1508;   /* dark wood */
-  --card-foreground:     #f5edd6;
-  --primary:             #e8a935;   /* amber gold */
-  --primary-foreground:  #1a0e05;
-  --secondary:           #7aad5a;   /* earthy sage */
-  --secondary-foreground:#1a0e05;
-  --muted:               #2a1e0d;   /* dark earth */
-  --muted-foreground:    #9a7a50;   /* warm tan */
-  --border:              #4a3018;   /* wood brown */
-  --success:             #7aad5a;
-  --warning:             #e8a935;
-  --destructive:         #c45a3a;   /* clay red */
-  --radius:              0.25rem;
+  /* ── Warm dusk homestead — premium ops palette ───────────────────────────── */
+  --background:          #14100a;   /* deep warm earth */
+  --background-2:        #1b150d;   /* gradient companion */
+  --foreground:          #f6edd8;   /* warm cream */
+  --card:                #1f1810;   /* raised wood */
+  --card-2:              #271e13;   /* inset / well */
+  --card-foreground:     #f6edd8;
+  --primary:             #f0b429;   /* lantern gold — the one hero accent */
+  --primary-foreground:  #1a0f03;
+  --secondary:           #86b84e;   /* meadow green */
+  --secondary-foreground:#13190a;
+  --muted:               #2a2114;   /* dark earth */
+  --muted-foreground:    #ad9670;   /* warm tan */
+  --faint:               #7c6747;   /* faint label */
+  --border:              #352818;   /* hairline wood */
+  --border-strong:       #4a3920;
+  --success:             #86b84e;
+  --warning:             #f0b429;
+  --destructive:         #d2683f;   /* clay */
+  --radius:              0.625rem;
 
   /* ── Agent colors ─────────────────────────────────────────────────────────── */
-  --agent-lil-claw:  #5ec27e;   /* sage green */
-  --agent-goop:      #52b8d0;   /* sky teal */
-  --agent-mason:     #9b87f0;   /* lavender */
+  --agent-lil-claw:  #6ccb8a;   /* sage */
+  --agent-goop:      #57c2da;   /* sky teal */
+  --agent-mason:     #a594f5;   /* lavender */
 
-  /* ── RPG mechanics ────────────────────────────────────────────────────────── */
-  --pixel-gold:      #f5c842;
-  --pixel-gold-dark: #92600e;
+  /* ── RPG / farm mechanics ─────────────────────────────────────────────────── */
+  --pixel-gold:      #ffd24a;
+  --pixel-gold-dark: #9a6a12;
   --pixel-hp-bg:     #2a1808;
-  --pixel-hp-low:    #c45a3a;
-  --pixel-hp-warn:   #e8a935;
+  --pixel-hp-low:    #d2683f;
+  --pixel-hp-warn:   #f0b429;
+
+  /* ── Elevation ────────────────────────────────────────────────────────────── */
+  --shadow-card: 0 1px 0 0 rgba(255,236,200,0.04) inset, 0 6px 18px -8px rgba(0,0,0,0.6);
+  --shadow-pop:  0 1px 0 0 rgba(255,236,200,0.06) inset, 0 12px 30px -10px rgba(0,0,0,0.7);
 }
 
-* {
-  border-color: var(--border);
-}
+* { border-color: var(--border); }
+
+html { color-scheme: dark; }
 
 body {
-  background: var(--background);
+  background:
+    radial-gradient(120% 70% at 50% -10%, rgba(240,180,41,0.07) 0%, transparent 55%),
+    radial-gradient(100% 60% at 100% 0%, rgba(134,184,78,0.05) 0%, transparent 50%),
+    linear-gradient(180deg, var(--background-2) 0%, var(--background) 30%);
+  background-attachment: fixed;
   color: var(--foreground);
-  font-family: 'Fira Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
-  position: relative;
-}
-
-/* Warm ambient glow from top — ties UI to the PixelGuild hero above */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(ellipse 80% 40% at 50% 0%, rgba(232, 169, 53, 0.05) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: 9999;
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.005em;
 }
 
 /* ── Font utilities ─────────────────────────────────────────────────────────── */
-.font-code  { font-family: 'Fira Code', ui-monospace, 'Cascadia Code', monospace; }
-.font-pixel { font-family: 'Press Start 2P', monospace; }
+.font-code    { font-family: 'Fira Code', ui-monospace, 'Cascadia Code', monospace; }
+.font-pixel   { font-family: 'Press Start 2P', monospace; }
+.font-display { font-family: 'Fraunces', Georgia, serif; }
+.font-sans    { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+.tnum         { font-variant-numeric: tabular-nums; }
+
+/* Section eyebrow — replaces cramped pixel headers */
+.eyebrow {
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
 
 @theme inline {
   --color-background:         var(--background);
@@ -72,72 +88,62 @@ body::before {
   --color-success:            var(--success);
   --color-warning:            var(--warning);
   --color-destructive:        var(--destructive);
-  --radius-sm: calc(var(--radius) - 2px);
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* ── Premium card surface ───────────────────────────────────────────────────── */
+.surface {
+  background: linear-gradient(180deg, var(--card) 0%, color-mix(in oklab, var(--card) 85%, #000) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+.surface-hover { transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+.surface-hover:hover { border-color: var(--border-strong); box-shadow: var(--shadow-pop); }
+
 /* ── Glow utilities ─────────────────────────────────────────────────────────── */
-.text-glow        { text-shadow: 0 0 10px rgba(232, 169, 53, 0.5); }
-.text-glow-gold   { text-shadow: 0 0 10px rgba(245, 200, 66, 0.6); }
-.text-glow-green  { text-shadow: 0 0 8px  rgba(122, 173, 90, 0.5); }
-.text-glow-cyan   { text-shadow: 0 0 8px  rgba(82, 184, 208, 0.5); }
-.text-glow-purple { text-shadow: 0 0 8px  rgba(155, 135, 240, 0.5); }
+.text-glow        { text-shadow: 0 0 18px rgba(240,180,41,0.35); }
+.text-glow-gold   { text-shadow: 0 0 14px rgba(255,210,74,0.45); }
+.text-glow-green  { text-shadow: 0 0 12px rgba(134,184,78,0.4); }
+.text-glow-cyan   { text-shadow: 0 0 12px rgba(87,194,218,0.4); }
+.text-glow-purple { text-shadow: 0 0 12px rgba(165,148,245,0.4); }
 
-/* ── Cursor ─────────────────────────────────────────────────────────────────── */
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0; }
-}
-.cursor-blink {
-  animation: blink 1s step-end infinite;
-  display: inline-block;
-}
+/* ── Cursor / pulse ─────────────────────────────────────────────────────────── */
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+.cursor-blink { animation: blink 1.1s step-end infinite; display: inline-block; }
 
-/* ── Pulse dot ──────────────────────────────────────────────────────────────── */
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.5; transform: scale(1.4); }
-}
-.pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; display: inline-block; }
+@keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.45;transform:scale(1.35)} }
+.pulse-dot { animation: pulse-dot 1.6s ease-in-out infinite; display: inline-block; }
 
-/* ── Sprite animations ──────────────────────────────────────────────────────── */
-@keyframes sprite-idle {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-2px); }
-}
+/* ── Sprite-card animations ─────────────────────────────────────────────────── */
+@keyframes sprite-idle { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
 @keyframes sprite-work {
-  0%   { transform: translateY(0px) rotate(0deg); }
-  20%  { transform: translateY(-3px) rotate(-4deg); }
-  40%  { transform: translateY(-1px) rotate(2deg); }
-  60%  { transform: translateY(-4px) rotate(-2deg); }
-  80%  { transform: translateY(-1px) rotate(3deg); }
-  100% { transform: translateY(0px) rotate(0deg); }
+  0%{transform:translateY(0) rotate(0)} 25%{transform:translateY(-3px) rotate(-4deg)}
+  50%{transform:translateY(-1px) rotate(2deg)} 75%{transform:translateY(-3px) rotate(-2deg)}
+  100%{transform:translateY(0) rotate(0)}
 }
-.sprite-idle    { animation: sprite-idle 2.4s ease-in-out infinite; }
-.sprite-working { animation: sprite-work 0.6s ease-in-out infinite; }
+.sprite-idle    { animation: sprite-idle 2.6s ease-in-out infinite; }
+.sprite-working { animation: sprite-work 0.7s ease-in-out infinite; }
 
-/* ── HP bar pulse ───────────────────────────────────────────────────────────── */
-@keyframes hp-pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.6; }
-}
-.hp-critical { animation: hp-pulse 0.8s ease-in-out infinite; }
+@keyframes hp-pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
+.hp-critical { animation: hp-pulse .85s ease-in-out infinite; }
 
 /* ── Skeleton shimmer ───────────────────────────────────────────────────────── */
-@keyframes shimmer {
-  0%   { background-position: -400px 0; }
-  100% { background-position:  400px 0; }
-}
+@keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
 .skeleton {
-  background: linear-gradient(
-    90deg,
-    #2a1e0d 25%,
-    #3d2a14 50%,
-    #2a1e0d 75%
-  );
+  background: linear-gradient(90deg, var(--card-2) 25%, #3a2c17 50%, var(--card-2) 75%);
   background-size: 800px 100%;
   animation: shimmer 1.6s ease-in-out infinite;
-  border-radius: 2px;
+  border-radius: 4px;
 }
+
+/* ── Scrollbars ─────────────────────────────────────────────────────────────── */
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+@keyframes fade-rise { from { opacity:0; transform: translateY(6px) } to { opacity:1; transform:none } }
+.fade-rise { animation: fade-rise .5s cubic-bezier(.2,.7,.2,1) both; }

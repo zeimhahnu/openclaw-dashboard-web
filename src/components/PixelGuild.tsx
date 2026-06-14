@@ -4,6 +4,8 @@ import type { AgentState as ApiAgentState, AgentTaskDetails } from "@/hooks/useD
 
 const BASE_W = 900, BASE_H = 200
 const GROUND_Y = 88   // ground baseline
+const CHAR_SCALE = 1.55     // villagers drawn at local origin, scaled up for readability
+const STATION_SCALE = 1.4   // workstations scaled to stay proportionate to villagers
 
 // ─── Agent config: each villager is unique, with their own workstation & tool
 const AGENTS = [
@@ -511,50 +513,65 @@ export default function PixelGuild({
         seedGfx!: Phaser.GameObjects.Graphics
 
         create() {
-          // ── Sky/background: warm cream with soft vertical gradient
-          this.cameras.main.setBackgroundColor("#dfeac4")
+          // ── Dusk sky: deep warm plum at top → amber at the horizon
+          this.cameras.main.setBackgroundColor("#1b1530")
           const bg = this.add.graphics().setDepth(-10)
-          // Vertical gradient: warmer at top, grassier at bottom
+          const sky = [
+            { t: 0.00, r: 0x2a, g: 0x22, b: 0x44 }, // deep plum
+            { t: 0.55, r: 0x6e, g: 0x3f, b: 0x55 }, // mauve
+            { t: 0.80, r: 0xc4, g: 0x6e, b: 0x42 }, // burnt orange
+            { t: 1.00, r: 0xf0, g: 0xb0, b: 0x52 }, // amber horizon
+          ]
+          const lerp = (a: number, b: number, t: number) => Math.round(a + (b - a) * t)
           for (let y = 0; y < GROUND_Y; y++) {
             const t = y / GROUND_Y
-            const r = Math.round(0xdf + (0xa4 - 0xdf) * t)
-            const g = Math.round(0xea + (0xc8 - 0xea) * t)
-            const b = Math.round(0xc4 + (0x8a - 0xc4) * t)
-            const col = (r << 16) | (g << 8) | b
+            let s0 = sky[0], s1 = sky[sky.length - 1]
+            for (let k = 0; k < sky.length - 1; k++) {
+              if (t >= sky[k].t && t <= sky[k + 1].t) { s0 = sky[k]; s1 = sky[k + 1]; break }
+            }
+            const lt = (t - s0.t) / Math.max(0.0001, s1.t - s0.t)
+            const col = (lerp(s0.r, s1.r, lt) << 16) | (lerp(s0.g, s1.g, lt) << 8) | lerp(s0.b, s1.b, lt)
             bg.fillStyle(col, 1)
             bg.fillRect(0, y, BASE_W, 1)
           }
-          // Soft sun in sky
-          bg.fillStyle(0xfff0a0, 0.6)
-          bg.fillCircle(740, 28, 18)
-          bg.fillStyle(0xfff8c0, 0.5)
-          bg.fillCircle(740, 28, 10)
-          // Distant hills
-          bg.fillStyle(0x8aaa6a, 0.5)
+          // Setting sun low on the horizon, with warm bloom
+          bg.fillStyle(0xffd27a, 0.30); bg.fillCircle(742, GROUND_Y - 6, 30)
+          bg.fillStyle(0xffe6a0, 0.55); bg.fillCircle(742, GROUND_Y - 6, 18)
+          bg.fillStyle(0xfff2cc, 0.9);  bg.fillCircle(742, GROUND_Y - 6, 11)
+          // A few dusk stars up high
+          bg.fillStyle(0xfdf6e0, 0.8)
+          for (const [sx, sy] of [[120,16],[210,30],[330,12],[60,40],[470,20],[560,34]] as const)
+            bg.fillRect(sx, sy, 1, 1)
+          // Distant hills in cool dusk shadow
+          bg.fillStyle(0x3a3450, 0.9)
           bg.fillTriangle(0, GROUND_Y, 120, GROUND_Y - 22, 260, GROUND_Y)
           bg.fillTriangle(200, GROUND_Y, 380, GROUND_Y - 18, 520, GROUND_Y)
+          bg.fillStyle(0x45324a, 0.9)
           bg.fillTriangle(480, GROUND_Y, 640, GROUND_Y - 24, 780, GROUND_Y)
           bg.fillTriangle(700, GROUND_Y, 880, GROUND_Y - 16, 900, GROUND_Y)
 
-          // ── Ground: tilled on zones, grass in center
+          // ── Ground: dusk-lit grass, warmer near the horizon glow
           const ground = this.add.graphics().setDepth(-8)
-          // Grass strip
-          ground.fillStyle(0x7aad5a, 1)
+          ground.fillStyle(0x3c5733, 1)
           ground.fillRect(0, GROUND_Y, BASE_W, BASE_H - GROUND_Y)
-          // Grass texture (small darker tufts)
-          for (let i = 0; i < 60; i++) {
+          // Warm light pooling from the setting sun
+          ground.fillStyle(0x6a5a3a, 0.22)
+          ground.fillEllipse(742, GROUND_Y + 30, 360, 120)
+          // Grass texture (small tufts)
+          for (let i = 0; i < 70; i++) {
             const x = (i * 17 + 11) % BASE_W
             const y = GROUND_Y + ((i * 7) % (BASE_H - GROUND_Y))
-            ground.fillStyle(0x5a8a3a, 0.5)
+            ground.fillStyle(0x2e4628, 0.6)
             ground.fillRect(x, y, 1, 2)
+            ground.fillStyle(0x4a6a38, 0.5)
             ground.fillRect(x + 1, y - 1, 1, 1)
           }
           // Center stone path
           for (let i = 0; i < 7; i++) {
             const py = GROUND_Y + 8 + i * 14
-            ground.fillStyle(0xc4b890, 1)
+            ground.fillStyle(0x8c7e5e, 1)
             ground.fillRoundedRect(420 + (i % 2) * 4, py, 60, 8, 2)
-            ground.fillStyle(0xa89870, 0.6)
+            ground.fillStyle(0x6a5e44, 0.6)
             ground.fillRoundedRect(422 + (i % 2) * 4, py + 6, 56, 2, 1)
           }
 
@@ -631,7 +648,8 @@ export default function PixelGuild({
           const stationKinds: ("manager" | "forge" | "study")[] = ["manager", "forge", "study"]
           AGENTS.forEach((a, i) => {
             const sg = this.add.graphics().setDepth(1)
-            drawStation(sg, stationKinds[i], a.station.x, a.station.y)
+            drawStation(sg, stationKinds[i], 0, 0)
+            sg.setPosition(a.station.x, a.station.y).setScale(STATION_SCALE)
             this.stations.push(sg)
           })
 
@@ -658,6 +676,29 @@ export default function PixelGuild({
               body, tool, glow, nameTag,
             })
           })
+
+          // ── Warm lantern glows (under characters, over ground) — cozy dusk light
+          const glowLayer = this.add.graphics().setDepth(40)
+          const warmGlow = (x: number, y: number, r: number, a: number) => {
+            glowLayer.fillStyle(0xffb24a, a * 0.5); glowLayer.fillCircle(x, y, r)
+            glowLayer.fillStyle(0xffd27a, a * 0.7); glowLayer.fillCircle(x, y, r * 0.6)
+            glowLayer.fillStyle(0xfff0c0, a);        glowLayer.fillCircle(x, y, r * 0.3)
+          }
+          AGENTS.forEach((a) => warmGlow(a.station.x, a.station.y - 6, 34, 0.16))
+          warmGlow(470, 108, 22, 0.14)   // coop window
+          warmGlow(360, 166, 16, 0.10)   // well
+
+          // ── Vignette: warm shadow framing the edges (frames the diorama)
+          const vig = this.add.graphics().setDepth(8500)
+          vig.fillStyle(0x140d04, 0.55)
+          vig.fillRect(0, 0, BASE_W, 14)                       // top
+          vig.fillRect(0, BASE_H - 16, BASE_W, 16)             // bottom
+          vig.fillStyle(0x140d04, 0.40)
+          vig.fillRect(0, 0, 22, BASE_H); vig.fillRect(BASE_W - 22, 0, 22, BASE_H) // sides
+          // soft corner darkening
+          vig.fillStyle(0x140d04, 0.30)
+          vig.fillEllipse(0, 0, 160, 120); vig.fillEllipse(BASE_W, 0, 160, 120)
+          vig.fillEllipse(0, BASE_H, 160, 120); vig.fillEllipse(BASE_W, BASE_H, 160, 120)
 
           // ── Time-of-day overlay (drawn last so it tints everything)
           this.skyOverlay = this.add.graphics().setDepth(9000)
@@ -757,28 +798,24 @@ export default function PixelGuild({
               ag.frameTick = 0
             }
 
-            // Redraw
-            drawVillager(ag.body, ag.cfg, ag.wx, ag.wy, ag.dir, ag.walkFrame, ag.isWorking)
-            ag.body.setPosition(0, 0)
-            ag.tool.setPosition(0, 0)
-            ag.nameTag.setPosition(ag.wx, ag.wy + 8).setAlpha(ag.isWorking ? 1 : 0.7)
+            // Redraw at local origin, then position + scale up for readability
+            drawVillager(ag.body, ag.cfg, 0, 0, ag.dir, ag.walkFrame, ag.isWorking)
+            ag.body.setPosition(Math.round(ag.wx), Math.round(ag.wy)).setScale(CHAR_SCALE)
+            ag.nameTag.setPosition(Math.round(ag.wx), Math.round(ag.wy + 10)).setAlpha(ag.isWorking ? 1 : 0.7)
 
-            // Glow ring
+            // Glow ring (scaled with the villager)
             ag.glow.clear()
             if (ag.isWorking) {
-              const gA = 0.18 + Math.sin(t / 500) * 0.07
-              ag.glow.fillStyle(ag.cfg.color, gA)
-              ag.glow.fillCircle(0, 0, 22)
+              const gA = 0.20 + Math.sin(t / 500) * 0.08
+              ag.glow.fillStyle(ag.cfg.color, gA); ag.glow.fillCircle(0, 0, 15)
             } else if (ag.health === "red") {
-              const gA = 0.20 + Math.sin(t / 350) * 0.08
-              ag.glow.fillStyle(0xc45a3a, gA)
-              ag.glow.fillCircle(0, 0, 22)
+              const gA = 0.22 + Math.sin(t / 350) * 0.08
+              ag.glow.fillStyle(0xc45a3a, gA); ag.glow.fillCircle(0, 0, 15)
             } else if (ag.health === "amber") {
-              const gA = 0.10 + Math.sin(t / 500) * 0.04
-              ag.glow.fillStyle(0xe8a935, gA)
-              ag.glow.fillCircle(0, 0, 20)
+              const gA = 0.12 + Math.sin(t / 500) * 0.04
+              ag.glow.fillStyle(0xe8a935, gA); ag.glow.fillCircle(0, 0, 14)
             }
-            ag.glow.setPosition(ag.wx, ag.wy - 8)
+            ag.glow.setPosition(ag.wx, ag.wy - 12 * CHAR_SCALE).setScale(CHAR_SCALE)
 
             // Idle micro-anim: occasional heart for resting villager
             if (!ag.isWorking && ag.health === "green" && ag.idleTime > 0 && ag.idleTime % 240 === 0) {
