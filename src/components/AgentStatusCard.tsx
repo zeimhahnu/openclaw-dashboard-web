@@ -16,85 +16,110 @@ const AGENT_META: Record<string, AgentMeta> = {
 
 // (stableHash helper removed — was used to fake PID numbers, dropped in cozy pass)
 
-// ─── Pixel art sprites ───────────────────────────────────────────────────────
-// 8×12 grid: 0=transparent 1=main-color 2=shadow(#0a0a0a) 3=highlight(color+99)
+// ─── Villager portraits ───────────────────────────────────────────────────────
+// Pixel busts that match the farm scene: a straw-hatted farm manager, a blacksmith,
+// and a silver-haired scholar — each holding their tool. Built parametrically.
 
-type PixelGrid = number[][]
-
-const SPRITE_GRIDS: Record<string, PixelGrid> = {
-  "lil-claw": [
-    [0,1,0,0,0,0,1,0],
-    [1,1,1,1,1,1,1,1],
-    [1,2,1,1,1,1,2,1],
-    [1,1,1,1,1,1,1,1],
-    [1,1,0,1,1,0,1,1],
-    [0,3,1,1,1,1,3,0],
-    [0,1,1,1,1,1,1,0],
-    [1,1,1,1,1,1,1,1],
-    [0,1,3,1,1,3,1,0],
-    [0,1,1,1,1,1,1,0],
-    [0,0,1,0,0,1,0,0],
-    [0,1,1,0,0,1,1,0],
-  ],
-  goop: [
-    [0,0,1,1,1,1,0,0],
-    [0,1,1,1,1,1,1,0],
-    [1,2,2,2,2,2,2,1],
-    [1,1,1,1,1,1,1,1],
-    [1,1,0,3,3,0,1,1],
-    [0,1,1,1,1,1,1,0],
-    [1,1,1,1,1,1,1,1],
-    [3,1,1,0,0,1,1,3],
-    [0,1,1,1,1,1,1,0],
-    [0,1,3,0,0,3,1,0],
-    [0,0,1,1,1,1,0,0],
-    [0,1,1,0,0,1,1,0],
-  ],
-  mason: [
-    [1,1,1,1,1,1,1,1],
-    [0,0,1,1,1,1,0,0],
-    [0,0,1,1,1,1,0,0],
-    [0,1,1,1,1,1,1,0],
-    [0,1,2,1,1,2,1,0],
-    [0,1,1,3,3,1,1,0],
-    [0,3,1,1,1,1,3,0],
-    [0,0,1,1,1,1,0,0],
-    [1,1,1,1,1,1,1,1],
-    [0,3,1,0,0,1,3,0],
-    [0,1,1,1,1,1,1,0],
-    [0,1,0,1,1,0,1,0],
-  ],
+type ToolKind = "watering" | "hammer" | "quill"
+interface Skin {
+  hair: string; hairDark: string; skin: string; skinDark: string
+  shirt: string; shirtDark: string; tool: ToolKind; hat: boolean; glasses: boolean
+}
+const SKINS: Record<string, Skin> = {
+  "lil-claw": { hair: "#6b431f", hairDark: "#4a2c12", skin: "#f1c89e", skinDark: "#d29a6c", shirt: "#c6502f", shirtDark: "#8f3820", tool: "watering", hat: true,  glasses: false },
+  goop:       { hair: "#23262c", hairDark: "#121418", skin: "#e7b588", skinDark: "#bf8a58", shirt: "#3f86a6", shirtDark: "#2b5d76", tool: "hammer",   hat: false, glasses: false },
+  mason:      { hair: "#d4cee1", hairDark: "#aaa0c4", skin: "#f1c89e", skinDark: "#d29a6c", shirt: "#6a4f9e", shirtDark: "#4b3775", tool: "quill",    hat: false, glasses: true  },
 }
 
-function AgentSprite({ agentId, color, isWorking }: {
+const C_EYE = "#241a12", C_MOUTH = "#a85e44", C_CHEEK = "#e6936f"
+const C_METAL = "#cdd3da", C_METAL_D = "#8c929a", C_WOOD = "#7a4a24", C_GOLD = "#ffd24a", C_FEATHER = "#fbf7ec"
+
+function VillagerPortrait({ agentId, color, isWorking }: {
   agentId: string; color: string; isWorking: boolean
 }) {
-  const grid = SPRITE_GRIDS[agentId] ?? SPRITE_GRIDS["lil-claw"]
-  const S    = 4
-  const cols = grid[0].length
-  const rows = grid.length
-  const dark = "#2a1808"
-  const hi   = color + "99"
+  const s = SKINS[agentId] ?? SKINS["lil-claw"]
+  const P = 4, U = 15
+  const r: React.ReactNode[] = []
+  let k = 0
+  const px = (x: number, y: number, w: number, h: number, fill: string) =>
+    r.push(<rect key={k++} x={x * P} y={y * P} width={w * P} height={h * P} fill={fill} shapeRendering="crispEdges" />)
+
+  // Shoulders / shirt
+  px(2, 11, 11, 4, s.shirt)
+  px(2, 13, 11, 2, s.shirtDark)
+  px(6, 11, 3, 1, s.skin)            // collar opening (neck)
+  if (agentId === "goop") { px(4, 11, 1, 4, "#5a3a1e"); px(10, 11, 1, 4, "#5a3a1e") } // apron straps
+  // Neck
+  px(6, 10, 3, 1, s.skinDark)
+
+  // Back hair (scholar's longer silver hair) — drawn behind the head
+  if (agentId === "mason") { px(3, 3, 9, 8, s.hairDark) }
+
+  // Head (skin)
+  px(4, 4, 7, 6, s.skin)
+  px(3, 6, 1, 2, s.skin); px(11, 6, 1, 2, s.skin)   // ears
+  px(3, 7, 1, 1, s.skinDark); px(11, 7, 1, 1, s.skinDark)
+
+  // Hair / hat
+  if (s.hat) {
+    // Straw hat
+    px(5, 1, 5, 1, "#e7c067")
+    px(4, 2, 7, 1, "#e7c067")
+    px(2, 3, 11, 1, "#d8ab50")        // brim
+    px(2, 4, 11, 1, "#b88a3c")        // brim shadow
+    px(4, 3, 7, 1, "#9c6b2e")         // hat band
+    px(4, 4, 2, 1, s.hair)            // hair peeking at temples
+    px(9, 4, 2, 1, s.hair)
+  } else {
+    px(4, 2, 7, 2, s.hair)            // hair top
+    px(3, 3, 1, 3, s.hair); px(11, 3, 1, 3, s.hair)  // sideburns
+    px(4, 3, 7, 1, s.hairDark)        // hairline shade
+    if (agentId === "goop") { px(4, 9, 7, 1, s.hairDark) } // stubble jaw
+  }
+
+  // Eyes
+  px(5, 6, 1, 1, C_EYE); px(9, 6, 1, 1, C_EYE)
+  // Glasses (scholar)
+  if (s.glasses) {
+    px(4, 6, 3, 1, "#3a3142"); px(8, 6, 3, 1, "#3a3142")
+    px(4, 5, 3, 1, "#3a3142"); px(8, 5, 3, 1, "#3a3142")
+    px(7, 6, 1, 1, "#3a3142")
+    px(5, 6, 1, 1, C_EYE); px(9, 6, 1, 1, C_EYE) // redraw pupils inside frames
+  }
+  // Cheeks + mouth
+  px(4, 8, 1, 1, C_CHEEK); px(10, 8, 1, 1, C_CHEEK)
+  px(6, 8, 3, 1, C_MOUTH)
+
+  // Tool, held to the right side
+  if (s.tool === "watering") {
+    px(11, 9, 3, 3, C_METAL); px(11, 11, 3, 1, C_METAL_D)
+    px(10, 9, 1, 1, C_METAL_D)            // handle
+    px(13, 8, 1, 1, C_METAL_D); px(14, 7, 1, 1, C_METAL_D) // spout
+    px(13, 9, 1, 1, "#bcd6e6")            // little water glint
+  } else if (s.tool === "hammer") {
+    px(12, 6, 1, 6, C_WOOD)               // handle
+    px(11, 5, 3, 2, C_METAL); px(11, 5, 1, 1, "#eef2f6")
+  } else {
+    px(13, 5, 1, 4, C_FEATHER); px(12, 6, 1, 3, C_FEATHER) // feather
+    px(12, 8, 1, 1, C_GOLD)               // gold nib
+  }
 
   return (
     <div className={isWorking ? "sprite-working" : "sprite-idle"}>
       <svg
-        width={cols * S}
-        height={rows * S}
-        viewBox={`0 0 ${cols * S} ${rows * S}`}
+        width={U * P} height={U * P} viewBox={`0 0 ${U * P} ${U * P}`}
         style={{ imageRendering: "pixelated", shapeRendering: "crispEdges", display: "block" }}
       >
-        {grid.flatMap((row, y) =>
-          row.map((cell, x) => {
-            if (cell === 0) return null
-            const fill = cell === 1 ? color : cell === 2 ? dark : hi
-            return <rect key={`${x}-${y}`} x={x * S} y={y * S} width={S} height={S} fill={fill} />
-          })
-        )}
+        <rect x={0} y={0} width={U * P} height={U * P} rx={9} fill={color + "12"} />
+        <rect x={0.5} y={0.5} width={U * P - 1} height={U * P - 1} rx={9} fill="none" stroke={color + "33"} />
+        {r}
       </svg>
     </div>
   )
 }
+
+// Back-compat alias (call sites use AgentSprite)
+const AgentSprite = VillagerPortrait
 
 // ─── Stamina bar ─────────────────────────────────────────────────────────────
 // High inbox = drained stamina (agent is maxed). Low inbox = full stamina (resting).
