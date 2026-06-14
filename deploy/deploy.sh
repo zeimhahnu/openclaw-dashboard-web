@@ -58,11 +58,11 @@ git clean -fd src/
 echo "==> [2/5] Remove /pixel prototype route if present"
 rm -rf "$APP_DIR/src/app/pixel"
 
-echo "==> [3/5] Build as $BUILD_USER"
+echo "==> [3/5] Install deps + build as $BUILD_USER"
 if [ "$(id -un)" = "$BUILD_USER" ]; then
-  ( cd "$APP_DIR" && npm run build )
+  ( cd "$APP_DIR" && npm ci && npm run build )
 else
-  su -s /bin/bash "$BUILD_USER" -c "cd '$APP_DIR' && npm run build"
+  su -s /bin/bash "$BUILD_USER" -c "cd '$APP_DIR' && npm ci && npm run build"
 fi
 
 echo "==> [4/5] Deploy to $WEB_ROOT"
