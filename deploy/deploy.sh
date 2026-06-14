@@ -69,9 +69,12 @@ echo "==> [4/5] Deploy to $WEB_ROOT"
 rsync -a --delete "$APP_DIR/out/" "$WEB_ROOT"
 
 echo "==> [5/5] Verify $LIVE_URL"
+# The site is behind nginx HTTP Basic auth ("OpenClaw Mission Control"). An
+# unauthenticated curl gets 401 — that still proves nginx is up and serving the
+# deployed static site. Treat 200 and 401 as live; anything else (5xx/000/404) fails.
 code="$(curl -s -o /dev/null -w '%{http_code}' "$LIVE_URL")"
-if [ "$code" = "200" ]; then
-  echo "OK: dashboard live (HTTP $code)"
+if [ "$code" = "200" ] || [ "$code" = "401" ]; then
+  echo "OK: dashboard live (HTTP $code$([ "$code" = "401" ] && echo " — basic-auth challenge, nginx serving"))"
 else
   echo "FAIL: dashboard returned HTTP $code" >&2
   exit 1
