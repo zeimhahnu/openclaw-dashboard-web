@@ -12,4 +12,7 @@ next-env.d.ts
 
 # Local verification artifacts
 verify_*.py
-*.png
+verify_*.png
+
+# Lock file (rebuilt on deploy)
+package-lock.json
