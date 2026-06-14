@@ -2,28 +2,34 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #e8ffe8;
-  --card: #0f0f0f;
-  --card-foreground: #e8ffe8;
-  --primary: #00ff88;
-  --primary-foreground: #0a0a0a;
-  --secondary: #00d4ff;
-  --secondary-foreground: #0a0a0a;
-  --muted: #111811;
-  --muted-foreground: #4a7a4a;
-  --border: #243624;
-  --success: #00ff88;
-  --warning: #f59e0b;
-  --destructive: #ff4444;
-  --radius: 0.25rem;
+  /* ── Earthy / cozy palette ───────────────────────────────────────────────── */
+  --background:          #130e07;   /* dark earth night */
+  --foreground:          #f5edd6;   /* warm parchment */
+  --card:                #1e1508;   /* dark wood */
+  --card-foreground:     #f5edd6;
+  --primary:             #e8a935;   /* amber gold */
+  --primary-foreground:  #1a0e05;
+  --secondary:           #7aad5a;   /* earthy sage */
+  --secondary-foreground:#1a0e05;
+  --muted:               #2a1e0d;   /* dark earth */
+  --muted-foreground:    #9a7a50;   /* warm tan */
+  --border:              #4a3018;   /* wood brown */
+  --success:             #7aad5a;
+  --warning:             #e8a935;
+  --destructive:         #c45a3a;   /* clay red */
+  --radius:              0.25rem;
 
-  /* RPG / game mechanics */
-  --pixel-gold: #f59e0b;
-  --pixel-gold-dark: #92400e;
-  --pixel-hp-bg: #0d1a0d;
-  --pixel-hp-low: #ff4444;
-  --pixel-hp-warn: #f59e0b;
+  /* ── Agent colors ─────────────────────────────────────────────────────────── */
+  --agent-lil-claw:  #5ec27e;   /* sage green */
+  --agent-goop:      #52b8d0;   /* sky teal */
+  --agent-mason:     #9b87f0;   /* lavender */
+
+  /* ── RPG mechanics ────────────────────────────────────────────────────────── */
+  --pixel-gold:      #f5c842;
+  --pixel-gold-dark: #92600e;
+  --pixel-hp-bg:     #2a1808;
+  --pixel-hp-low:    #c45a3a;
+  --pixel-hp-warn:   #e8a935;
 }
 
 * {
@@ -37,46 +43,35 @@ body {
   position: relative;
 }
 
-/* CRT scanline overlay */
+/* Warm ambient glow from top — ties UI to the PixelGuild hero above */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.03) 2px,
-    rgba(0, 0, 0, 0.03) 4px
-  );
+  background: radial-gradient(ellipse 80% 40% at 50% 0%, rgba(232, 169, 53, 0.05) 0%, transparent 70%);
   pointer-events: none;
   z-index: 9999;
 }
 
-/* Font utilities */
-.font-code {
-  font-family: 'Fira Code', ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace;
-}
-
-.font-pixel {
-  font-family: 'Press Start 2P', monospace;
-}
+/* ── Font utilities ─────────────────────────────────────────────────────────── */
+.font-code  { font-family: 'Fira Code', ui-monospace, 'Cascadia Code', monospace; }
+.font-pixel { font-family: 'Press Start 2P', monospace; }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-primary: var(--primary);
+  --color-background:         var(--background);
+  --color-foreground:         var(--foreground);
+  --color-card:               var(--card);
+  --color-card-foreground:    var(--card-foreground);
+  --color-primary:            var(--primary);
   --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
+  --color-secondary:          var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-border: var(--border);
-  --color-success: var(--success);
-  --color-warning: var(--warning);
-  --color-destructive: var(--destructive);
+  --color-muted:              var(--muted);
+  --color-muted-foreground:   var(--muted-foreground);
+  --color-border:             var(--border);
+  --color-success:            var(--success);
+  --color-warning:            var(--warning);
+  --color-destructive:        var(--destructive);
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);
@@ -84,39 +79,34 @@ body::before {
 }
 
 /* ── Glow utilities ─────────────────────────────────────────────────────────── */
-.text-glow        { text-shadow: 0 0 8px rgba(0, 255, 136, 0.4); }
-.text-glow-cyan   { text-shadow: 0 0 8px rgba(0, 212, 255, 0.4); }
-.text-glow-purple { text-shadow: 0 0 8px rgba(167, 139, 250, 0.4); }
-.text-glow-gold   { text-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
+.text-glow        { text-shadow: 0 0 10px rgba(232, 169, 53, 0.5); }
+.text-glow-gold   { text-shadow: 0 0 10px rgba(245, 200, 66, 0.6); }
+.text-glow-green  { text-shadow: 0 0 8px  rgba(122, 173, 90, 0.5); }
+.text-glow-cyan   { text-shadow: 0 0 8px  rgba(82, 184, 208, 0.5); }
+.text-glow-purple { text-shadow: 0 0 8px  rgba(155, 135, 240, 0.5); }
 
-/* ── Terminal cursor ────────────────────────────────────────────────────────── */
+/* ── Cursor ─────────────────────────────────────────────────────────────────── */
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }
 }
-
 .cursor-blink {
   animation: blink 1s step-end infinite;
   display: inline-block;
 }
 
-/* ── Live pulse dot ─────────────────────────────────────────────────────────── */
+/* ── Pulse dot ──────────────────────────────────────────────────────────────── */
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%       { opacity: 0.5; transform: scale(1.4); }
 }
+.pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; display: inline-block; }
 
-.pulse-dot {
-  animation: pulse-dot 1.5s ease-in-out infinite;
-  display: inline-block;
-}
-
-/* ── Agent sprite animations ────────────────────────────────────────────────── */
+/* ── Sprite animations ──────────────────────────────────────────────────────── */
 @keyframes sprite-idle {
   0%, 100% { transform: translateY(0px); }
   50%       { transform: translateY(-2px); }
 }
-
 @keyframes sprite-work {
   0%   { transform: translateY(0px) rotate(0deg); }
   20%  { transform: translateY(-3px) rotate(-4deg); }
@@ -125,30 +115,27 @@ body::before {
   80%  { transform: translateY(-1px) rotate(3deg); }
   100% { transform: translateY(0px) rotate(0deg); }
 }
-
 .sprite-idle    { animation: sprite-idle 2.4s ease-in-out infinite; }
 .sprite-working { animation: sprite-work 0.6s ease-in-out infinite; }
 
-/* ── HP / stamina segment glow ──────────────────────────────────────────────── */
+/* ── HP bar pulse ───────────────────────────────────────────────────────────── */
 @keyframes hp-pulse {
   0%, 100% { opacity: 1; }
-  50%       { opacity: 0.7; }
+  50%       { opacity: 0.6; }
 }
-
 .hp-critical { animation: hp-pulse 0.8s ease-in-out infinite; }
 
 /* ── Skeleton shimmer ───────────────────────────────────────────────────────── */
 @keyframes shimmer {
   0%   { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
+  100% { background-position:  400px 0; }
 }
-
 .skeleton {
   background: linear-gradient(
     90deg,
-    #111811 25%,
-    #1a2a1a 50%,
-    #111811 75%
+    #2a1e0d 25%,
+    #3d2a14 50%,
+    #2a1e0d 75%
   );
   background-size: 800px 100%;
   animation: shimmer 1.6s ease-in-out infinite;

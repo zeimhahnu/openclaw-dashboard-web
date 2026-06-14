@@ -20,14 +20,14 @@ function normalizeModelLabel(model: string): string {
 
 function modelAccentColor(model: string): string {
   const m = model.toLowerCase()
-  if (m.includes("minimax") || m.includes("m2.7"))   return "#00ff88"
-  if (m.includes("owl") || m.includes("openrouter")) return "#f59e0b"
-  if (m.includes("haiku"))                            return "#a78bfa"
-  if (m.includes("sonnet"))                           return "#00d4ff"
-  if (m.includes("opus"))                             return "#f472b6"
-  if (m.includes("gpt-4o-mini"))                      return "#4ade80"
-  if (m.includes("gpt"))                              return "#fbbf24"
-  return "#4a7a4a"
+  if (m.includes("minimax") || m.includes("m2.7"))   return "#5ec27e"
+  if (m.includes("owl") || m.includes("openrouter")) return "#e8a935"
+  if (m.includes("haiku"))                            return "#9b87f0"
+  if (m.includes("sonnet"))                           return "#52b8d0"
+  if (m.includes("opus"))                             return "#d48fb0"
+  if (m.includes("gpt-4o-mini"))                      return "#7aad5a"
+  if (m.includes("gpt"))                              return "#e8a935"
+  return "#7aad5a"
 }
 
 function spellIcon(model: string): string {
@@ -84,7 +84,7 @@ function SpellBreakdownBar({ breakdown }: { breakdown: Record<string, number> })
 export function RouterStatsCard({ data, isLoading }: RouterStatsCardProps) {
   if (isLoading || !data) {
     return (
-      <div className="bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[#00ff88] rounded p-3">
+      <div className="bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[var(--primary)] rounded p-3">
         <div className="flex items-center gap-2 mb-3 border-b border-[var(--border)] pb-2">
           <div className="skeleton h-3.5 w-3.5 rounded" />
           <div className="skeleton h-3 w-28 rounded" />
@@ -115,22 +115,22 @@ export function RouterStatsCard({ data, isLoading }: RouterStatsCardProps) {
   }
 
   return (
-    <div className="bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[#00ff88] rounded p-3">
+    <div className="bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[var(--primary)] rounded p-3">
       {/* Header */}
       <div className="flex items-center gap-2 mb-3 border-b border-[var(--border)] pb-2">
-        <Wand2 className="h-3.5 w-3.5 text-[#00ff88]" />
+        <Wand2 className="h-3.5 w-3.5 text-[var(--primary)]" />
         <span className="font-pixel text-[8px] text-glow">SPELL REGISTRY</span>
-        <span className="ml-auto font-code text-[10px] text-[#00ff88] text-glow">ONLINE</span>
+        <span className="ml-auto font-code text-[10px] text-[var(--primary)] text-glow">ONLINE</span>
       </div>
 
       {/* KPI row */}
       <div className="grid grid-cols-2 gap-2 mb-3">
         <div className="bg-[var(--muted)] rounded p-2 border border-[var(--border)]">
           <div className="flex items-center gap-1 mb-0.5">
-            <Activity className="h-3 w-3 text-[#00d4ff]" />
+            <Activity className="h-3 w-3 text-[var(--secondary)]" />
             <span className="font-code text-[10px] text-[var(--muted-foreground)]">casts</span>
           </div>
-          <span className="font-code text-xl font-bold text-[#00d4ff] text-glow-cyan block">
+          <span className="font-code text-xl font-bold text-[var(--secondary)] text-glow-green block">
             {data.decisions_count}
           </span>
         </div>

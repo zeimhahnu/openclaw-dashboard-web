@@ -22,15 +22,15 @@ export default function DashboardPage() {
       <header className="border-b border-[var(--border)] px-4 py-3">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-[#00ff88]/10 border border-[#00ff88]/30 rounded p-1.5">
-              <Terminal className="h-4 w-4 text-[#00ff88]" />
+            <div className="bg-[var(--primary)]/10 border border-[var(--primary)]/30 rounded p-1.5">
+              <Terminal className="h-4 w-4 text-[var(--primary)]" />
             </div>
             <div>
               <h1 className="font-pixel text-[10px] tracking-tight text-glow">
-                OPENCLAW<span className="cursor-blink text-[#00ff88] ml-0.5">_</span>
+                OPENCLAW<span className="cursor-blink text-[var(--primary)] ml-0.5">_</span>
               </h1>
               <p className="font-code text-[10px] text-[var(--muted-foreground)] mt-0.5">
-                fortress of persistent memory · ops terminal
+                guild of persistent memory · mission log
               </p>
             </div>
           </div>
@@ -43,8 +43,8 @@ export default function DashboardPage() {
             )}
             <span className={`font-code text-[10px] px-2 py-1 rounded border ${
               loading ? "bg-[var(--muted)] text-[var(--muted-foreground)] border-[var(--border)]"
-              : error  ? "bg-[#ff4444]/10 text-[#ff4444] border-[#ff4444]/30"
-              : "bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/30"
+              : error  ? "bg-[var(--destructive)]/10 text-[var(--destructive)] border-[var(--destructive)]/30"
+              : "bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/30"
             }`}>
               {loading ? "INIT" : error ? "ERR" : "LIVE"}
             </span>
@@ -59,9 +59,9 @@ export default function DashboardPage() {
 
       {error && (
         <div className="max-w-[1400px] mx-auto px-4 pt-2">
-          <div className="flex items-center gap-2 bg-[#ff4444]/10 border border-[#ff4444]/30 rounded px-3 py-1.5">
-            <AlertCircle className="h-3.5 w-3.5 text-[#ff4444] shrink-0" />
-            <span className="font-code text-xs text-[#ff4444]">ERR: api_unreachable · {error} · retrying…</span>
+          <div className="flex items-center gap-2 bg-[var(--destructive)]/10 border border-[var(--destructive)]/30 rounded px-3 py-1.5">
+            <AlertCircle className="h-3.5 w-3.5 text-[var(--destructive)] shrink-0" />
+            <span className="font-code text-xs text-[var(--destructive)]">ERR: api_unreachable · {error} · retrying…</span>
           </div>
         </div>
       )}

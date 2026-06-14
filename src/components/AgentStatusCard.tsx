@@ -9,9 +9,9 @@ import type { TaskSummary, AgentTaskDetails } from "@/hooks/useDashboardApi"
 interface AgentMeta { short: string; display: string; color: string; title: string }
 
 const AGENT_META: Record<string, AgentMeta> = {
-  "lil-claw": { short: "LC", display: "lil-claw", color: "#00ff88", title: "COO / Chief of Staff" },
-  goop:       { short: "GP", display: "goop",     color: "#00d4ff", title: "Builder / Maker" },
-  mason:      { short: "MS", display: "mason",     color: "#a78bfa", title: "Advisor / Critic" },
+  "lil-claw": { short: "LC", display: "lil-claw", color: "#5ec27e", title: "COO / Chief of Staff" },
+  goop:       { short: "GP", display: "goop",     color: "#52b8d0", title: "Builder / Maker" },
+  mason:      { short: "MS", display: "mason",     color: "#9b87f0", title: "Advisor / Critic" },
 }
 
 function stableHash(s: string): number {
@@ -77,7 +77,7 @@ function AgentSprite({ agentId, color, isWorking }: {
   const S    = 4
   const cols = grid[0].length
   const rows = grid.length
-  const dark = "#0a0a0a"
+  const dark = "#2a1808"
   const hi   = color + "99"
 
   return (
@@ -145,9 +145,9 @@ function GoldCounter({ amount }: { amount: number }) {
 
 function QuestBadge({ priority }: { priority: string }) {
   const map: Record<string, { cls: string; label: string }> = {
-    high:   { cls: "text-[#ff4444] border-[#ff4444]/40 bg-[#ff4444]/10", label: "HIGH" },
-    medium: { cls: "text-[#f59e0b] border-[#f59e0b]/40 bg-[#f59e0b]/10", label: "MED"  },
-    low:    { cls: "text-[#4a7a4a] border-[#4a7a4a]/40",                  label: "LOW"  },
+    high:   { cls: "text-[#c45a3a] border-[#c45a3a]/40 bg-[#c45a3a]/10", label: "HIGH" },
+    medium: { cls: "text-[#e8a935] border-[#e8a935]/40 bg-[#e8a935]/10", label: "MED"  },
+    low:    { cls: "text-[#7aad5a] border-[#7aad5a]/40",                  label: "LOW"  },
   }
   const s = map[priority?.toLowerCase()] ?? {
     cls: "text-[var(--muted-foreground)] border-[var(--border)]",
@@ -166,8 +166,8 @@ function TaskRow({ task }: { task: TaskSummary }) {
     <div
       className="border rounded p-1.5 space-y-0.5"
       style={{
-        borderColor: isFailed ? "#ff444440" : "var(--border)",
-        backgroundColor: isFailed ? "#ff444408" : undefined,
+        borderColor: isFailed ? "#c45a3a40" : "var(--border)",
+        backgroundColor: isFailed ? "#c45a3a08" : undefined,
       }}
     >
       <div className="flex items-center gap-1.5">
@@ -175,14 +175,14 @@ function TaskRow({ task }: { task: TaskSummary }) {
         <span className="font-code text-[9px] text-[var(--muted-foreground)] truncate flex-1">{task.id}</span>
         {isFailed && (
           <span className="font-pixel text-[6px] px-1 border rounded shrink-0"
-            style={{ color: "#ff4444", borderColor: "#ff444440" }}>
+            style={{ color: "#c45a3a", borderColor: "#c45a3a40" }}>
             ERR
           </span>
         )}
       </div>
       {task.description && (
         <p className="font-code text-[10px] leading-tight line-clamp-2"
-          style={{ color: isFailed ? "#ff444499" : "var(--foreground)", opacity: isFailed ? 1 : 0.6 }}>
+          style={{ color: isFailed ? "#c45a3a99" : "var(--foreground)", opacity: isFailed ? 1 : 0.6 }}>
           {task.description.length > 90 ? task.description.substring(0, 90) + "…" : task.description}
         </p>
       )}
@@ -220,7 +220,7 @@ export function AgentStatusCard({ agentName, data, taskDetails, isLoading }: Age
   const [expanded, setExpanded] = useState(false)
   const id     = useId()
   const pidNum = (stableHash(id) % 90000) + 10000
-  const meta   = AGENT_META[agentName] ?? { short: "??", display: agentName, color: "#00ff88", title: "agent" }
+  const meta   = AGENT_META[agentName] ?? { short: "??", display: agentName, color: "#e8a935", title: "agent" }
   const color  = meta.color
 
   if (isLoading) {
@@ -282,21 +282,21 @@ export function AgentStatusCard({ agentName, data, taskDetails, isLoading }: Age
   const hasDrawer   = totalTasks > 0
 
   const statusLabel = isWounded ? "WOUNDED" : isWorking ? "ACTIVE" : "IDLE"
-  const statusColor = isWounded ? "#ff4444" : isWorking ? color : "#4a7a4a"
-  const statusGlow  = isWounded ? "0 0 6px #ff444460" : isWorking ? `0 0 6px ${color}60` : "none"
+  const statusColor = isWounded ? "#c45a3a" : isWorking ? color : "#7aad5a"
+  const statusGlow  = isWounded ? "0 0 6px #c45a3a60" : isWorking ? `0 0 6px ${color}60` : "none"
 
   return (
     <div
       data-agent-id={agentName}
       className="bg-[var(--card)] border border-[var(--border)] rounded overflow-hidden"
-      style={{ borderLeft: `3px solid ${isWounded ? "#ff4444" : color}` }}
+      style={{ borderLeft: `3px solid ${isWounded ? "#c45a3a" : color}` }}
     >
       {/* Header strip */}
       <div
         className="flex items-center justify-between px-3 py-2"
         style={{
           borderBottom: `1px solid ${color}20`,
-          backgroundColor: isWounded ? "#ff444408" : color + "08",
+          backgroundColor: isWounded ? "#c45a3a08" : color + "08",
         }}
       >
         <div className="flex items-center gap-2">
@@ -316,7 +316,7 @@ export function AgentStatusCard({ agentName, data, taskDetails, isLoading }: Age
             <span className="pulse-dot w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
           )}
           {isWounded && (
-            <span className="pulse-dot w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "#ff4444" }} />
+            <span className="pulse-dot w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "#c45a3a" }} />
           )}
           <span
             className="font-code text-[10px] font-bold tracking-widest"
@@ -342,7 +342,7 @@ export function AgentStatusCard({ agentName, data, taskDetails, isLoading }: Age
               : "none",
           }}
         >
-          <AgentSprite agentId={agentName} color={isWounded ? "#ff4444" : color} isWorking={isWorking} />
+          <AgentSprite agentId={agentName} color={isWounded ? "#c45a3a" : color} isWorking={isWorking} />
         </div>
 
         <div className="flex-1 min-w-0 space-y-1.5">
@@ -370,11 +370,11 @@ export function AgentStatusCard({ agentName, data, taskDetails, isLoading }: Age
           <Inbox className="h-3 w-3 text-[var(--muted-foreground)] mb-1" />
           <span
             className={`font-code text-xl font-bold leading-none ${
-              inboxWarn ? "text-[#f59e0b]" : data.inbox_count > 0 ? "" : "text-[var(--muted-foreground)]"
+              inboxWarn ? "text-[#e8a935]" : data.inbox_count > 0 ? "" : "text-[var(--muted-foreground)]"
             }`}
             style={data.inbox_count > 0 && !inboxWarn ? { color, textShadow: `0 0 8px ${color}50` } : {}}
           >
-            {inboxWarn && <Zap className="h-3 w-3 inline mb-0.5 mr-0.5 text-[#f59e0b]" />}
+            {inboxWarn && <Zap className="h-3 w-3 inline mb-0.5 mr-0.5 text-[#e8a935]" />}
             {data.inbox_count}
           </span>
           <span className="font-code text-[8px] text-[var(--muted-foreground)] mt-1">quests</span>
@@ -385,7 +385,7 @@ export function AgentStatusCard({ agentName, data, taskDetails, isLoading }: Age
           <span
             className="font-code text-xl font-bold leading-none"
             style={{
-              color: isWorking ? color : "#4a7a4a",
+              color: isWorking ? color : "#7aad5a",
               textShadow: isWorking ? `0 0 8px ${color}50` : "none",
             }}
           >
@@ -424,7 +424,7 @@ export function AgentStatusCard({ agentName, data, taskDetails, isLoading }: Age
             )}
             {isWounded && (
               <span className="font-pixel text-[7px] px-1 border rounded ml-auto"
-                style={{ color: "#ff4444", borderColor: "#ff444440", backgroundColor: "#ff444410" }}>
+                style={{ color: "#c45a3a", borderColor: "#c45a3a40", backgroundColor: "#c45a3a10" }}>
                 {failedTasks.length} FAILED
               </span>
             )}
@@ -458,7 +458,7 @@ export function ActivityFeed({ walTails, isLoading }: ActivityFeedProps) {
 
   if (isLoading || !walTails) {
     return (
-      <div className="bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[#00ff88] rounded p-3">
+      <div className="bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[var(--primary)] rounded p-3">
         <div className="flex items-center gap-2 mb-3 border-b border-[var(--border)] pb-2">
           <div className="skeleton h-3.5 w-3.5 rounded" />
           <div className="skeleton h-3 w-20 rounded" />
@@ -477,7 +477,7 @@ export function ActivityFeed({ walTails, isLoading }: ActivityFeedProps) {
 
   if (agentNames.length === 0) {
     return (
-      <div className="bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[#00ff88] rounded p-3">
+      <div className="bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[var(--primary)] rounded p-3">
         <div className="flex items-center gap-2 mb-2">
           <Activity className="h-3.5 w-3.5 text-[var(--muted-foreground)]" />
           <span className="font-pixel text-[8px]">BATTLE LOG</span>
@@ -488,9 +488,9 @@ export function ActivityFeed({ walTails, isLoading }: ActivityFeedProps) {
   }
 
   return (
-    <div className="bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[#00ff88] rounded p-3">
+    <div className="bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[var(--primary)] rounded p-3">
       <div className="flex items-center gap-2 mb-3 border-b border-[var(--border)] pb-2">
-        <Activity className="h-3.5 w-3.5 text-[#00ff88]" />
+        <Activity className="h-3.5 w-3.5 text-[var(--primary)]" />
         <span className="font-pixel text-[8px] text-glow">BATTLE LOG</span>
         <span className="ml-auto font-code text-[10px] text-[var(--muted-foreground)]">
           {agentNames.length} agents

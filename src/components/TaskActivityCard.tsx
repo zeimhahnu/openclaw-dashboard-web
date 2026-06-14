@@ -11,16 +11,16 @@ interface TaskActivityCardProps {
 }
 
 const AGENT_COLORS: Record<string, string> = {
-  "lil-claw": "#00ff88",
-  goop:       "#00d4ff",
-  mason:      "#a78bfa",
+  "lil-claw": "#5ec27e",
+  goop:       "#52b8d0",
+  mason:      "#9b87f0",
 }
 
 function QuestRankBadge({ priority }: { priority: string }) {
   const map: Record<string, { cls: string; label: string }> = {
-    high:   { cls: "text-[#ff4444] border-[#ff4444]/40 bg-[#ff4444]/10", label: "HIGH" },
-    medium: { cls: "text-[#f59e0b] border-[#f59e0b]/40 bg-[#f59e0b]/10", label: "MED"  },
-    low:    { cls: "text-[#4a7a4a] border-[#4a7a4a]/40",                  label: "LOW"  },
+    high:   { cls: "text-[#c45a3a] border-[#c45a3a]/40 bg-[#c45a3a]/10", label: "HIGH" },
+    medium: { cls: "text-[#e8a935] border-[#e8a935]/40 bg-[#e8a935]/10", label: "MED"  },
+    low:    { cls: "text-[#7aad5a] border-[#7aad5a]/40",                  label: "LOW"  },
   }
   const s = map[priority?.toLowerCase()] ?? {
     cls: "text-[var(--muted-foreground)] border-[var(--border)]",
@@ -76,7 +76,7 @@ function SimpleQuestList({ names }: { names: string[] }) {
     <div className="space-y-1">
       {names.slice(0, 8).map((name) => (
         <div key={name} className="flex items-center gap-1.5 py-0.5">
-          <Zap className="h-2.5 w-2.5 text-[#00ff88] shrink-0" />
+          <Zap className="h-2.5 w-2.5 text-[var(--secondary)] shrink-0" />
           <span className="font-code text-[10px] text-[var(--foreground)] opacity-70 truncate">
             {name.replace(/\.json$/, "")}
           </span>
@@ -126,17 +126,17 @@ export function TaskActivityCard({ tasks, taskDetails, isLoading }: TaskActivity
   const totalOutbox  = allAgents.reduce((s, a) => s + (taskDetails?.[a]?.outbox?.length ?? 0), 0)
 
   return (
-    <div className="bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[#00d4ff] rounded p-4">
+    <div className="bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[var(--agent-goop)] rounded p-4">
       {/* Header */}
       <div className="flex items-center gap-2 mb-4 border-b border-[var(--border)] pb-3">
-        <Swords className="h-4 w-4 text-[#00d4ff]" />
-        <span className="font-pixel text-[8px]" style={{ color: "#00d4ff" }}>QUEST PIPELINE</span>
+        <Swords className="h-4 w-4 text-[var(--primary)]" />
+        <span className="font-pixel text-[8px] text-[var(--primary)]">QUEST PIPELINE</span>
         <div className="ml-auto flex items-center gap-3">
           {totalActive > 0 && (
-            <span className="font-code text-xs text-[#00ff88]">{totalActive} in battle</span>
+            <span className="font-code text-xs text-[#7aad5a]">{totalActive} in battle</span>
           )}
           {totalInbox > 0 && (
-            <span className="font-code text-xs text-[#f59e0b]">{totalInbox} queued</span>
+            <span className="font-code text-xs text-[#e8a935]">{totalInbox} queued</span>
           )}
           {totalOutbox > 0 && (
             <span className="font-code text-xs text-[var(--muted-foreground)]">{totalOutbox} complete</span>
@@ -154,7 +154,7 @@ export function TaskActivityCard({ tasks, taskDetails, isLoading }: TaskActivity
           if (!hasAnything) return null
 
           const isOpen     = expandedAgent === agent
-          const color      = AGENT_COLORS[agent] ?? "#4a7a4a"
+          const color      = AGENT_COLORS[agent] ?? "#7aad5a"
           const inboxCount = richInbox.length || fallbackInbox.length
 
           return (
@@ -172,10 +172,10 @@ export function TaskActivityCard({ tasks, taskDetails, isLoading }: TaskActivity
                 </div>
                 <div className="flex items-center gap-2">
                   {active.length > 0 && (
-                    <span className="font-code text-[10px] text-[#00ff88]">{active.length} active</span>
+                    <span className="font-code text-[10px] text-[#7aad5a]">{active.length} active</span>
                   )}
                   {inboxCount > 0 && (
-                    <span className="font-code text-[10px] text-[#f59e0b]">{inboxCount} queued</span>
+                    <span className="font-code text-[10px] text-[#e8a935]">{inboxCount} queued</span>
                   )}
                   {richOutbox.length > 0 && (
                     <span className="font-code text-[10px] text-[var(--muted-foreground)]">
@@ -189,14 +189,14 @@ export function TaskActivityCard({ tasks, taskDetails, isLoading }: TaskActivity
                 <div className="px-3 pb-3 border-t border-[var(--border)] pt-2 space-y-3">
                   {active.length > 0 && (
                     <div>
-                      <div className="font-pixel text-[7px] text-[#00ff88] mb-1">IN BATTLE</div>
+                      <div className="font-pixel text-[7px] text-[#7aad5a] mb-1">IN BATTLE</div>
                       <SimpleQuestList names={active} />
                     </div>
                   )}
 
                   {(richInbox.length > 0 || fallbackInbox.length > 0) && (
                     <div>
-                      <div className="font-pixel text-[7px] text-[#f59e0b] mb-1">QUEUED</div>
+                      <div className="font-pixel text-[7px] text-[#e8a935] mb-1">QUEUED</div>
                       {richInbox.length > 0
                         ? <RichQuestList items={richInbox} accentColor={color} />
                         : <SimpleQuestList names={fallbackInbox} />

@@ -4,12 +4,12 @@ import { Swords, Inbox, CheckCircle2, AlertTriangle, MapPin } from "lucide-react
 import type { AgentTaskDetails, TaskSummary } from "@/hooks/useDashboardApi"
 
 const AGENT_COLOR: Record<string, string> = {
-  "lil-claw": "#00ff88",
-  goop: "#00d4ff",
-  mason: "#a78bfa",
+  "lil-claw": "#5ec27e",
+  goop: "#52b8d0",
+  mason: "#9b87f0",
 }
 const PRIORITY_COLOR: Record<string, string> = {
-  high: "#ff4444", medium: "#f59e0b", low: "#6a9a6a",
+  high: "#c45a3a", medium: "#e8a935", low: "#7aad5a",
 }
 
 // C4: Flavor text per quest/task type
@@ -44,9 +44,9 @@ function getQuestOrigin(task: TaskSummary): string {
 }
 
 const ORIGIN_COLOR: Record<string, string> = {
-  Alex:     "#00ff88",
-  Watchdog: "#f97316",
-  LilClaw:  "#a78bfa",
+  Alex:     "#e8a935",
+  Watchdog: "#e8a935",
+  LilClaw:  "#9b87f0",
 }
 
 function priColor(p: string) {
@@ -55,14 +55,14 @@ function priColor(p: string) {
 
 function QuestRow({ task, kind }: { task: TaskSummary; kind: "queued" | "combat" | "done" }) {
   const failed = task.status === "failed"
-  const color = failed ? "#ff4444" : AGENT_COLOR[task.assignedBy] ?? "#6a9a6a"
+  const color = failed ? "#c45a3a" : AGENT_COLOR[task.assignedBy] ?? "#7aad5a"
   const origin = getQuestOrigin(task)
   return (
     <div
       className="flex items-start gap-1.5 px-2 py-1 rounded border"
       style={{
-        borderColor: failed ? "#ff444440" : "var(--border)",
-        backgroundColor: failed ? "#ff444408" : kind === "combat" ? color + "08" : "transparent",
+        borderColor: failed ? "#c45a3a40" : "var(--border)",
+        backgroundColor: failed ? "#c45a3a08" : kind === "combat" ? color + "08" : "transparent",
       }}
     >
       <span className="mt-0.5 w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: priColor(task.priority) }} />
@@ -81,7 +81,7 @@ function QuestRow({ task, kind }: { task: TaskSummary; kind: "queued" | "combat"
           <div className="font-code text-[8px] text-[var(--muted-foreground)] truncate">{task.description}</div>
         )}
       </div>
-      {failed && <span className="font-pixel text-[6px] text-[#ff4444] shrink-0">ERR</span>}
+      {failed && <span className="font-pixel text-[6px] text-[#c45a3a] shrink-0">ERR</span>}
     </div>
   )
 }
@@ -148,8 +148,8 @@ export function QuestPanel({ taskDetails, isLoading }: {
   return (
     <div className="rounded border border-[var(--border)] bg-[var(--card)] p-3 space-y-3 h-full overflow-y-auto">
       <div className="flex items-center gap-2 border-b border-[var(--border)] pb-2">
-        <Swords className="h-3.5 w-3.5 text-[#00d4ff]" />
-        <span className="font-pixel text-[8px] text-[#00d4ff]">QUEST LOG</span>
+        <Swords className="h-3.5 w-3.5 text-[var(--primary)]" />
+        <span className="font-pixel text-[8px] text-[var(--primary)]">QUEST LOG</span>
       </div>
 
       {/* C4: Quest narrative header */}
@@ -170,11 +170,11 @@ export function QuestPanel({ taskDetails, isLoading }: {
         </div>
       )}
       {failed.length > 0 && (
-        <Section icon={<AlertTriangle className="h-3 w-3" />} label="WOUNDED" color="#ff4444" tasks={failed} kind="combat" />
+        <Section icon={<AlertTriangle className="h-3 w-3" />} label="WOUNDED" color="#c45a3a" tasks={failed} kind="combat" />
       )}
-      <Section icon={<Swords className="h-3 w-3" />} label="IN COMBAT" color="#00ff88" tasks={combat} kind="combat" />
-      <Section icon={<Inbox className="h-3 w-3" />} label="QUEUED" color="#f59e0b" tasks={queued} kind="queued" />
-      <Section icon={<CheckCircle2 className="h-3 w-3" />} label="DELIVERED" color="#4a7a4a" tasks={done} kind="done" />
+      <Section icon={<Swords className="h-3 w-3" />} label="IN COMBAT" color="#7aad5a" tasks={combat} kind="combat" />
+      <Section icon={<Inbox className="h-3 w-3" />} label="QUEUED" color="#e8a935" tasks={queued} kind="queued" />
+      <Section icon={<CheckCircle2 className="h-3 w-3" />} label="DELIVERED" color="#5ec27e" tasks={done} kind="done" />
     </div>
   )
 }

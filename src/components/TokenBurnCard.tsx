@@ -29,34 +29,34 @@ function fmtCost(v: number): string {
 }
 
 function burnColor(dailyAvg: number): string {
-  if (dailyAvg < 0.50)  return "text-[#00ff88]"   // green — healthy
-  if (dailyAvg <= 2.00) return "text-[#f59e0b]"  // amber — moderate
-  return "text-[#ff4444]"                         // red — burning
+  if (dailyAvg < 0.50)  return "text-[#7aad5a]"
+  if (dailyAvg <= 2.00) return "text-[#e8a935]"
+  return "text-[#c45a3a]"
 }
 
 function burnBg(dailyAvg: number): string {
-  if (dailyAvg < 0.50)  return "bg-[#00ff88]/10 border-[#00ff88]/30"
-  if (dailyAvg <= 2.00) return "bg-[#f59e0b]/10 border-[#f59e0b]/30"
-  return "bg-[#ff4444]/10 border-[#ff4444]/30"
+  if (dailyAvg < 0.50)  return "bg-[#7aad5a]/10 border-[#7aad5a]/30"
+  if (dailyAvg <= 2.00) return "bg-[#e8a935]/10 border-[#e8a935]/30"
+  return "bg-[#c45a3a]/10 border-[#c45a3a]/30"
 }
 
 function TrendIcon({ trend }: { trend: "rising" | "falling" | "flat" }) {
-  if (trend === "rising")  return <TrendingUp  className="h-3 w-3 text-[#ff4444]" />
-  if (trend === "falling") return <TrendingDown className="h-3 w-3 text-[#00ff88]" />
-  return                          <Minus         className="h-3 w-3 text-[#f59e0b]" />
+  if (trend === "rising")  return <TrendingUp  className="h-3 w-3 text-[#c45a3a]" />
+  if (trend === "falling") return <TrendingDown className="h-3 w-3 text-[#7aad5a]" />
+  return                          <Minus         className="h-3 w-3 text-[#e8a935]" />
 }
 
 // Per-agent cost tier (rough estimate based on model family)
 const AGENT_TIER: Record<string, { label: string; tier: "cheap" | "moderate" | "expensive"; color: string }> = {
-  "lil-claw": { label: "Lil Claw",  tier: "cheap",     color: "#00ff88" },
-  "goop":     { label: "Goop",      tier: "cheap",     color: "#00d4ff" },
-  "mason":    { label: "Mason",     tier: "expensive", color: "#a78bfa" },
+  "lil-claw": { label: "Lil Claw",  tier: "cheap",     color: "#5ec27e" },
+  "goop":     { label: "Goop",      tier: "cheap",     color: "#52b8d0" },
+  "mason":    { label: "Mason",     tier: "expensive", color: "#9b87f0" },
 }
 
 export function TokenBurnCard({ usage, isLoading }: TokenBurnCardProps) {
   if (isLoading || !usage) {
     return (
-      <div className="bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[#f97316] rounded p-3">
+      <div className="bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[var(--warning)] rounded p-3">
         <div className="flex items-center gap-2 mb-3 border-b border-[var(--border)] pb-2">
           <div className="skeleton h-3.5 w-3.5 rounded" />
           <div className="skeleton h-3 w-24 rounded" />
@@ -120,10 +120,10 @@ export function TokenBurnCard({ usage, isLoading }: TokenBurnCardProps) {
   const burnBgClass   = burnBg(avg7d)
 
   return (
-    <div className={`bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[#f97316] rounded p-3 ${burnBgClass}`}>
+    <div className={`bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[var(--warning)] rounded p-3 ${burnBgClass}`}>
       {/* Header */}
       <div className="flex items-center gap-2 mb-3 border-b border-[var(--border)] pb-2">
-        <Flame className="h-3.5 w-3.5 text-[#f97316]" />
+        <Flame className="h-3.5 w-3.5 text-[var(--warning)]" />
         <span className="font-code text-xs font-semibold">token_burn</span>
         <span className="ml-auto font-code text-[10px] text-[var(--muted-foreground)]">7d window</span>
       </div>
@@ -146,7 +146,7 @@ export function TokenBurnCard({ usage, isLoading }: TokenBurnCardProps) {
           <div className="flex items-center gap-1">
             <TrendIcon trend={trend} />
             <span className={`font-code text-sm font-bold ${
-              trend === "rising" ? "text-[#ff4444]" : trend === "falling" ? "text-[#00ff88]" : "text-[#f59e0b]"
+              trend === "rising" ? "text-[#c45a3a]" : trend === "falling" ? "text-[#7aad5a]" : "text-[#e8a935]"
             }`}>
               {trend}
             </span>
@@ -173,9 +173,9 @@ export function TokenBurnCard({ usage, isLoading }: TokenBurnCardProps) {
             </span>
             <span className="font-code text-[9px] text-[var(--muted-foreground)] flex-1">{agent.model}</span>
             <span className={`font-code text-[10px] font-bold ${
-              agent.tier === "expensive" ? "text-[#ff4444]"
-                : agent.tier === "moderate" ? "text-[#f59e0b]"
-                : "text-[#00ff88]"
+              agent.tier === "expensive" ? "text-[#c45a3a]"
+                : agent.tier === "moderate" ? "text-[#e8a935]"
+                : "text-[#7aad5a]"
             }`}>
               {agent.tier}
             </span>
