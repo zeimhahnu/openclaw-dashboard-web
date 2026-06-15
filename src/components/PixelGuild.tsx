@@ -4,8 +4,8 @@ import type { AgentState as ApiAgentState, AgentTaskDetails } from "@/hooks/useD
 
 const BASE_W = 900, BASE_H = 200
 const GROUND_Y = 88   // ground baseline
-const CHAR_SCALE = 1.55     // villagers drawn at local origin, scaled up for readability
-const STATION_SCALE = 1.4   // workstations scaled to stay proportionate to villagers
+const CHAR_SCALE = 1.5      // villagers drawn at local origin, scaled up for readability
+const STATION_SCALE = 1.85  // workstations bigger than villagers (a house dwarfs a person)
 
 // ─── Agent config: each villager is unique, with their own workstation & tool
 const AGENTS = [
@@ -495,6 +495,7 @@ export default function PixelGuild({
         agents: AgentLocal[] = []
         chickens: ChickenLocal[] = []
         hearts: HeartLocal[] = []
+        fireflies: { g: Phaser.GameObjects.Graphics; bx: number; by: number; ph: number; sp: number; hue: number }[] = []
         coopG!: Phaser.GameObjects.Graphics
         wellG!: Phaser.GameObjects.Graphics
         treeLeftG!: Phaser.GameObjects.Graphics
@@ -566,13 +567,13 @@ export default function PixelGuild({
             ground.fillStyle(0x4a6a38, 0.5)
             ground.fillRect(x + 1, y - 1, 1, 1)
           }
-          // Center stone path
-          for (let i = 0; i < 7; i++) {
-            const py = GROUND_Y + 8 + i * 14
-            ground.fillStyle(0x8c7e5e, 1)
-            ground.fillRoundedRect(420 + (i % 2) * 4, py, 60, 8, 2)
-            ground.fillStyle(0x6a5e44, 0.6)
-            ground.fillRoundedRect(422 + (i % 2) * 4, py + 6, 56, 2, 1)
+          // Footpath along the front of the farm (horizontal, keeps the centre clear)
+          for (let i = 0; i < 13; i++) {
+            const pxp = 60 + i * 64
+            ground.fillStyle(0x8c7e5e, 0.85)
+            ground.fillRoundedRect(pxp, BASE_H - 12, 46, 7, 2)
+            ground.fillStyle(0x6a5e44, 0.5)
+            ground.fillRoundedRect(pxp + 2, BASE_H - 7, 42, 2, 1)
           }
 
           // ── Background decor: trees
@@ -581,31 +582,31 @@ export default function PixelGuild({
           drawTree(this.treeLeftG,  260, GROUND_Y, 2)
           drawTree(this.treeRightG, 600, GROUND_Y, 1)
 
-          // ── Chicken coop + chickens
+          // ── Chicken coop + chickens (back-left, out of the busy centre)
           this.coopG = this.add.graphics().setDepth(1)
-          drawCoop(this.coopG, 470, 110)
+          drawCoop(this.coopG, 190, 104)
           this.chickens = []
           for (let i = 0; i < 3; i++) {
             const cg = this.add.graphics().setDepth(2)
-            const cx = 460 + i * 10
-            const cy = 138
+            const cx = 175 + i * 14
+            const cy = 124
             drawChicken(cg, cx, cy, i % 2 === 0 ? "right" : "left")
             this.chickens.push({
               g: cg, wx: cx, wy: cy,
-              tx: 450 + Math.random() * 50,
-              ty: 132 + Math.random() * 18,
+              tx: 160 + Math.random() * 70,
+              ty: 118 + Math.random() * 16,
               dir: i % 2 === 0 ? "right" : "left",
               wait: 20 + Math.random() * 80,
             })
           }
 
-          // ── Well (center foreground)
+          // ── Well (right gap, between Goop and Mason)
           this.wellG = this.add.graphics().setDepth(1)
-          drawWell(this.wellG, 360, 168)
+          drawWell(this.wellG, 612, 172)
 
-          // ── Scarecrow (between left zone and coop)
+          // ── Scarecrow (left gap, between Lil Claw and Goop)
           this.scarecrowG = this.add.graphics().setDepth(1)
-          drawScarecrow(this.scarecrowG, 295, 168)
+          drawScarecrow(this.scarecrowG, 285, 172)
 
           // ── Tilled plots in zones (left zone = Lil Claw, right zone = Mason)
           this.plotLeftG  = this.add.graphics().setDepth(1)
@@ -700,6 +701,20 @@ export default function PixelGuild({
           vig.fillEllipse(0, 0, 160, 120); vig.fillEllipse(BASE_W, 0, 160, 120)
           vig.fillEllipse(0, BASE_H, 160, 120); vig.fillEllipse(BASE_W, BASE_H, 160, 120)
 
+          // ── Fireflies — drifting motes of warm light (dusk life + movement)
+          const hues = [0xffd66a, 0xffe08a, 0xc7e08a]
+          for (let i = 0; i < 16; i++) {
+            const g = this.add.graphics().setDepth(8800)
+            this.fireflies.push({
+              g,
+              bx: 30 + Math.random() * (BASE_W - 60),
+              by: GROUND_Y - 6 + Math.random() * (BASE_H - GROUND_Y - 4),
+              ph: Math.random() * Math.PI * 2,
+              sp: 0.4 + Math.random() * 0.7,
+              hue: hues[i % hues.length],
+            })
+          }
+
           // ── Time-of-day overlay (drawn last so it tints everything)
           this.skyOverlay = this.add.graphics().setDepth(9000)
         }
@@ -769,10 +784,11 @@ export default function PixelGuild({
               }
             }
 
-            // Choose target: workstation when working, random zone point when idle
+            // Choose target: stand in FRONT of the workstation when working (not on
+            // top of it), wander the zone when idle.
             if (ag.isWorking) {
-              ag.tx = ag.cfg.station.x
-              ag.ty = ag.cfg.station.y
+              ag.tx = ag.cfg.station.x + 26
+              ag.ty = ag.cfg.station.y + 10
             } else if (Math.abs(ag.tx - ag.wx) < 1 && Math.abs(ag.ty - ag.wy) < 1 && ag.wait <= 0) {
               const z = ag.cfg.zone
               ag.tx = z.x1 + 8 + Math.random() * (z.x2 - z.x1 - 16)
@@ -798,9 +814,16 @@ export default function PixelGuild({
               ag.frameTick = 0
             }
 
-            // Redraw at local origin, then position + scale up for readability
+            // Redraw at local origin, then position + scale up for readability.
+            // Bob keeps villagers alive even while standing: a quicker "work" bob at
+            // the station, a slow breathing bob when idle-standing.
+            const standing = Math.abs(ag.tx - ag.wx) < 2 && Math.abs(ag.ty - ag.wy) < 2
+            const phase = ag.wx * 0.05
+            const bob = ag.isWorking
+              ? Math.sin(t / 120 + phase) * 1.7
+              : standing ? Math.sin(t / 430 + phase) * 0.9 : 0
             drawVillager(ag.body, ag.cfg, 0, 0, ag.dir, ag.walkFrame, ag.isWorking)
-            ag.body.setPosition(Math.round(ag.wx), Math.round(ag.wy)).setScale(CHAR_SCALE)
+            ag.body.setPosition(Math.round(ag.wx), Math.round(ag.wy + bob)).setScale(CHAR_SCALE)
             ag.nameTag.setPosition(Math.round(ag.wx), Math.round(ag.wy + 10)).setAlpha(ag.isWorking ? 1 : 0.7)
 
             // Glow ring (scaled with the villager)
@@ -849,6 +872,16 @@ export default function PixelGuild({
             }
             drawChicken(ch.g, ch.wx, ch.wy, ch.dir)
             ch.g.setPosition(0, 0)
+          }
+
+          // ── Fireflies drift + pulse
+          for (const f of this.fireflies) {
+            const x = f.bx + Math.sin(t / 1400 * f.sp + f.ph) * 26
+            const y = f.by + Math.cos(t / 1700 * f.sp + f.ph * 1.7) * 12
+            const a = 0.35 + (Math.sin(t / 500 * f.sp + f.ph) * 0.5 + 0.5) * 0.55
+            f.g.clear()
+            f.g.fillStyle(f.hue, a * 0.25); f.g.fillCircle(x, y, 2.4)
+            f.g.fillStyle(f.hue, a);        f.g.fillCircle(x, y, 0.9)
           }
 
           // ── Hearts float up + fade

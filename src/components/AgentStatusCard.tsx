@@ -497,7 +497,10 @@ interface ActivityFeedProps {
 export function ActivityFeed({ walTails, isLoading }: ActivityFeedProps) {
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null)
 
-  if (isLoading || !walTails) {
+  // Only show the skeleton during the very first load. A missing/empty walTails
+  // after load must fall through to the empty state — otherwise the Journal
+  // gets stuck on the skeleton forever (the bug Alex hit).
+  if (isLoading && !walTails) {
     return (
       <div className="bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[var(--primary)] rounded p-3">
         <div className="flex items-center gap-2 mb-3 border-b border-[var(--border)] pb-2">
@@ -514,7 +517,7 @@ export function ActivityFeed({ walTails, isLoading }: ActivityFeedProps) {
     )
   }
 
-  const agentNames = Object.keys(walTails).filter((a) => (walTails[a]?.length ?? 0) > 0)
+  const agentNames = Object.keys(walTails ?? {}).filter((a) => (walTails?.[a]?.length ?? 0) > 0)
 
   if (agentNames.length === 0) {
     return (
