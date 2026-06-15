@@ -543,7 +543,7 @@ export function ActivityFeed({ walTails, isLoading }: ActivityFeedProps) {
 
       <div className="space-y-1.5 max-h-64 overflow-y-auto">
         {agentNames.map((agent) => {
-          const entries = walTails[agent] || []
+          const entries = walTails?.[agent] ?? []
           const isOpen  = expandedAgent === agent
           const color   = AGENT_META[agent]?.color ?? "#4a7a4a"
 
