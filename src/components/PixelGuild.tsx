@@ -627,7 +627,9 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             if (this.textures.exists(key)) return
             const charCanvas = buildCharCanvas(a.pal)
             const canvasTex = this.textures.createCanvas(key, charCanvas.width, charCanvas.height)
-            canvasTex.getContext().drawImage(charCanvas, 0, 0)
+            if (!canvasTex) return
+            const ctx = canvasTex.getContext()
+            if (ctx) ctx.drawImage(charCanvas, 0, 0)
             canvasTex.refresh()
             // Register frame regions: frame = dir * SWALK + walkStep
             const tex = this.textures.get(key)
