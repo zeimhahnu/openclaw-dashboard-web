@@ -6,6 +6,14 @@ const AGENT_HANDLES: Record<string, string> = {
   "mason":    "@MasonLLM_bot",
 }
 
+// Use VPS-resident bots as senders so pings work even when Alex's laptop is off.
+// Pinging LC → Goop sends (avoids self-ping from LC's own token).
+// Pinging Goop or Mason → LC sends (always-on VPS).
+function pickSenderToken(agentId: string): string | undefined {
+  if (agentId === "lil-claw") return process.env.TELEGRAM_BOT_TOKEN_GOOP
+  return process.env.TELEGRAM_BOT_TOKEN_LC
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const { agentId, message } = body as { agentId?: string; message?: string }
@@ -15,7 +23,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "unknown agent" }, { status: 400 })
   }
 
-  const token  = process.env.TELEGRAM_BOT_TOKEN
+  const token  = pickSenderToken(agentId!)
   const chatId = process.env.TELEGRAM_CHAT_ID
   if (!token || !chatId) {
     return NextResponse.json({ error: "telegram not configured" }, { status: 503 })

@@ -104,8 +104,71 @@ export default function DashboardPage() {
                 taskDetails={state?.task_details ?? null}
                 height={280}
               />
-              {/* atmospheric vignette — darkens the green foreground so it reads as night, not empty patch */}
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[55%] bg-gradient-to-t from-[#0c0808e6] via-[#0c080866] to-transparent" />
+
+              {/* Subtle ground fade — anchors the HUD panels */}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-[#0a060340] to-transparent" />
+
+              {/* In-scene agent HUD — utilises the green foreground as live status panels */}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 flex gap-2 px-4 pb-3">
+                {(["lil-claw", "goop", "mason"] as const).map((a) => {
+                  const d = state?.agents?.[a]
+                  const color = AGENT_COLORS[a]
+                  const isWorking = (d?.working_count ?? 0) > 0 || d?.session_active
+                  const isRed = d?.health === "red"
+                  const statusColor = isRed ? "#c45a3a" : isWorking ? color : "#4e8f58"
+                  const statusLabel = isRed ? "STUCK" : isWorking ? "WORKING" : "IDLE"
+                  const task = d?.current_task
+
+                  return (
+                    <div
+                      key={a}
+                      className="flex-1 min-w-0 rounded px-2.5 py-2"
+                      style={{
+                        background: "rgba(10,6,3,0.78)",
+                        border: `1px solid ${color}22`,
+                        backdropFilter: "blur(4px)",
+                      }}
+                    >
+                      {/* Name + status */}
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full shrink-0 ${isWorking && !isRed ? "pulse-dot" : ""}`}
+                          style={{ background: statusColor }}
+                        />
+                        <span className="font-pixel text-[7px] leading-none truncate" style={{ color }}>
+                          {a === "lil-claw" ? "LIL CLAW" : a.toUpperCase()}
+                        </span>
+                        <span
+                          className="ml-auto font-code text-[7px] font-bold shrink-0 tracking-wide"
+                          style={{ color: statusColor }}
+                        >
+                          {statusLabel}
+                        </span>
+                      </div>
+                      {/* Metrics */}
+                      <div className="flex items-center gap-2.5">
+                        <span className="font-code text-[8px]">
+                          <span style={{ color }}>{d?.inbox_count ?? 0}</span>
+                          <span className="text-white/25"> queued</span>
+                        </span>
+                        <span className="font-code text-[8px]">
+                          <span style={{ color }}>{d?.outbox_count ?? 0}</span>
+                          <span className="text-white/25"> done</span>
+                        </span>
+                      </div>
+                      {/* Current task (truncated) */}
+                      {task && (
+                        <p
+                          className="font-code text-[7px] mt-0.5 truncate"
+                          style={{ color: "rgba(255,255,255,0.26)" }}
+                        >
+                          {task.length > 34 ? task.slice(0, 34) + "…" : task}
+                        </p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
 
             {/* Stats ribbon — fills the empty space below the scene */}

@@ -846,7 +846,10 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
         wx: number; wy: number; tx: number; ty: number
         dir: 0|1|2|3  // 0=down,1=up,2=left,3=right
         wait: number
-        walkF: 0|1|2|3  // walk frame
+        walkF: 0|1|2|3  // walk frame (0=stand)
+        // Idle look-around
+        idleAnimMode: "down"|"left"|"right"|"up"
+        idleAnimTimer: number
         frameTick: number
         idleTime: number
         isWorking: boolean; prevWorking: boolean
@@ -873,6 +876,8 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
       type Heart = { g: Phaser.GameObjects.Graphics; alpha:number; vy:number }
       type Firefly = { g: Phaser.GameObjects.Graphics; bx:number; by:number; ph:number; sp:number; hue:number }
       type WheatStalk = { g: Phaser.GameObjects.Graphics; x:number; y:number; ripe:boolean }
+      // Arc packet for handoff animation
+      type HandoffPacket = { g: Phaser.GameObjects.Graphics; fromX:number; fromY:number; toX:number; toY:number; progress:number; color:number }
 
       class Scene extends Phaser.Scene {
         ags: AgentLocal[] = []
@@ -881,6 +886,7 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
         hearts: Heart[] = []
         fireflies: Firefly[] = []
         wheats: WheatStalk[] = []
+        handoffPackets: HandoffPacket[] = []
         coopG!: Phaser.GameObjects.Graphics
         wellG!: Phaser.GameObjects.Graphics
         scarecrowG!: Phaser.GameObjects.Graphics
@@ -1156,6 +1162,7 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
               masonVisitX: 450, masonVisitY: 155,
               goopTarget: "wander", goopTargetTimer: 0,
               lilTarget: "wander", lilTargetTimer: 0,
+              idleAnimMode: "down", idleAnimTimer: 60 + i * 35,
               sprite, toolG, glow, nameTag,
             })
           })
@@ -1260,7 +1267,16 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
                 ag.inboxCount = ad.inbox_count ?? 0
                 ag.health = ad.health ?? "green"
                 const c = ad.completed_today ?? 0
-                if (c > ag.completedPrev) { this.spawnHeart(ag.wx, ag.wy - 28); this.spawnHeart(ag.wx + 6, ag.wy - 24) }
+                if (c > ag.completedPrev) {
+                  this.spawnHeart(ag.wx, ag.wy - 28); this.spawnHeart(ag.wx + 6, ag.wy - 24)
+                  // Spawn a handoff arc to a peer agent
+                  const others = this.ags.filter(a => a.id !== ag.id)
+                  if (others.length > 0) {
+                    const dest = others[Math.floor(t / 1000) % others.length]
+                    const pkg = this.add.graphics().setDepth(9990)
+                    this.handoffPackets.push({ g: pkg, fromX: ag.wx, fromY: ag.wy - 16, toX: dest.wx, toY: dest.wy - 16, progress: 0, color: ag.cfg.color })
+                  }
+                }
                 ag.completedPrev = c
               }
             }
@@ -1347,45 +1363,81 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
 
             // ── Movement
             const dx = ag.tx - ag.wx, dy = ag.ty - ag.wy, dist = Math.hypot(dx, dy)
-            if (dist > 2) {
+            const walking = dist > 2
+
+            if (walking) {
               const absDx = Math.abs(dx), absDy = Math.abs(dy)
               ag.dir = absDx > absDy ? (dx > 0 ? 3 : 2) : (dy > 0 ? 0 : 1)
               ag.wx += (dx / dist) * 0.38
               ag.wy += (dy / dist) * 0.38
+              // Working agents walk faster cycle; idle walk normal
               ag.frameTick++
-              if (ag.frameTick > 6) { ag.walkF = ((ag.walkF + 1) % 4) as 0|1|2|3; ag.frameTick = 0 }
+              const walkThr = ag.isWorking ? 3 : 5
+              if (ag.frameTick > walkThr) { ag.walkF = ((ag.walkF + 1) % 4) as 0|1|2|3; ag.frameTick = 0 }
             } else {
               ag.walkF = 0; ag.frameTick = 0
+              // ── Idle look-around: periodically face different directions while standing
+              if (!ag.isWorking) {
+                ag.idleAnimTimer--
+                if (ag.idleAnimTimer <= 0) {
+                  const roll = Math.random()
+                  ag.idleAnimMode = roll < 0.38 ? "down" : roll < 0.62 ? "left" : roll < 0.82 ? "right" : "up"
+                  ag.idleAnimTimer = 72 + Math.random() * 130
+                }
+                ag.dir = ag.idleAnimMode === "down" ? 0 : ag.idleAnimMode === "up" ? 1 : ag.idleAnimMode === "left" ? 2 : 3
+              }
             }
             if (ag.wait > 0) ag.wait--
             if (dist < 1.5) ag.idleTime++
 
-            // ── Sprite update (texture frame)
+            // ── Sprite frame
             const frameIdx = ag.dir * SWALK + ag.walkF
             ag.sprite.setFrame(frameIdx)
-            // Bob
-            const standing = dist < 2
+
+            // ── Animation state: three distinct modes
             const phase = ag.wx * 0.05
-            const bob = ag.isWorking ? Math.sin(t / 120 + phase) * 1.5
-              : standing ? Math.sin(t / 430 + phase) * 0.7 : 0
-            ag.sprite.setPosition(Math.round(ag.wx), Math.round(ag.wy + bob))
+            let bob = 0
+            let bx_off = 0
+
+            if (ag.isWorking) {
+              // WORKING — energetic bob + micro lateral sway
+              bob    = Math.sin(t / 80 + phase) * 2.2
+              bx_off = Math.sin(t / 130 + phase) * 0.8
+            } else if (ag.health === "red") {
+              // STUCK — horizontal trembling to signal distress
+              bob    = Math.sin(t / 400 + phase) * 0.5
+              bx_off = Math.sin(t / 58) * 1.9
+            } else {
+              // IDLE — calm breathing bob only
+              bob = Math.sin(t / 450 + phase) * 0.7
+            }
+
+            ag.sprite.setPosition(Math.round(ag.wx + bx_off), Math.round(ag.wy + bob))
             ag.nameTag.setPosition(Math.round(ag.wx), Math.round(ag.wy + 6)).setAlpha(ag.isWorking ? 1 : 0.7)
-            // ── Y-sort: depth = world-Y so objects sort front-to-back by position
+
+            // ── Y-sort + depth
             const depth = Math.round(ag.wy)
             ag.sprite.setDepth(depth)
             ag.toolG.setDepth(depth + 1)
             ag.glow.setDepth(depth - 2)
-            ag.nameTag.setDepth(depth + 8900)  // always above sprites but per-character sorted
-            // ── Y-scale: characters shrink slightly when further back (2.5D depth illusion)
+            ag.nameTag.setDepth(depth + 8900)
+
+            // ── Y-scale (2.5D depth illusion)
             const ySc = 0.72 + 0.28 * Math.max(0, Math.min(1, (ag.wy - 110) / 72))
             ag.sprite.setScale(SPRITE_SCALE * ySc)
 
-            // ── Tool
+            // ── Tool OR stuck indicator (share toolG)
+            ag.toolG.clear()
             if (ag.isWorking) {
               const dir = ag.dir === 2 ? -1 : 1
-              drawTool(ag.toolG, ag.cfg.tool, Math.round(ag.wx) + dir * 12, Math.round(ag.wy - 18 + bob))
-            } else {
-              ag.toolG.clear()
+              drawTool(ag.toolG, ag.cfg.tool, Math.round(ag.wx + bx_off) + dir * 12, Math.round(ag.wy - 18 + bob))
+            } else if (ag.health === "red") {
+              // Floating "!" above stuck character (bobs gently)
+              const bx2 = Math.round(ag.wx)
+              const bangY = Math.round(ag.wy - 42 + Math.sin(t / 320) * 2)
+              ag.toolG.fillStyle(0xff2a2a, 0.9); ag.toolG.fillRect(bx2 - 1, bangY, 2, 8)    // bar
+              ag.toolG.fillRect(bx2 - 1, bangY + 11, 2, 2)                                    // dot
+              ag.toolG.fillStyle(0xff0000, 0.15); ag.toolG.fillCircle(bx2, bangY + 6, 7)     // halo
             }
 
             // ── Fishing line for Mason when fishing
@@ -1396,21 +1448,25 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
               this.fishingG.clear()
             }
 
-            // ── Glow ring
+            // ── Glow ring — distinct per state
             ag.glow.clear()
             if (ag.isWorking) {
-              const gA = 0.20 + Math.sin(t / 500) * 0.08
-              ag.glow.fillStyle(ag.cfg.color, gA); ag.glow.fillCircle(0, 0, 15)
+              // WORKING: brighter, faster pulse + wider aura
+              const gA = 0.28 + Math.sin(t / 280) * 0.13
+              ag.glow.fillStyle(ag.cfg.color, gA * 0.38); ag.glow.fillCircle(0, 0, 22)
+              ag.glow.fillStyle(ag.cfg.color, gA);         ag.glow.fillCircle(0, 0, 11)
             } else if (ag.health === "red") {
-              const gA = 0.22 + Math.sin(t / 350) * 0.08
-              ag.glow.fillStyle(0xc45a3a, gA); ag.glow.fillCircle(0, 0, 15)
+              // STUCK: rapid alarm pulse, wider than working
+              const gA = 0.32 + Math.sin(t / 190) * 0.18
+              ag.glow.fillStyle(0xff2222, gA * 0.30); ag.glow.fillCircle(0, 0, 28)
+              ag.glow.fillStyle(0xc45a3a, gA);         ag.glow.fillCircle(0, 0, 16)
             } else if (ag.health === "amber") {
               const gA = 0.12 + Math.sin(t / 500) * 0.04
-              ag.glow.fillStyle(0xe8a935, gA); ag.glow.fillCircle(0, 0, 14)
+              ag.glow.fillStyle(0xe8a935, gA);           ag.glow.fillCircle(0, 0, 14)
             }
-            ag.glow.setPosition(ag.wx, ag.wy - 14 * SPRITE_SCALE)
+            ag.glow.setPosition(ag.wx + bx_off, ag.wy - 14 * SPRITE_SCALE)
 
-            // Idle heart
+            // Idle heart (occasional, only when calm)
             if (!ag.isWorking && ag.health === "green" && ag.idleTime > 0 && ag.idleTime % 240 === 0)
               this.spawnHeart(ag.wx + (Math.random() - 0.5) * 10, ag.wy - 32)
 
@@ -1420,6 +1476,7 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
               if (targetAg && Math.floor(t / 80) % 40 === 0)
                 this.spawnHeart((ag.wx + (targetAg?.wx ?? ag.wx)) / 2, ag.wy - 24)
             }
+
           }
 
           // ── Seed packets
@@ -1494,6 +1551,34 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             const h = this.hearts[i]
             h.g.y += h.vy; h.alpha = Math.max(0, h.alpha - 0.008); h.g.setAlpha(h.alpha)
             if (h.alpha <= 0) { h.g.destroy(); this.hearts.splice(i, 1) }
+          }
+
+          // ── Handoff packets — arc animation from completing agent to receiving agent
+          for (let i = this.handoffPackets.length - 1; i >= 0; i--) {
+            const pk = this.handoffPackets[i]
+            pk.progress += 0.014  // ~70 frames to travel
+            if (pk.progress >= 1) { pk.g.destroy(); this.handoffPackets.splice(i, 1); continue }
+            const p = pk.progress
+            // Quadratic Bezier arc (midpoint lifted above both endpoints)
+            const midX = (pk.fromX + pk.toX) / 2
+            const midY = Math.min(pk.fromY, pk.toY) - 40
+            const bx3 = (1-p)*(1-p)*pk.fromX + 2*(1-p)*p*midX + p*p*pk.toX
+            const by3 = (1-p)*(1-p)*pk.fromY + 2*(1-p)*p*midY + p*p*pk.toY
+            const alpha3 = p < 0.08 ? p/0.08 : p > 0.88 ? (1-p)/0.12 : 1
+            pk.g.clear()
+            // Outer glow
+            pk.g.fillStyle(pk.color, alpha3 * 0.22); pk.g.fillCircle(bx3, by3, 6)
+            // Core dot
+            pk.g.fillStyle(pk.color, alpha3 * 0.9);  pk.g.fillCircle(bx3, by3, 2.5)
+            // Bright centre
+            pk.g.fillStyle(0xffffff,  alpha3 * 0.65); pk.g.fillCircle(bx3, by3, 1.1)
+            // Trailing ghost
+            if (p > 0.07) {
+              const pt = p - 0.07
+              const tbx = (1-pt)*(1-pt)*pk.fromX + 2*(1-pt)*pt*midX + pt*pt*pk.toX
+              const tby = (1-pt)*(1-pt)*pk.fromY + 2*(1-pt)*pt*midY + pt*pt*pk.toY
+              pk.g.fillStyle(pk.color, alpha3 * 0.22); pk.g.fillCircle(tbx, tby, 1.5)
+            }
           }
         }
       }

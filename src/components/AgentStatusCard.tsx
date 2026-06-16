@@ -274,8 +274,8 @@ export function CompactAgentRow({ agentName, data, taskDetails, walTails, isLoad
           </span>
         </div>
 
-        {/* Ask button */}
-        <button
+        {/* Ask button — only for VPS agents; Mason is the dashboard itself */}
+        {agentName !== "mason" && <button
           onClick={handlePing}
           disabled={pingState !== "idle"}
           title={`Ask ${meta.display} for a status update via Telegram`}
@@ -314,7 +314,7 @@ export function CompactAgentRow({ agentName, data, taskDetails, walTails, isLoad
               <span>Ask</span>
             </>
           )}
-        </button>
+        </button>}
       </div>
     </div>
   )
