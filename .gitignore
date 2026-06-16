@@ -16,3 +16,7 @@ verify_*.png
 
 # Lock file (rebuilt on deploy)
 package-lock.json
+
+# Local secrets — never commit
+.env.local
+*.env.local

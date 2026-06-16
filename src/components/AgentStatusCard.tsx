@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Activity, Inbox, Send, Zap, ChevronDown, ChevronRight } from "lucide-react"
+import { Activity, Inbox, Send, Zap, ChevronDown, ChevronRight, MessageSquare, Check, X } from "lucide-react"
 import type { TaskSummary, AgentTaskDetails, AgentState } from "@/hooks/useDashboardApi"
 
 // ─── Agent metadata ──────────────────────────────────────────────────────────
@@ -124,9 +124,31 @@ const AgentSprite = VillagerPortrait
 
 // ─── Compact horizontal agent row ─────────────────────────────────────────────
 
-export function CompactAgentRow({ agentName, data, taskDetails, isLoading }: AgentStatusCardProps) {
+interface CompactAgentRowProps extends AgentStatusCardProps {
+  walTails?: Record<string, string[]> | null
+}
+
+export function CompactAgentRow({ agentName, data, taskDetails, walTails, isLoading }: CompactAgentRowProps) {
   const meta  = AGENT_META[agentName] ?? { short: "??", display: agentName, color: "#e8a935", title: "agent" }
   const color = meta.color
+
+  const [pingState, setPingState] = useState<"idle" | "sending" | "sent" | "error">("idle")
+
+  async function handlePing() {
+    if (pingState !== "idle") return
+    setPingState("sending")
+    try {
+      const res = await fetch("/api/ping", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ agentId: agentName }),
+      })
+      setPingState(res.ok ? "sent" : "error")
+    } catch {
+      setPingState("error")
+    }
+    setTimeout(() => setPingState("idle"), 4000)
+  }
 
   if (isLoading || !data) {
     return (
@@ -136,6 +158,7 @@ export function CompactAgentRow({ agentName, data, taskDetails, isLoading }: Age
         <div className="flex-1 space-y-1.5">
           <div className="skeleton h-3 w-24 rounded" />
           <div className="skeleton h-2.5 w-48 rounded" />
+          <div className="skeleton h-2 w-56 rounded" />
         </div>
         <div className="flex gap-4 shrink-0">
           {[0,1,2].map(i => (
@@ -145,34 +168,40 @@ export function CompactAgentRow({ agentName, data, taskDetails, isLoading }: Age
             </div>
           ))}
         </div>
-        <div className="skeleton h-3 w-16 rounded shrink-0 ml-2" />
+        <div className="skeleton h-6 w-16 rounded shrink-0 ml-2" />
       </div>
     )
   }
 
-  const taskInFlight  = (taskDetails?.inbox ?? []).some(t => t.status === "working")
-  const isWorking     = data.session_active === true || taskInFlight || (data.working_count ?? 0) > 0
-  const failedTasks   = (taskDetails?.inbox ?? []).filter(t => t.status === "failed")
-  const isWilted      = failedTasks.length > 0 || data.health === "red"
-  const statusLabel   = isWilted ? "WILTED" : isWorking ? "TENDING" : "RESTING"
-  const statusColor   = isWilted ? "#c45a3a" : isWorking ? color : "#3a7c18"
-  const currentTask   = data.current_task ?? null
-  const inboxWarn     = data.inbox_count > 5
+  const taskInFlight = (taskDetails?.inbox ?? []).some(t => t.status === "working")
+  const isWorking    = data.session_active === true || taskInFlight || (data.working_count ?? 0) > 0
+  const failedTasks  = (taskDetails?.inbox ?? []).filter(t => t.status === "failed")
+  const isWilted     = failedTasks.length > 0 || data.health === "red"
+  const statusLabel  = isWilted ? "WILTED" : isWorking ? "TENDING" : "RESTING"
+  const statusColor  = isWilted ? "#c45a3a" : isWorking ? color : "#3a7c18"
+  const currentTask  = data.current_task ?? null
+  const inboxWarn    = data.inbox_count > 5
+
+  // Latest entry from this agent's WAL
+  const rawWal = walTails?.[agentName]?.at(-1) ?? null
+  const lastWal = rawWal
+    ? rawWal.replace(/^\s*>\s*/, "").replace(/^\[[\d-]+\]\s*/, "").trim()
+    : null
 
   const kpis = [
-    { label: "chores",  value: data.inbox_count,   warn: inboxWarn,                  active: false },
-    { label: "active",  value: data.working_count,  warn: false,                      active: isWorking && !isWilted },
-    { label: "done",    value: data.outbox_count,   warn: false,                      active: false },
+    { label: "chores", value: data.inbox_count,   warn: inboxWarn,            active: false },
+    { label: "active", value: data.working_count,  warn: false,               active: isWorking && !isWilted },
+    { label: "done",   value: data.outbox_count,   warn: false,               active: false },
   ]
 
   return (
     <div
-      className="bg-[var(--card)] border border-[var(--border)] rounded-lg overflow-hidden flex items-center"
+      className="bg-[var(--card)] border border-[var(--border)] rounded-lg overflow-hidden flex items-stretch"
       style={{ borderLeft: `3px solid ${isWilted ? "#c45a3a" : color}` }}
     >
       {/* Portrait */}
       <div
-        className="shrink-0 px-3 py-2.5"
+        className="shrink-0 flex items-center px-3 py-2.5"
         style={{
           filter: isWilted
             ? "drop-shadow(0 0 4px #c45a3a80)"
@@ -187,9 +216,9 @@ export function CompactAgentRow({ agentName, data, taskDetails, isLoading }: Age
         />
       </div>
 
-      {/* Name + title + current task */}
-      <div className="flex-1 min-w-0 py-2.5 pr-2">
-        <div className="flex items-baseline gap-2 flex-wrap">
+      {/* Name + title + task + last WAL entry */}
+      <div className="flex-1 min-w-0 py-2.5 pr-3 flex flex-col justify-center">
+        <div className="flex items-baseline gap-2">
           <span className="font-code text-[13px] font-bold text-[var(--foreground)] leading-none">
             {meta.display}
           </span>
@@ -199,17 +228,24 @@ export function CompactAgentRow({ agentName, data, taskDetails, isLoading }: Age
         </div>
         <p className="font-code text-[10px] text-[var(--muted-foreground)] truncate mt-1">
           {currentTask
-            ? `◆ ${currentTask.length > 52 ? currentTask.slice(0, 52) + "…" : currentTask}`
+            ? `◆ ${currentTask.length > 60 ? currentTask.slice(0, 60) + "…" : currentTask}`
             : isWilted ? "⚠ needs care"
             : isWorking ? "in the field…"
             : "taking a rest"}
         </p>
+        {lastWal && (
+          <p className="font-code text-[9px] truncate mt-0.5 italic"
+             style={{ color: color + "88" }}
+             title={lastWal}>
+            "{lastWal.length > 70 ? lastWal.slice(0, 70) + "…" : lastWal}"
+          </p>
+        )}
       </div>
 
       {/* KPIs */}
       <div className="flex items-stretch divide-x divide-[var(--border)] border-l border-[var(--border)] shrink-0">
         {kpis.map(({ label, value, warn, active }) => (
-          <div key={label} className="flex flex-col items-center justify-center px-3.5 py-2.5 min-w-[56px]">
+          <div key={label} className="flex flex-col items-center justify-center px-3.5 py-2.5 min-w-[54px]">
             <span
               className="font-code text-lg font-bold leading-none tnum"
               style={{
@@ -225,15 +261,60 @@ export function CompactAgentRow({ agentName, data, taskDetails, isLoading }: Age
         ))}
       </div>
 
-      {/* Status pill */}
-      <div className="px-3 py-2.5 shrink-0 flex items-center gap-1.5">
-        {(isWorking || isWilted) && (
-          <span className="pulse-dot w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: statusColor }} />
-        )}
-        <span className="font-code text-[10px] font-bold tracking-wider whitespace-nowrap"
-              style={{ color: statusColor }}>
-          {statusLabel}
-        </span>
+      {/* Status + Ask button */}
+      <div className="border-l border-[var(--border)] flex flex-col items-center justify-center gap-2 px-3 py-2.5 shrink-0">
+        {/* Status */}
+        <div className="flex items-center gap-1.5">
+          {(isWorking || isWilted) && (
+            <span className="pulse-dot w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: statusColor }} />
+          )}
+          <span className="font-code text-[9px] font-bold tracking-wider whitespace-nowrap"
+                style={{ color: statusColor }}>
+            {statusLabel}
+          </span>
+        </div>
+
+        {/* Ask button */}
+        <button
+          onClick={handlePing}
+          disabled={pingState !== "idle"}
+          title={`Ask ${meta.display} for a status update via Telegram`}
+          className="flex items-center gap-1 px-2 py-1 rounded border text-[9px] font-code font-semibold transition-all cursor-pointer disabled:cursor-default"
+          style={{
+            borderColor: pingState === "sent"  ? "#3a7c18"
+                       : pingState === "error" ? "#c45a3a"
+                       : color + "60",
+            color:       pingState === "sent"  ? "#3a7c18"
+                       : pingState === "error" ? "#c45a3a"
+                       : color,
+            background:  pingState === "sent"  ? "#3a7c1810"
+                       : pingState === "error" ? "#c45a3a10"
+                       : pingState === "sending" ? color + "10"
+                       : "transparent",
+          }}
+        >
+          {pingState === "sending" ? (
+            <>
+              <span className="pulse-dot w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+              <span>Pinging</span>
+            </>
+          ) : pingState === "sent" ? (
+            <>
+              <Check className="h-2.5 w-2.5" />
+              <span>Sent</span>
+            </>
+          ) : pingState === "error" ? (
+            <>
+              <X className="h-2.5 w-2.5" />
+              <span>Failed</span>
+            </>
+          ) : (
+            <>
+              <MessageSquare className="h-2.5 w-2.5" />
+              <span>Ask</span>
+            </>
+          )}
+        </button>
       </div>
     </div>
   )

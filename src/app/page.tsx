@@ -104,8 +104,8 @@ export default function DashboardPage() {
                 taskDetails={state?.task_details ?? null}
                 height={280}
               />
-              {/* scene-to-ribbon fade — dark hardcoded to match scene earth tones */}
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-[#1a1208] to-transparent" />
+              {/* atmospheric vignette — darkens the green foreground so it reads as night, not empty patch */}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[55%] bg-gradient-to-t from-[#0c0808e6] via-[#0c080866] to-transparent" />
             </div>
 
             {/* Stats ribbon — fills the empty space below the scene */}
@@ -181,6 +181,7 @@ export default function DashboardPage() {
                   agentName={agent}
                   data={state?.agents?.[agent] ?? null}
                   taskDetails={state?.task_details?.[agent] ?? null}
+                  walTails={state?.wal_tails ?? null}
                   isLoading={loading}
                 />
               ))}
