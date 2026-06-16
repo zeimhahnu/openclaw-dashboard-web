@@ -4,10 +4,12 @@ import type { AgentState as ApiAgentState, AgentTaskDetails } from "@/hooks/useD
 
 const BASE_W = 900, BASE_H = 200
 const GROUND_Y = 88
-// LPC-style sprite: 16w x 32h per frame, 4 walk frames x 4 directions
-const SW = 16, SH = 32, SDIRS = 4, SWALK = 4
-const SPRITE_SCALE = 1.8
+// Hi-fi chibi sprite: 24w x 40h per frame, 4 walk frames x 4 directions.
+// Light source top-left; auto silhouette outline; hue-shifted color ramps.
+const SW = 24, SH = 40, SDIRS = 4, SWALK = 4
+const SPRITE_SCALE = 1.5
 const STATION_SCALE = 1.85
+const OUTLINE = 0x1b0f14
 
 const AGENTS = [
   {
@@ -16,7 +18,8 @@ const AGENTS = [
     home:     { x: 110, y: 155 },
     station:  { x: 80,  y: 160 },
     zone:     { x1: 28, y1: 95, x2: 235, y2: 188 },
-    pal: { skin: 0xf3c8a4, hair: 0x4a2810, shirt: 0xc44a2a, pants: 0x6b3818, shoe: 0x2a1808 },
+    pal: { skin: 0xf0c49a, hair: 0x5a3216, shirt: 0xcf5230, pants: 0x6b4322, shoe: 0x3a2410, accent: 0xb98a4a, hat: 0xe6c878 },
+    feat: { hat: "straw" as const, apron: true, build: "normal" as const, beard: false },
     tool: "watering" as const,
   },
   {
@@ -25,7 +28,8 @@ const AGENTS = [
     home:     { x: 450, y: 152 },
     station:  { x: 420, y: 160 },
     zone:     { x1: 320, y1: 95, x2: 560, y2: 188 },
-    pal: { skin: 0xd1a87a, hair: 0x222222, shirt: 0x4a7090, pants: 0x3a2818, shoe: 0x1a0808 },
+    pal: { skin: 0xcf9e6e, hair: 0x2a2422, shirt: 0x47728e, pants: 0x39301f, shoe: 0x241510, accent: 0x6e4a28, hat: 0x8a99a6 },
+    feat: { hat: "goggles" as const, apron: true, build: "stocky" as const, beard: true },
     tool: "hammer" as const,
   },
   {
@@ -34,14 +38,20 @@ const AGENTS = [
     home:     { x: 780, y: 155 },
     station:  { x: 755, y: 160 },
     zone:     { x1: 630, y1: 95, x2: 880, y2: 188 },
-    pal: { skin: 0xf3c8a4, hair: 0xb8b8c8, shirt: 0x6a4a8c, pants: 0x3a2838, shoe: 0x2a1808 },
+    pal: { skin: 0xf0c49a, hair: 0xc4c2cc, shirt: 0x6a4a8c, pants: 0x352a44, shoe: 0x2a1c30, accent: 0x584088, hat: 0x6a4f9c },
+    feat: { hat: "hood" as const, apron: false, build: "slim" as const, beard: false },
     tool: "quill" as const,
   },
 ]
 
-// ─── Canvas-based LPC-style sprite generation ──────────────────────────────
+// ─── Hi-fi chibi sprite generation ─────────────────────────────────────────
+// Pipeline: draw each 24x40 frame into its own cell with hue-shifted color
+// ramps + cell shading (light top-left), then an automatic silhouette outline
+// pass wraps the body in a dark warm line. Profiles are drawn left-facing and
+// blitted mirrored for the right-facing row.
 
-type Pal = { skin: number; hair: number; shirt: number; pants: number; shoe: number }
+type Pal = { skin: number; hair: number; shirt: number; pants: number; shoe: number; accent: number; hat: number }
+type Feat = { hat: "straw"|"goggles"|"hood"; apron: boolean; build: "normal"|"stocky"|"slim"; beard: boolean }
 type C2D = CanvasRenderingContext2D
 
 function rgb(h: number): string {
@@ -51,111 +61,263 @@ function rgba(h: number, a: number): string {
   return `rgba(${(h >> 16) & 255},${(h >> 8) & 255},${h & 255},${a})`
 }
 function px(c: C2D, x: number, y: number, w: number, h: number, col: number, a?: number) {
+  if (w <= 0 || h <= 0) return
   c.fillStyle = a != null ? rgba(col, a) : rgb(col)
   c.fillRect(x, y, w, h)
 }
 
-// Draw one 16x32 character frame at canvas offset (ox, oy)
-// dir: 0=down, 1=up, 2=left, 3=right  |  f: walk frame 0-3
-function drawFrame(ctx: C2D, ox: number, oy: number, pal: Pal, dir: number, f: number) {
-  const { skin, hair, shirt, pants, shoe } = pal
-  // walk cycle: alternating leg/arm offsets
-  const LLY = [0, -2, 0, 2]   // left-leg Y offset (negative=forward step)
-  const RLY = [0,  2, 0, -2]  // right-leg Y offset
-  const LLX = [0, -1, 0,  1]  // left-leg X
-  const RLX = [0,  1, 0, -1]  // right-leg X
-  const LAY = [0,  1, 0, -1]  // left-arm Y (opposite to right leg)
-  const RAY = [0, -1, 0,  1]  // right-arm Y
-  const BOB = [0,  1, 0,  1]  // body bob (down mid-stride)
-  const b = BOB[f]
+// ── HSL color math (numeric RGB) for hue-shifted ramps
+function rgbToHsl(c: number): [number, number, number] {
+  const r = ((c >> 16) & 255) / 255, g = ((c >> 8) & 255) / 255, b = (c & 255) / 255
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b)
+  let h = 0, s = 0; const l = (mx + mn) / 2
+  if (mx !== mn) {
+    const d = mx - mn
+    s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn)
+    if (mx === r) h = (g - b) / d + (g < b ? 6 : 0)
+    else if (mx === g) h = (b - r) / d + 2
+    else h = (r - g) / d + 4
+    h *= 60
+  }
+  return [h, s, l]
+}
+function hslToRgb(h: number, s: number, l: number): number {
+  h = ((h % 360) + 360) % 360
+  const a = s * Math.min(l, 1 - l)
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12
+    return Math.round(255 * (l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1)))
+  }
+  return (f(0) << 16) | (f(8) << 8) | f(4)
+}
+const cl01 = (v: number) => Math.max(0, Math.min(1, v))
+function shade(c: number, dl: number, dh: number, ds = 0): number {
+  const [h, s, l] = rgbToHsl(c)
+  return hslToRgb(h + dh, cl01(s + ds), cl01(l + dl))
+}
+// 5-step ramp: highlights warm+light, shadows cool+dark (hue shifting)
+type Ramp = { hi: number; base: number; mid: number; sh: number; out: number }
+function makeRamp(c: number): Ramp {
+  return {
+    hi:   shade(c,  0.15,  10, -0.05),
+    base: c,
+    mid:  shade(c, -0.07,  -5,  0.04),
+    sh:   shade(c, -0.16, -16,  0.07),
+    out:  shade(c, -0.30, -20,  0.05),
+  }
+}
+type Ramps = { skin: Ramp; hair: Ramp; shirt: Ramp; pants: Ramp; shoe: Ramp; accent: Ramp; hat: Ramp }
 
-  if (dir === 0) { // FACING DOWN (camera)
-    px(ctx, ox+3,         oy+30,          10, 2, 0x000000, 0.18) // shadow
-    px(ctx, ox+2+LLX[f], oy+27+LLY[f],   5,  3, shoe)           // left shoe
-    px(ctx, ox+9+RLX[f], oy+27+RLY[f],   5,  3, shoe)           // right shoe
-    px(ctx, ox+3+LLX[f], oy+17+b,        4,  10+LLY[f], pants)  // left leg
-    px(ctx, ox+9+RLX[f], oy+17+b,        4,  10+RLY[f], pants)  // right leg
-    px(ctx, ox+2,         oy+16+b,        12, 2, 0x2a1808)       // belt
-    px(ctx, ox+2,         oy+7+b,         12, 10, shirt)          // torso
-    px(ctx, ox+0,         oy+8+b+LAY[f], 2,  8, skin)            // left arm
-    px(ctx, ox+14,        oy+8+b+RAY[f], 2,  8, skin)            // right arm
-    px(ctx, ox+6,         oy+5+b,         4,  3, skin)            // neck
-    px(ctx, ox+3,         oy+0+b,         10, 6, skin)            // head
-    px(ctx, ox+4,         oy-3+b,         8,  4, hair)            // top hair
-    px(ctx, ox+2,         oy+0+b,         2,  4, hair)            // sideburn L
-    px(ctx, ox+12,        oy+0+b,         2,  4, hair)            // sideburn R
-    px(ctx, ox+5,         oy+2+b,         1,  1, 0x1a1a1a)       // eye L
-    px(ctx, ox+9,         oy+2+b,         1,  1, 0x1a1a1a)       // eye R
-    px(ctx, ox+5,         oy+1+b,         2,  1, hair)            // brow L
-    px(ctx, ox+9,         oy+1+b,         2,  1, hair)            // brow R
-    px(ctx, ox+7,         oy+4+b,         2,  1, 0x8a3a2a)       // mouth
-  } else if (dir === 1) { // FACING UP (back to camera)
-    px(ctx, ox+3,         oy+30,          10, 2, 0x000000, 0.18)
-    px(ctx, ox+2+LLX[f], oy+27+LLY[f],   5,  3, shoe)
-    px(ctx, ox+9+RLX[f], oy+27+RLY[f],   5,  3, shoe)
-    px(ctx, ox+3+LLX[f], oy+17+b,        4,  10+LLY[f], pants)
-    px(ctx, ox+9+RLX[f], oy+17+b,        4,  10+RLY[f], pants)
-    px(ctx, ox+2,         oy+16+b,        12, 2, 0x2a1808)
-    px(ctx, ox+2,         oy+7+b,         12, 10, shirt)
-    px(ctx, ox+0,         oy+8+b+LAY[f], 2,  8, skin)
-    px(ctx, ox+14,        oy+8+b+RAY[f], 2,  8, skin)
-    px(ctx, ox+6,         oy+5+b,         4,  3, skin)
-    px(ctx, ox+3,         oy+0+b,         10, 6, skin)
-    px(ctx, ox+3,         oy-4+b,         10, 8, hair)   // full back hair, thicker
-    px(ctx, ox+2,         oy+0+b,         2,  5, hair)   // wide sideburn
-    px(ctx, ox+12,        oy+0+b,         2,  5, hair)
-    // no eyes/mouth (back of head)
-  } else if (dir === 2) { // FACING LEFT (profile)
-    px(ctx, ox+4,         oy+30,          8,  2, 0x000000, 0.15)
-    px(ctx, ox+3+LLX[f], oy+27+LLY[f],   5,  3, shoe)           // front foot
-    px(ctx, ox+5+RLX[f], oy+27+RLY[f],   4,  3, 0x1a0808)       // rear foot (darker)
-    px(ctx, ox+4+LLX[f], oy+17+b,        4,  10+LLY[f], pants)  // front leg
-    px(ctx, ox+5+RLX[f], oy+17+b,        3,  10+RLY[f], 0x3a2010) // rear leg
-    px(ctx, ox+3,         oy+16+b,        9,  2, 0x2a1808)
-    px(ctx, ox+3,         oy+7+b,         9,  10, shirt)
-    px(ctx, ox+1,         oy+8+b+LAY[f], 2,  8, skin)            // front arm
-    px(ctx, ox+11,        oy+9+b,         2,  7, 0x3a2a18)       // rear arm hint
-    px(ctx, ox+5,         oy+5+b,         3,  3, skin)            // neck
-    px(ctx, ox+4,         oy+0+b,         8,  6, skin)            // head
-    px(ctx, ox+3,         oy-3+b,         9,  5, hair)            // hair
-    px(ctx, ox+2,         oy-1+b,         2,  4, hair)            // side hang
-    px(ctx, ox+4,         oy+2+b,         1,  1, 0x1a1a1a)       // eye (profile)
-    px(ctx, ox+4,         oy+1+b,         2,  1, hair)            // brow
-    px(ctx, ox+3,         oy+3+b,         1,  1, 0xa0826a)       // nose
-    px(ctx, ox+4,         oy+4+b,         1,  1, 0x8a3a2a)       // mouth
-    px(ctx, ox+11,        oy+2+b,         1,  2, skin)            // ear
-  } else { // FACING RIGHT (profile mirrored)
-    px(ctx, ox+4,         oy+30,          8,  2, 0x000000, 0.15)
-    px(ctx, ox+8+RLX[f], oy+27+RLY[f],   5,  3, shoe)
-    px(ctx, ox+7+LLX[f], oy+27+LLY[f],   4,  3, 0x1a0808)
-    px(ctx, ox+8+RLX[f], oy+17+b,        4,  10+RLY[f], pants)
-    px(ctx, ox+8+LLX[f], oy+17+b,        3,  10+LLY[f], 0x3a2010)
-    px(ctx, ox+4,         oy+16+b,        9,  2, 0x2a1808)
-    px(ctx, ox+4,         oy+7+b,         9,  10, shirt)
-    px(ctx, ox+13,        oy+8+b+RAY[f], 2,  8, skin)
-    px(ctx, ox+3,         oy+9+b,         2,  7, 0x3a2a18)
-    px(ctx, ox+8,         oy+5+b,         3,  3, skin)
-    px(ctx, ox+4,         oy+0+b,         8,  6, skin)
-    px(ctx, ox+4,         oy-3+b,         9,  5, hair)
-    px(ctx, ox+11,        oy-1+b,         2,  4, hair)
-    px(ctx, ox+11,        oy+2+b,         1,  1, 0x1a1a1a)
-    px(ctx, ox+10,        oy+1+b,         2,  1, hair)
-    px(ctx, ox+12,        oy+3+b,         1,  1, 0xa0826a)
-    px(ctx, ox+11,        oy+4+b,         1,  1, 0x8a3a2a)
-    px(ctx, ox+4,         oy+2+b,         1,  2, skin)
+// Cell-shaded rect: base fill, top/left highlight, right/bottom shadow.
+function srect(c: C2D, x: number, y: number, w: number, h: number, r: Ramp, hi = true) {
+  px(c, x, y, w, h, r.base)
+  if (h > 2) px(c, x, y + h - 1, w, 1, r.sh)        // bottom AO
+  if (w > 2) px(c, x + w - 1, y, 1, h, r.sh)        // right shadow
+  if (hi) {
+    px(c, x, y, w, 1, r.hi)                          // top highlight
+    px(c, x, y, 1, h, r.hi)                          // left highlight
+  }
+}
+const clr = (c: C2D, x: number, y: number, w = 1, h = 1) => c.clearRect(x, y, w, h)
+
+// Eyes: white sclera + colored iris + dark pupil + catchlight.
+function eye(c: C2D, x: number, y: number, look = 0) {
+  px(c, x, y, 3, 3, 0xf6f2ea)
+  px(c, x + 1 + look, y + 1, 1, 2, 0x3a2c4a)
+  px(c, x + 1 + look, y + 1, 1, 1, 0xffffff)
+}
+
+// ── DOWN-facing body (dir 0)
+function bodyDown(c: C2D, R: Ramps, ft: Feat, f: number) {
+  const lf = [0, -1, 0, 1][f], rf = [0, 1, 0, -1][f]   // leg swing
+  const as = [0, 1, 0, -1][f]                           // arm swing
+  const wide = ft.build === "stocky" ? 1 : 0
+  const cx = 12
+  px(c, cx - 7, 38, 14, 2, 0x000000, 0.16)             // ground shadow
+  // legs + shoes
+  srect(c, 9 - wide, 30, 3, 7 + lf, R.pants)
+  srect(c, 12 + wide, 30, 3, 7 + rf, R.pants)
+  px(c, 8 - wide, 36 + lf, 4, 3, R.shoe.base); px(c, 8 - wide, 38 + lf, 4, 1, R.shoe.sh)
+  px(c, 12 + wide, 36 + rf, 4, 3, R.shoe.base); px(c, 12 + wide, 38 + rf, 4, 1, R.shoe.sh)
+  // torso
+  srect(c, 6 - wide, 20, 12 + wide * 2, 11, R.shirt)
+  clr(c, 6 - wide, 20); clr(c, 17 + wide, 20)
+  // apron / robe front
+  if (ft.apron) { srect(c, 9, 22, 6, 9, R.accent); px(c, 11, 24, 2, 1, R.accent.hi) }
+  if (ft.hat === "hood") { srect(c, 7, 22, 10, 12, R.accent); clr(c, 7, 22); clr(c, 16, 22) }  // long robe
+  // arms + hands
+  srect(c, 4 - wide, 21 + as, 3, 8, R.shirt)
+  srect(c, 17 + wide, 21 - as, 3, 8, R.shirt)
+  px(c, 4 - wide, 28 + as, 3, 2, R.skin.base); px(c, 17 + wide, 28 - as, 3, 2, R.skin.base)
+  // neck + head
+  px(c, 10, 18, 4, 2, R.skin.mid)
+  srect(c, 7, 8, 10, 11, R.skin)
+  clr(c, 7, 8); clr(c, 16, 8); clr(c, 7, 18); clr(c, 16, 18)
+  px(c, 8, 16, 1, 1, R.skin.hi, 0.6)                   // cheek light
+  // face
+  if (ft.beard) { px(c, 7, 14, 10, 5, R.hair.mid); clr(c, 7, 14); clr(c, 16, 14); px(c, 10, 16, 4, 2, R.skin.base) }
+  eye(c, 8, 12); eye(c, 13, 12)
+  px(c, 8, 11, 3, 1, R.hair.sh); px(c, 13, 11, 3, 1, R.hair.sh)   // brows
+  px(c, 11, 14, 2, 1, R.skin.sh)                        // nose
+  px(c, 10, 16, 4, 1, ft.beard ? 0x7a3528 : 0x8a4332)   // mouth
+  headgearDown(c, R, ft)
+}
+
+function headgearDown(c: C2D, R: Ramps, ft: Feat) {
+  if (ft.hat === "straw") {
+    srect(c, 7, 4, 10, 5, R.hat)                        // crown
+    clr(c, 7, 4); clr(c, 16, 4)
+    px(c, 4, 8, 16, 2, R.hat.base); px(c, 4, 9, 16, 1, R.hat.sh)  // brim
+    px(c, 5, 8, 14, 1, R.hat.hi)
+    px(c, 9, 6, 6, 1, R.hat.sh, 0.5)                    // band
+  } else if (ft.hat === "goggles") {
+    srect(c, 7, 5, 10, 5, R.hair); clr(c, 7, 5); clr(c, 16, 5)    // short hair
+    px(c, 6, 8, 12, 2, 0x2c2622)                        // goggle strap
+    px(c, 7, 8, 4, 2, 0x9fd4ff); px(c, 13, 8, 4, 2, 0x9fd4ff)    // lenses
+    px(c, 7, 8, 4, 1, 0xd9f0ff); px(c, 13, 8, 4, 1, 0xd9f0ff)
+    px(c, 11, 9, 2, 1, 0x4a4038)
+  } else { // hood
+    px(c, 11, 3, 2, 2, R.accent.mid)                    // hood peak
+    srect(c, 6, 5, 12, 7, R.accent)                     // hood drape
+    clr(c, 6, 5); clr(c, 17, 5); clr(c, 6, 6); clr(c, 17, 6)  // round crown
+    px(c, 7, 10, 10, 2, R.accent.sh)                    // face-framing inner rim
+    px(c, 9, 6, 6, 1, R.accent.hi)                      // top sheen
+    px(c, 7, 11, 1, 6, R.accent.sh); px(c, 16, 11, 1, 6, R.accent.mid)  // hood sides past cheeks
   }
 }
 
-function buildCharCanvas(pal: Pal): HTMLCanvasElement {
-  const canvas = document.createElement("canvas")
-  canvas.width = SW * SWALK
-  canvas.height = SH * SDIRS
-  const ctx = canvas.getContext("2d")!
-  ctx.clearRect(0, 0, canvas.width, canvas.height)
-  for (let d = 0; d < SDIRS; d++)
-    for (let f = 0; f < SWALK; f++)
-      drawFrame(ctx, f * SW, d * SH, pal, d, f)
-  return canvas
+// ── UP-facing body (dir 1): back of head, no face
+function bodyUp(c: C2D, R: Ramps, ft: Feat, f: number) {
+  const lf = [0, -1, 0, 1][f], rf = [0, 1, 0, -1][f]
+  const as = [0, 1, 0, -1][f]
+  const wide = ft.build === "stocky" ? 1 : 0
+  px(c, 5, 38, 14, 2, 0x000000, 0.16)
+  srect(c, 9 - wide, 30, 3, 7 + lf, R.pants)
+  srect(c, 12 + wide, 30, 3, 7 + rf, R.pants)
+  px(c, 8 - wide, 36 + lf, 4, 3, R.shoe.base); px(c, 8 - wide, 38 + lf, 4, 1, R.shoe.sh)
+  px(c, 12 + wide, 36 + rf, 4, 3, R.shoe.base); px(c, 12 + wide, 38 + rf, 4, 1, R.shoe.sh)
+  srect(c, 6 - wide, 20, 12 + wide * 2, 11, R.shirt)
+  clr(c, 6 - wide, 20); clr(c, 17 + wide, 20)
+  if (ft.hat === "hood") { srect(c, 7, 22, 10, 12, R.accent); clr(c, 7, 22); clr(c, 16, 22) }
+  srect(c, 4 - wide, 21 + as, 3, 8, R.shirt)
+  srect(c, 17 + wide, 21 - as, 3, 8, R.shirt)
+  px(c, 4 - wide, 28 + as, 3, 2, R.skin.base); px(c, 17 + wide, 28 - as, 3, 2, R.skin.base)
+  px(c, 10, 18, 4, 2, R.skin.mid)
+  // back of head: hair / hat
+  srect(c, 7, 8, 10, 11, R.skin)
+  clr(c, 7, 8); clr(c, 16, 8); clr(c, 7, 18); clr(c, 16, 18)
+  if (ft.hat === "straw") {
+    px(c, 4, 8, 16, 2, R.hat.base); px(c, 4, 9, 16, 1, R.hat.sh)
+    srect(c, 7, 4, 10, 5, R.hat); clr(c, 7, 4); clr(c, 16, 4)
+  } else if (ft.hat === "hood") {
+    srect(c, 6, 4, 12, 11, R.accent); clr(c, 6, 4); clr(c, 17, 4)
+  } else {
+    srect(c, 7, 7, 10, 9, R.hair); clr(c, 7, 7); clr(c, 16, 7)
+    px(c, 8, 8, 8, 1, R.hair.hi)
+  }
+}
+
+// ── LEFT-facing profile (dir 2). Mirrored for right in buildCharCanvas.
+function bodyLeft(c: C2D, R: Ramps, ft: Feat, f: number) {
+  const fb = [0, -1, 0, 1][f], bb = [0, 1, 0, -1][f]   // front/back leg swing
+  const aw = [0, -1, 0, 1][f]                           // arm swing
+  const wide = ft.build === "stocky" ? 1 : 0
+  px(c, 6, 38, 13, 2, 0x000000, 0.16)
+  // rear leg (darker), front leg
+  px(c, 12, 30, 3, 7 + bb, R.pants.sh); px(c, 12, 36 + bb, 4, 3, R.shoe.sh)
+  srect(c, 9, 30, 3, 7 + fb, R.pants); px(c, 8, 36 + fb, 5, 3, R.shoe.base); px(c, 8, 38 + fb, 5, 1, R.shoe.sh)
+  // torso (profile, slimmer)
+  srect(c, 8, 20, 9 + wide, 11, R.shirt)
+  clr(c, 8, 20)
+  if (ft.apron) srect(c, 8, 22, 5, 9, R.accent)
+  if (ft.hat === "hood") { srect(c, 8, 22, 9, 12, R.accent); clr(c, 8, 22) }
+  // front arm swings
+  srect(c, 9 + aw, 21, 3, 8, R.shirt); px(c, 9 + aw, 28, 3, 2, R.skin.base)
+  // head (profile), nose to the left
+  srect(c, 8, 8, 9, 11, R.skin)
+  clr(c, 8, 8); clr(c, 16, 8); clr(c, 16, 18)
+  px(c, 7, 12, 1, 4, R.skin.base)                       // nose/brow ridge
+  px(c, 7, 13, 1, 2, R.skin.mid)
+  if (ft.beard) { px(c, 8, 14, 7, 5, R.hair.mid); clr(c, 8, 14); px(c, 9, 16, 3, 1, R.skin.base) }
+  eye(c, 9, 12, -1)
+  px(c, 8, 11, 3, 1, R.hair.sh)                          // brow
+  px(c, 8, 16, 3, 1, ft.beard ? 0x7a3528 : 0x8a4332)     // mouth
+  px(c, 15, 13, 2, 2, R.skin.mid)                        // ear hint
+  headgearLeft(c, R, ft)
+}
+
+function headgearLeft(c: C2D, R: Ramps, ft: Feat) {
+  if (ft.hat === "straw") {
+    srect(c, 8, 4, 9, 5, R.hat); clr(c, 8, 4); clr(c, 16, 4)
+    px(c, 5, 8, 15, 2, R.hat.base); px(c, 5, 9, 15, 1, R.hat.sh)
+    px(c, 6, 8, 13, 1, R.hat.hi)
+  } else if (ft.hat === "goggles") {
+    srect(c, 8, 5, 9, 5, R.hair); clr(c, 8, 5); clr(c, 16, 5)
+    px(c, 7, 8, 11, 2, 0x2c2622)
+    px(c, 8, 8, 4, 2, 0x9fd4ff); px(c, 8, 8, 4, 1, 0xd9f0ff)
+  } else {
+    srect(c, 7, 4, 11, 8, R.accent); clr(c, 7, 4); clr(c, 17, 4)
+    px(c, 8, 9, 8, 1, R.accent.sh)
+  }
+}
+
+// Silhouette outline pass: paint a dark ring around solid pixels.
+function addOutline(cv: HTMLCanvasElement, col: number) {
+  const c = cv.getContext("2d")!
+  const W = cv.width, H = cv.height
+  const img = c.getImageData(0, 0, W, H)
+  const d = img.data
+  const solid = (x: number, y: number) => x >= 0 && y >= 0 && x < W && y < H && d[(y * W + x) * 4 + 3] > 200
+  const out = c.createImageData(W, H)
+  const o = out.data
+  const r = (col >> 16) & 255, g = (col >> 8) & 255, b = col & 255
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4
+      if (d[i + 3] > 0) { o[i] = d[i]; o[i + 1] = d[i + 1]; o[i + 2] = d[i + 2]; o[i + 3] = d[i + 3]; continue }
+      if (solid(x - 1, y) || solid(x + 1, y) || solid(x, y - 1) || solid(x, y + 1)) {
+        o[i] = r; o[i + 1] = g; o[i + 2] = b; o[i + 3] = 255
+      }
+    }
+  }
+  c.putImageData(out, 0, 0)
+}
+
+function buildCharCanvas(pal: Pal, ft: Feat): HTMLCanvasElement {
+  const R: Ramps = {
+    skin: makeRamp(pal.skin), hair: makeRamp(pal.hair), shirt: makeRamp(pal.shirt),
+    pants: makeRamp(pal.pants), shoe: makeRamp(pal.shoe), accent: makeRamp(pal.accent), hat: makeRamp(pal.hat),
+  }
+  const sheet = document.createElement("canvas")
+  sheet.width = SW * SWALK
+  sheet.height = SH * SDIRS
+  const sctx = sheet.getContext("2d")!
+  sctx.imageSmoothingEnabled = false
+  sctx.clearRect(0, 0, sheet.width, sheet.height)
+
+  const renderCell = (drawFn: (c: C2D) => void): HTMLCanvasElement => {
+    const cell = document.createElement("canvas")
+    cell.width = SW; cell.height = SH
+    const cc = cell.getContext("2d")!
+    cc.imageSmoothingEnabled = false
+    drawFn(cc)
+    addOutline(cell, OUTLINE)
+    return cell
+  }
+
+  for (let f = 0; f < SWALK; f++) {
+    sctx.drawImage(renderCell((cc) => bodyDown(cc, R, ft, f)), f * SW, 0 * SH)        // dir 0 down
+    sctx.drawImage(renderCell((cc) => bodyUp(cc, R, ft, f)), f * SW, 1 * SH)          // dir 1 up
+    sctx.drawImage(renderCell((cc) => bodyLeft(cc, R, ft, f)), f * SW, 2 * SH)        // dir 2 left
+    // dir 3 right = mirrored left
+    const cell = renderCell((cc) => bodyLeft(cc, R, ft, f))
+    sctx.save()
+    sctx.translate((f + 1) * SW, 3 * SH)
+    sctx.scale(-1, 1)
+    sctx.drawImage(cell, 0, 0)
+    sctx.restore()
+  }
+  return sheet
 }
 
 // ─── Environment sprite functions ─────────────────────────────────────────
@@ -625,7 +787,7 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
           AGENTS.forEach(a => {
             const key = `char-${a.id}`
             if (this.textures.exists(key)) return
-            const charCanvas = buildCharCanvas(a.pal)
+            const charCanvas = buildCharCanvas(a.pal, a.feat)
             const canvasTex = this.textures.createCanvas(key, charCanvas.width, charCanvas.height)
             if (!canvasTex) return
             const ctx = canvasTex.getContext()
