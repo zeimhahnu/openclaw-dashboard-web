@@ -128,7 +128,7 @@ export function RouterStatsCard({ data, isLoading }: RouterStatsCardProps) {
         <div className="bg-[var(--muted)] rounded p-2 border border-[var(--border)]">
           <div className="flex items-center gap-1 mb-0.5">
             <Activity className="h-3 w-3 text-[var(--secondary)]" />
-            <span className="font-code text-[10px] text-[var(--muted-foreground)]">tools used</span>
+            <span className="font-code text-[10px] text-[var(--muted-foreground)]">decisions</span>
           </div>
           <span className="font-code text-xl font-bold text-[var(--secondary)] text-glow-green block">
             {data.decisions_count}
@@ -150,12 +150,26 @@ export function RouterStatsCard({ data, isLoading }: RouterStatsCardProps) {
       {Object.keys(data.model_breakdown).length > 0 ? (
         <div>
           <span className="font-pixel text-[7px] text-[var(--muted-foreground)] mb-2 block">
-            TOOLS USED
+            MODEL MIX
           </span>
           <ToolBreakdownBar breakdown={data.model_breakdown} />
         </div>
       ) : (
-        <p className="font-pixel text-[7px] text-[var(--muted-foreground)]">{"// the workshop is quiet"}</p>
+        <div className="border-t border-[var(--border)] pt-2">
+          <span className="font-pixel text-[7px] text-[var(--muted-foreground)] mb-2 block">MODEL ROSTER</span>
+          {[
+            { name: "lil-claw", model: "MiniMax-M3", color: "#1ea84e" },
+            { name: "goop",     model: "MiniMax-M3", color: "#1490b8" },
+            { name: "mason",    model: "Sonnet 4.6",  color: "#5828c8" },
+          ].map(a => (
+            <div key={a.name} className="flex items-center gap-2 mb-1.5">
+              <span className="font-code text-[10px] w-14 shrink-0 font-semibold" style={{ color: a.color }}>
+                {a.name}
+              </span>
+              <span className="font-code text-[9px] text-[var(--muted-foreground)] flex-1">{a.model}</span>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )

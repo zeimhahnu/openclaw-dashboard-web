@@ -109,12 +109,15 @@ export function TokenBurnCard({ usage, isLoading }: TokenBurnCardProps) {
     if (v.cost_usd > peakCost) { peakCost = v.cost_usd; peakDay = d }
   }
 
-  // Per-agent estimate (even if data is sparse, show the model)
+  // Per-agent model roster (corrected: VPS agents on MiniMax-M3, local on Sonnet 4.6)
   const agentModels = [
-    { id: "lil-claw", model: "MiniMax-M2.7", ...AGENT_TIER["lil-claw"] },
-    { id: "goop",     model: "MiniMax-M2.7", ...AGENT_TIER["goop"] },
-    { id: "mason",    model: "Sonnet 4.6",   ...AGENT_TIER["mason"] },
+    { id: "lil-claw", model: "MiniMax-M3",  ...AGENT_TIER["lil-claw"] },
+    { id: "goop",     model: "MiniMax-M3",  ...AGENT_TIER["goop"] },
+    { id: "mason",    model: "Sonnet 4.6",  ...AGENT_TIER["mason"] },
   ]
+
+  // 7-day sparkline
+  const maxDayCost = days.reduce((m, d) => Math.max(m, by_day[d]?.cost_usd ?? 0), 0.001)
 
   const burnColorClass = burnColor(avg7d)
   const burnBgClass   = burnBg(avg7d)
@@ -154,6 +157,42 @@ export function TokenBurnCard({ usage, isLoading }: TokenBurnCardProps) {
           <div className="font-code text-[9px] text-[var(--muted-foreground)]">trend</div>
         </div>
       </div>
+
+      {/* 7-day sparkline bars */}
+      {days.length > 0 && (
+        <div className="mb-3">
+          <div className="flex items-end gap-px h-10 mb-0.5">
+            {days.map((d) => {
+              const cost = by_day[d]?.cost_usd ?? 0
+              const isToday = d === today
+              const heightPct = Math.max(4, Math.round((cost / maxDayCost) * 100))
+              return (
+                <div key={d} className="flex-1 flex flex-col justify-end" title={`${d}: ${fmtCost(cost)}`}>
+                  <div
+                    className="w-full rounded-t transition-all duration-700"
+                    style={{
+                      height: `${heightPct}%`,
+                      background: isToday
+                        ? "var(--warning)"
+                        : cost > 0 ? "var(--warning)" : "var(--muted)",
+                      opacity: isToday ? 1 : cost > 0 ? 0.45 : 0.25,
+                      boxShadow: isToday && cost > 0 ? "0 0 6px var(--warning)" : "none",
+                    }}
+                  />
+                </div>
+              )
+            })}
+          </div>
+          <div className="flex gap-px">
+            {days.map((d) => (
+              <div key={d} className="flex-1 text-center font-code text-[var(--faint)]"
+                   style={{ fontSize: "6px" }}>
+                {d.slice(8)}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Peak day */}
       {peakDay && peakCost > 0 && (

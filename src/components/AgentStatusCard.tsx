@@ -34,8 +34,8 @@ const SKINS: Record<string, Skin> = {
 const C_EYE = "#241a12", C_MOUTH = "#a85e44", C_CHEEK = "#e6936f"
 const C_METAL = "#cdd3da", C_METAL_D = "#8c929a", C_WOOD = "#7a4a24", C_GOLD = "#ffd24a", C_FEATHER = "#fbf7ec"
 
-function VillagerPortrait({ agentId, color, isWorking }: {
-  agentId: string; color: string; isWorking: boolean
+function VillagerPortrait({ agentId, color, isWorking, svgSize }: {
+  agentId: string; color: string; isWorking: boolean; svgSize?: number
 }) {
   const s = SKINS[agentId] ?? SKINS["lil-claw"]
   const P = 4, U = 15
@@ -104,10 +104,11 @@ function VillagerPortrait({ agentId, color, isWorking }: {
     px(12, 8, 1, 1, C_GOLD)               // gold nib
   }
 
+  const displaySize = svgSize ?? U * P
   return (
     <div className={isWorking ? "sprite-working" : "sprite-idle"}>
       <svg
-        width={U * P} height={U * P} viewBox={`0 0 ${U * P} ${U * P}`}
+        width={displaySize} height={displaySize} viewBox={`0 0 ${U * P} ${U * P}`}
         style={{ imageRendering: "pixelated", shapeRendering: "crispEdges", display: "block" }}
       >
         <rect x={0} y={0} width={U * P} height={U * P} rx={9} fill={color + "12"} />
@@ -120,6 +121,123 @@ function VillagerPortrait({ agentId, color, isWorking }: {
 
 // Back-compat alias (call sites use AgentSprite)
 const AgentSprite = VillagerPortrait
+
+// ─── Compact horizontal agent row ─────────────────────────────────────────────
+
+export function CompactAgentRow({ agentName, data, taskDetails, isLoading }: AgentStatusCardProps) {
+  const meta  = AGENT_META[agentName] ?? { short: "??", display: agentName, color: "#e8a935", title: "agent" }
+  const color = meta.color
+
+  if (isLoading || !data) {
+    return (
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded-lg overflow-hidden flex items-center gap-3 px-3 py-2.5"
+           style={{ borderLeft: `3px solid ${color}40` }}>
+        <div className="skeleton rounded shrink-0" style={{ width: 42, height: 42 }} />
+        <div className="flex-1 space-y-1.5">
+          <div className="skeleton h-3 w-24 rounded" />
+          <div className="skeleton h-2.5 w-48 rounded" />
+        </div>
+        <div className="flex gap-4 shrink-0">
+          {[0,1,2].map(i => (
+            <div key={i} className="flex flex-col items-center gap-1">
+              <div className="skeleton h-5 w-7 rounded" />
+              <div className="skeleton h-2 w-8 rounded" />
+            </div>
+          ))}
+        </div>
+        <div className="skeleton h-3 w-16 rounded shrink-0 ml-2" />
+      </div>
+    )
+  }
+
+  const taskInFlight  = (taskDetails?.inbox ?? []).some(t => t.status === "working")
+  const isWorking     = data.session_active === true || taskInFlight || (data.working_count ?? 0) > 0
+  const failedTasks   = (taskDetails?.inbox ?? []).filter(t => t.status === "failed")
+  const isWilted      = failedTasks.length > 0 || data.health === "red"
+  const statusLabel   = isWilted ? "WILTED" : isWorking ? "TENDING" : "RESTING"
+  const statusColor   = isWilted ? "#c45a3a" : isWorking ? color : "#3a7c18"
+  const currentTask   = data.current_task ?? null
+  const inboxWarn     = data.inbox_count > 5
+
+  const kpis = [
+    { label: "chores",  value: data.inbox_count,   warn: inboxWarn,                  active: false },
+    { label: "active",  value: data.working_count,  warn: false,                      active: isWorking && !isWilted },
+    { label: "done",    value: data.outbox_count,   warn: false,                      active: false },
+  ]
+
+  return (
+    <div
+      className="bg-[var(--card)] border border-[var(--border)] rounded-lg overflow-hidden flex items-center"
+      style={{ borderLeft: `3px solid ${isWilted ? "#c45a3a" : color}` }}
+    >
+      {/* Portrait */}
+      <div
+        className="shrink-0 px-3 py-2.5"
+        style={{
+          filter: isWilted
+            ? "drop-shadow(0 0 4px #c45a3a80)"
+            : isWorking ? `drop-shadow(0 0 3px ${color}80)` : "none",
+        }}
+      >
+        <AgentSprite
+          agentId={agentName}
+          color={isWilted ? "#c45a3a" : color}
+          isWorking={isWorking}
+          svgSize={42}
+        />
+      </div>
+
+      {/* Name + title + current task */}
+      <div className="flex-1 min-w-0 py-2.5 pr-2">
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className="font-code text-[13px] font-bold text-[var(--foreground)] leading-none">
+            {meta.display}
+          </span>
+          <span className="font-pixel text-[6px]" style={{ color: color + "99" }}>
+            {meta.title}
+          </span>
+        </div>
+        <p className="font-code text-[10px] text-[var(--muted-foreground)] truncate mt-1">
+          {currentTask
+            ? `◆ ${currentTask.length > 52 ? currentTask.slice(0, 52) + "…" : currentTask}`
+            : isWilted ? "⚠ needs care"
+            : isWorking ? "in the field…"
+            : "taking a rest"}
+        </p>
+      </div>
+
+      {/* KPIs */}
+      <div className="flex items-stretch divide-x divide-[var(--border)] border-l border-[var(--border)] shrink-0">
+        {kpis.map(({ label, value, warn, active }) => (
+          <div key={label} className="flex flex-col items-center justify-center px-3.5 py-2.5 min-w-[56px]">
+            <span
+              className="font-code text-lg font-bold leading-none tnum"
+              style={{
+                color: warn ? "#c47808"
+                  : active && value > 0 ? color
+                  : "var(--foreground)",
+              }}
+            >
+              {value}
+            </span>
+            <span className="font-code text-[8px] text-[var(--muted-foreground)] mt-0.5">{label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Status pill */}
+      <div className="px-3 py-2.5 shrink-0 flex items-center gap-1.5">
+        {(isWorking || isWilted) && (
+          <span className="pulse-dot w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: statusColor }} />
+        )}
+        <span className="font-code text-[10px] font-bold tracking-wider whitespace-nowrap"
+              style={{ color: statusColor }}>
+          {statusLabel}
+        </span>
+      </div>
+    </div>
+  )
+}
 
 // ─── Stamina bar ─────────────────────────────────────────────────────────────
 // High inbox = drained stamina (agent is maxed). Low inbox = full stamina (resting).

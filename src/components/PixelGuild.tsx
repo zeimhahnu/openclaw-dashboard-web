@@ -15,9 +15,9 @@ const AGENTS = [
   {
     id: "lil-claw" as const, name: "Lil Claw", color: 0x5ec27e, colorCss: "#5ec27e",
     role: "Farm Manager",
-    home:     { x: 110, y: 155 },
-    station:  { x: 80,  y: 160 },
-    zone:     { x1: 28, y1: 95, x2: 235, y2: 188 },
+    home:     { x: 125, y: 158 },
+    station:  { x: 70,  y: 118 },   // farmhouse base; depth-sorted by station.y
+    zone:     { x1: 28, y1: 110, x2: 235, y2: 182 },
     pal: { skin: 0xf0c49a, hair: 0x5a3216, shirt: 0xcf5230, pants: 0x6b4322, shoe: 0x3a2410, accent: 0xb98a4a, hat: 0xe6c878 },
     feat: { hat: "straw" as const, apron: true, build: "normal" as const, beard: false },
     tool: "watering" as const,
@@ -25,9 +25,9 @@ const AGENTS = [
   {
     id: "goop" as const, name: "Goop", color: 0x52b8d0, colorCss: "#52b8d0",
     role: "Blacksmith & Carpenter",
-    home:     { x: 450, y: 152 },
-    station:  { x: 420, y: 160 },
-    zone:     { x1: 320, y1: 95, x2: 560, y2: 188 },
+    home:     { x: 452, y: 155 },
+    station:  { x: 410, y: 116 },   // smithy base
+    zone:     { x1: 322, y1: 110, x2: 562, y2: 182 },
     pal: { skin: 0xcf9e6e, hair: 0x2a2422, shirt: 0x47728e, pants: 0x39301f, shoe: 0x241510, accent: 0x6e4a28, hat: 0x8a99a6 },
     feat: { hat: "goggles" as const, apron: true, build: "stocky" as const, beard: true },
     tool: "hammer" as const,
@@ -35,9 +35,9 @@ const AGENTS = [
   {
     id: "mason" as const, name: "Mason", color: 0x9b87f0, colorCss: "#9b87f0",
     role: "Scholar of the Vale",
-    home:     { x: 780, y: 155 },
-    station:  { x: 755, y: 160 },
-    zone:     { x1: 630, y1: 95, x2: 880, y2: 188 },
+    home:     { x: 790, y: 158 },
+    station:  { x: 760, y: 118 },   // scholar tower base
+    zone:     { x1: 634, y1: 110, x2: 882, y2: 182 },
     pal: { skin: 0xf0c49a, hair: 0xc4c2cc, shirt: 0x6a4a8c, pants: 0x352a44, shoe: 0x2a1c30, accent: 0x584088, hat: 0x6a4f9c },
     feat: { hat: "hood" as const, apron: false, build: "slim" as const, beard: false },
     tool: "quill" as const,
@@ -357,172 +357,237 @@ function drawForgeSparks(g: Phaser.GameObjects.Graphics, x: number, y: number, t
   }
 }
 
-// ── Farmhouse (Lil Claw): two-storey cottage w/ chimney, shuttered windows, door
+// ── Farmhouse (Lil Claw): 2.5D cottage — visible roof-top face + side wall + larger scale
 function drawFarmhouse(g: Phaser.GameObjects.Graphics, x: number, y: number) {
-  // stone foundation
-  g.fillStyle(0x7a6a50, 1); g.fillRect(x - 24, y - 2, 48, 4)
-  g.fillStyle(0x5a5040, 1); g.fillRect(x - 24, y - 1, 48, 1)
-  // walls — warm plank wood
-  g.fillStyle(0x8a5c2a, 1); g.fillRect(x - 22, y - 24, 44, 22)
-  // plank lines
-  g.fillStyle(0x6a4418, 0.4); for (let r = 0; r < 4; r++) g.fillRect(x - 22, y - 20 + r * 5, 44, 1)
-  // shadow right + bottom
-  g.fillStyle(0x4a2c10, 0.4); g.fillRect(x + 20, y - 24, 2, 22)
-  // ── Roof: two-slope with dark ridge
-  g.fillStyle(0xb83020, 1); g.fillTriangle(x - 28, y - 24, x + 28, y - 24, x, y - 46)
-  g.fillStyle(0x861e14, 1); g.fillTriangle(x, y - 46, x + 28, y - 24, x + 14, y - 24)
-  // roof outline
-  g.fillStyle(0x3a1008, 0.6); g.fillRect(x - 28, y - 25, 56, 1)
-  // ridge cap
-  g.fillStyle(0x3a1808, 1); g.fillRect(x - 1, y - 47, 2, 3)
-  // ── Chimney (left side)
-  g.fillStyle(0x6a5040, 1); g.fillRect(x - 16, y - 55, 10, 15)
-  g.fillStyle(0x8a6a50, 1); g.fillRect(x - 16, y - 55, 10, 2)
-  g.fillStyle(0x4a3428, 0.5); g.fillRect(x - 9, y - 55, 2, 15)
-  // chimney smoke puffs (static wisps)
-  g.fillStyle(0xc8b8a4, 0.22); g.fillCircle(x - 11, y - 60, 5)
-  g.fillStyle(0xc8b8a4, 0.15); g.fillCircle(x - 9,  y - 66, 4)
-  g.fillStyle(0xc8b8a4, 0.10); g.fillCircle(x - 7,  y - 71, 3)
-  // ── Door (center)
-  g.fillStyle(0x3a2010, 1); g.fillRect(x - 5, y - 15, 10, 15)
-  g.fillStyle(0x5a3018, 0.6); g.fillRect(x - 4, y - 14, 1, 14); g.fillRect(x + 3, y - 14, 1, 14)
-  g.fillStyle(0xd4a855, 1); g.fillRect(x + 3, y - 7, 2, 2)         // door knob
-  // rounded top
-  g.fillStyle(0x2a1008, 1); g.fillRect(x - 5, y - 17, 10, 2)
-  // ── Windows (left + right with shutters)
-  for (const wx of [x - 16, x + 10]) {
-    g.fillStyle(0x2a1808, 1); g.fillRect(wx - 1, y - 22, 10, 11)
-    g.fillStyle(0x6eb4d4, 0.85); g.fillRect(wx, y - 21, 8, 9)
-    g.fillStyle(0xa0d8f0, 0.5); g.fillRect(wx, y - 21, 4, 4)        // pane highlight
-    g.fillStyle(0x2a1808, 0.7); g.fillRect(wx + 3, y - 21, 1, 9); g.fillRect(wx, y - 18, 8, 1) // cross pane
-    // shutters
-    g.fillStyle(0x5ec27e, 1); g.fillRect(wx - 3, y - 22, 3, 11); g.fillRect(wx + 8, y - 22, 3, 11)
-    g.fillStyle(0x3a9a5a, 0.5); for (let sl = 0; sl < 4; sl++) g.fillRect(wx - 3, y - 21 + sl * 3, 3, 1)
+  // Ground mat / shadow
+  g.fillStyle(0x1e2e14, 0.35); g.fillEllipse(x + 4, y + 3, 80, 10)
+  // Stone foundation
+  g.fillStyle(0x8a7a5a, 1); g.fillRect(x - 28, y - 4, 56, 5)
+  g.fillStyle(0x5a5040, 0.7); g.fillRect(x - 28, y, 56, 1)
+
+  // RIGHT SIDE WALL (depth cue — darker, set back)
+  g.fillStyle(0x5a3818, 1); g.fillRect(x + 26, y - 52, 12, 48)
+  g.fillStyle(0x3a2010, 0.55); g.fillRect(x + 26, y - 52, 2, 48) // inner edge dark
+  g.fillStyle(0x7a5028, 0.3);  g.fillRect(x + 32, y - 52, 4, 48) // outer face mid-light
+
+  // FRONT WALL — warm plank wood
+  g.fillStyle(0x9a6030, 1); g.fillRect(x - 28, y - 52, 54, 48)
+  // Plank lines
+  g.fillStyle(0x6a4020, 0.35); for (let pl = 1; pl <= 6; pl++) g.fillRect(x - 28, y - 52 + pl * 8, 54, 1)
+  // Right edge shadow on front wall
+  g.fillStyle(0x5a3010, 0.3); g.fillRect(x + 20, y - 52, 6, 48)
+  // Left corner post
+  g.fillStyle(0x7a4820, 0.7); g.fillRect(x - 29, y - 52, 3, 48)
+
+  // ROOF GABLE (front view of pitched roof)
+  g.fillStyle(0xb83020, 1); g.fillTriangle(x - 32, y - 52, x + 32, y - 52, x, y - 80)
+  // Right slope darker (shadow side away from top-left light)
+  g.fillStyle(0x881814, 1); g.fillTriangle(x, y - 80, x + 32, y - 52, x + 16, y - 52)
+  // Ridge cap
+  g.fillStyle(0x3a0808, 1); g.fillRect(x - 1, y - 81, 2, 3)
+  // Roof overhang shadow on wall
+  g.fillStyle(0x3a1808, 0.35); g.fillRect(x - 28, y - 54, 60, 4)
+
+  // ROOF TOP FACE — the 2.5D key: narrow strip visible from above angle
+  g.fillStyle(0x992010, 1); g.fillRect(x - 26, y - 57, 52, 7)
+  g.fillStyle(0xb82818, 0.45); g.fillRect(x - 24, y - 57, 48, 2) // front edge lit
+  g.fillStyle(0x5a0c08, 0.8); g.fillRect(x - 24, y - 51, 48, 2)  // rear edge dark
+  // Right side of roof top face
+  g.fillStyle(0x6a1008, 1); g.fillRect(x + 26, y - 57, 10, 5)
+
+  // CHIMNEY (left, pierces through roof)
+  g.fillStyle(0x6a5040, 1); g.fillRect(x - 20, y - 96, 13, 40)
+  g.fillStyle(0x8a6a50, 0.8); g.fillRect(x - 20, y - 96, 13, 3) // chimney cap
+  g.fillStyle(0x4a3028, 0.5); g.fillRect(x - 9,  y - 96, 2, 40) // shadow side
+  // Smoke wisps
+  g.fillStyle(0xd0c0a8, 0.22); g.fillCircle(x - 13, y - 101, 5)
+  g.fillStyle(0xd0c0a8, 0.14); g.fillCircle(x - 11, y - 108, 4)
+  g.fillStyle(0xd0c0a8, 0.08); g.fillCircle(x - 9,  y - 114, 3)
+
+  // WINDOWS — two rows (upper + lower storey)
+  for (const [wx, wy2] of [[x - 20, y - 46], [x + 8, y - 46], [x - 20, y - 30], [x + 8, y - 30]] as [number,number][]) {
+    g.fillStyle(0x3a2010, 1); g.fillRect(wx - 1, wy2, 13, 13)
+    g.fillStyle(0x6eb4d4, 0.85); g.fillRect(wx, wy2 + 1, 11, 11)
+    g.fillStyle(0xa8d8f0, 0.5); g.fillRect(wx, wy2 + 1, 6, 5)   // pane highlight
+    g.fillStyle(0x3a2010, 0.65); g.fillRect(wx + 5, wy2 + 1, 1, 11); g.fillRect(wx, wy2 + 6, 11, 1) // cross
+    // Shutters
+    g.fillStyle(0x5ec27e, 1); g.fillRect(wx - 4, wy2, 4, 13); g.fillRect(wx + 11, wy2, 4, 13)
+    g.fillStyle(0x3a9a5a, 0.5); for (let sl = 0; sl < 4; sl++) g.fillRect(wx - 4, wy2 + 1 + sl * 3, 4, 1)
   }
-  // ── Flower boxes under windows
-  g.fillStyle(0x6a3a18, 1); g.fillRect(x - 19, y - 12, 10, 3); g.fillRect(x + 8, y - 12, 10, 3)
-  g.fillStyle(0xc44a50, 1); for (let fp = 0; fp < 3; fp++) g.fillRect(x - 17 + fp * 3, y - 14, 2, 3)
-  g.fillStyle(0xf08050, 1); for (let fp = 0; fp < 3; fp++) g.fillRect(x + 10 + fp * 3, y - 14, 2, 3)
-  // ── Sign post (right side)
-  g.fillStyle(0x6a3a18, 1); g.fillRect(x + 27, y - 18, 2, 18)
-  g.fillStyle(0xc8a870, 1); g.fillRect(x + 24, y - 28, 18, 12)
-  g.fillStyle(0x4a2810, 1); g.fillRect(x + 24, y - 28, 18, 1); g.fillRect(x + 24, y - 17, 18, 1)
-  g.fillRect(x + 24, y - 28, 1, 12); g.fillRect(x + 41, y - 28, 1, 12)
-  // text lines on sign
-  g.fillStyle(0x4a2810, 0.6); g.fillRect(x + 27, y - 25, 12, 1); g.fillRect(x + 27, y - 22, 10, 1); g.fillRect(x + 27, y - 19, 8, 1)
+  // Flower boxes on lower windows
+  g.fillStyle(0x6a3a18, 1); g.fillRect(x - 23, y - 18, 16, 4); g.fillRect(x + 5, y - 18, 16, 4)
+  g.fillStyle(0xc44a50, 1); for (let fp = 0; fp < 4; fp++) { g.fillRect(x - 22 + fp * 4, y - 21, 3, 4); g.fillRect(x + 6 + fp * 4, y - 21, 3, 4) }
+
+  // DOOR (center, taller now)
+  g.fillStyle(0x3a2010, 1); g.fillRect(x - 7, y - 30, 14, 30)
+  g.fillStyle(0x5a3018, 0.6); g.fillRect(x - 6, y - 29, 2, 28); g.fillRect(x + 4, y - 29, 2, 28)
+  g.fillStyle(0xd4a855, 1); g.fillRect(x + 4, y - 14, 2, 2) // door knob
+  g.fillStyle(0x2a1008, 1); g.fillRect(x - 7, y - 32, 14, 3) // arch cap
+
+  // SIGN POST (right side)
+  g.fillStyle(0x6a3a18, 1); g.fillRect(x + 34, y - 26, 2, 26)
+  g.fillStyle(0xc8a870, 1); g.fillRect(x + 30, y - 42, 22, 18)
+  g.fillStyle(0x4a2810, 1)
+  g.fillRect(x + 30, y - 42, 22, 1); g.fillRect(x + 30, y - 25, 22, 1)
+  g.fillRect(x + 30, y - 42, 1, 18); g.fillRect(x + 51, y - 42, 1, 18)
+  g.fillStyle(0x4a2810, 0.55); g.fillRect(x + 33, y - 39, 15, 1); g.fillRect(x + 33, y - 35, 12, 1); g.fillRect(x + 33, y - 31, 9, 1)
 }
 
-// ── Smithy (Goop): large stone forge hall with visible fire, chimney, anvil
+// ── Smithy (Goop): 2.5D stone forge hall — side wall visible, roof top face strip
 function drawSmithy(g: Phaser.GameObjects.Graphics, x: number, y: number) {
-  // cobblestone floor platform
-  g.fillStyle(0x5a5248, 1); g.fillRect(x - 36, y - 2, 72, 4)
-  g.fillStyle(0x6a6258, 0.5); for (let ci = 0; ci < 8; ci++) g.fillRect(x - 34 + ci * 9, y - 1, 8, 2)
-  // rear wall (stone)
-  g.fillStyle(0x5a5248, 1); g.fillRect(x - 28, y - 34, 56, 32)
-  // stone texture (mortar lines)
+  // Ground shadow
+  g.fillStyle(0x1a1816, 0.4); g.fillEllipse(x + 4, y + 3, 100, 12)
+  // Cobblestone floor platform
+  g.fillStyle(0x5a5248, 1); g.fillRect(x - 38, y - 4, 76, 5)
+  g.fillStyle(0x6a6258, 0.5); for (let ci = 0; ci < 9; ci++) g.fillRect(x - 36 + ci * 8, y - 3, 7, 3)
+
+  // RIGHT SIDE WALL (depth cue)
+  g.fillStyle(0x3a3830, 1); g.fillRect(x + 30, y - 58, 14, 54)
+  g.fillStyle(0x2a2820, 0.5); g.fillRect(x + 30, y - 58, 2, 54) // inner shadow
+  g.fillStyle(0x5a5448, 0.3); g.fillRect(x + 36, y - 58, 6, 54) // highlight
+
+  // FRONT WALL — stone masonry
+  g.fillStyle(0x5a5248, 1); g.fillRect(x - 32, y - 58, 62, 54)
+  // Stone mortar lines
   g.fillStyle(0x3a3230, 0.45)
-  g.fillRect(x - 28, y - 28, 56, 1); g.fillRect(x - 28, y - 22, 56, 1)
-  g.fillRect(x - 28, y - 16, 56, 1); g.fillRect(x - 28, y - 10, 56, 1)
-  g.fillRect(x - 14, y - 34, 1, 32); g.fillRect(x + 0,  y - 28, 1, 22)
-  g.fillRect(x + 14, y - 34, 1, 32)
-  // shadow right side
-  g.fillStyle(0x2a2220, 0.5); g.fillRect(x + 24, y - 34, 4, 32)
-  // ── Metal roof (sloped, dark)
-  g.fillStyle(0x4a5058, 1); g.fillTriangle(x - 32, y - 34, x + 32, y - 34, x, y - 50)
-  g.fillStyle(0x384048, 1); g.fillTriangle(x, y - 50, x + 32, y - 34, x + 16, y - 34)
-  g.fillStyle(0x5a6068, 0.4); g.fillRect(x - 10, y - 50, 20, 4)   // ridge highlight
-  // ── Chimney (left, massive)
-  g.fillStyle(0x4a4038, 1); g.fillRect(x - 24, y - 62, 14, 28)
-  g.fillStyle(0x6a5848, 1); g.fillRect(x - 24, y - 62, 14, 3)
-  g.fillStyle(0x3a3028, 0.5); g.fillRect(x - 12, y - 62, 2, 28)
-  // glowing chimney top
-  g.fillStyle(0xff8020, 0.25); g.fillCircle(x - 17, y - 66, 7)
-  g.fillStyle(0xffc060, 0.15); g.fillCircle(x - 17, y - 70, 5)
-  // ── Open forge bay (center)
-  g.fillStyle(0x1e1a16, 1); g.fillRect(x - 14, y - 26, 28, 24)
-  // fire glow layers
-  g.fillStyle(0xff4800, 0.55); g.fillRect(x - 10, y - 10, 20, 8)
-  g.fillStyle(0xff8020, 0.70); g.fillRect(x - 8, y - 9, 16, 6)
-  g.fillStyle(0xffb840, 0.80); g.fillRect(x - 5, y - 8, 10, 4)
-  g.fillStyle(0xfff060, 0.60); g.fillRect(x - 3, y - 7, 6, 2)
-  // fire ground glow
-  g.fillStyle(0xff6020, 0.18); g.fillEllipse(x, y - 5, 40, 10)
-  // bellows (left of fire)
-  g.fillStyle(0x6a3818, 1); g.fillRect(x - 14, y - 20, 6, 10)
-  g.fillStyle(0x4a2810, 1); g.fillRect(x - 14, y - 15, 6, 1); g.fillRect(x - 14, y - 12, 6, 1)
-  g.fillStyle(0x8a5028, 0.6); g.fillRect(x - 14, y - 20, 2, 10)
-  // ── Tool wall (right side of bay)
-  g.fillStyle(0x3a3028, 1); g.fillRect(x + 8, y - 26, 6, 24)
-  g.fillStyle(0x6a6058, 0.8)  // hammers
-  g.fillRect(x + 10, y - 24, 2, 6); g.fillRect(x + 9, y - 24, 4, 2)
-  g.fillRect(x + 10, y - 16, 2, 6); g.fillRect(x + 9, y - 18, 4, 2)
-  // ── Anvil (right of building)
-  g.fillStyle(0x2a2822, 1); g.fillRect(x + 30, y - 8, 16, 6)
-  g.fillStyle(0x4a4840, 1); g.fillRect(x + 30, y - 9, 16, 2)
-  g.fillStyle(0x6a6858, 0.4); g.fillRect(x + 30, y - 9, 6, 1)       // highlight
-  g.fillStyle(0x3a3830, 1); g.fillRect(x + 34, y - 2, 8, 4)
-  g.fillStyle(0x2a2820, 1); g.fillRect(x + 36, y + 2, 4, 2)
-  // ── Coal + barrel (left of building)
-  g.fillStyle(0x1a1812, 1); g.fillEllipse(x - 38, y - 3, 18, 8)     // coal pile
-  g.fillStyle(0x2a2820, 0.7); g.fillEllipse(x - 36, y - 5, 10, 5)
-  g.fillStyle(0x5a4030, 1); g.fillRect(x - 50, y - 14, 10, 14)      // barrel
-  g.fillStyle(0x3a2820, 0.5); for (let bl = 0; bl < 3; bl++) g.fillRect(x - 50, y - 12 + bl * 4, 10, 1)
-  g.fillStyle(0x6a5040, 0.4); g.fillRect(x - 50, y - 14, 2, 14)     // barrel highlight
+  for (let row = 1; row <= 6; row++) g.fillRect(x - 32, y - 58 + row * 9, 62, 1)
+  g.fillRect(x - 16, y - 58, 1, 54); g.fillRect(x + 0, y - 49, 1, 45); g.fillRect(x + 16, y - 58, 1, 54)
+  // Right shadow on front face
+  g.fillStyle(0x2a2220, 0.45); g.fillRect(x + 22, y - 58, 8, 54)
+
+  // METAL ROOF — gable
+  g.fillStyle(0x4a5058, 1); g.fillTriangle(x - 36, y - 58, x + 36, y - 58, x, y - 82)
+  g.fillStyle(0x384048, 1); g.fillTriangle(x, y - 82, x + 36, y - 58, x + 18, y - 58) // right darker
+  g.fillStyle(0x5a6068, 0.4); g.fillRect(x - 8, y - 82, 16, 4) // ridge highlight
+  g.fillStyle(0x2a2828, 1); g.fillRect(x - 1, y - 83, 2, 3)    // ridge cap
+
+  // ROOF TOP FACE (2.5D — visible strip from above)
+  g.fillStyle(0x384048, 1); g.fillRect(x - 30, y - 62, 60, 7)
+  g.fillStyle(0x4a5260, 0.5); g.fillRect(x - 28, y - 62, 56, 2) // front-lit edge
+  g.fillStyle(0x1e2028, 0.8); g.fillRect(x - 28, y - 56, 56, 2) // rear dark edge
+  // Right side of roof top
+  g.fillStyle(0x28303a, 1); g.fillRect(x + 30, y - 62, 12, 5)
+
+  // MASSIVE CHIMNEY (left side)
+  g.fillStyle(0x4a4038, 1); g.fillRect(x - 28, y - 98, 16, 40)
+  g.fillStyle(0x6a5848, 0.8); g.fillRect(x - 28, y - 98, 16, 4) // cap
+  g.fillStyle(0x3a3028, 0.5); g.fillRect(x - 14, y - 98, 2, 40)  // shadow
+  // Forge glow from chimney top
+  g.fillStyle(0xff8020, 0.28); g.fillCircle(x - 20, y - 102, 8)
+  g.fillStyle(0xffb040, 0.18); g.fillCircle(x - 20, y - 108, 6)
+  g.fillStyle(0xffc060, 0.10); g.fillCircle(x - 20, y - 114, 4)
+
+  // OPEN FORGE BAY (center arch opening)
+  g.fillStyle(0x1a1814, 1); g.fillRect(x - 16, y - 44, 32, 40)
+  // Fire layers inside bay
+  g.fillStyle(0xff4800, 0.55); g.fillRect(x - 12, y - 16, 24, 10)
+  g.fillStyle(0xff8020, 0.72); g.fillRect(x - 9,  y - 14, 18, 8)
+  g.fillStyle(0xffb840, 0.82); g.fillRect(x - 6,  y - 12, 12, 5)
+  g.fillStyle(0xfff060, 0.65); g.fillRect(x - 3,  y - 11, 6, 3)
+  g.fillStyle(0xff6020, 0.20); g.fillEllipse(x, y - 8, 48, 14) // fire floor glow
+  // Bellows left
+  g.fillStyle(0x6a3818, 1); g.fillRect(x - 16, y - 30, 7, 14)
+  g.fillStyle(0x4a2810, 0.7); g.fillRect(x - 16, y - 24, 7, 1); g.fillRect(x - 16, y - 20, 7, 1)
+  g.fillStyle(0x8a5028, 0.5); g.fillRect(x - 16, y - 30, 2, 14)
+  // Tool wall right
+  g.fillStyle(0x3a3028, 1); g.fillRect(x + 9, y - 44, 7, 40)
+  g.fillStyle(0x6a6058, 0.8)
+  g.fillRect(x + 11, y - 42, 2, 8); g.fillRect(x + 10, y - 42, 4, 2)  // hammer 1
+  g.fillRect(x + 11, y - 30, 2, 8); g.fillRect(x + 10, y - 32, 4, 2)  // hammer 2
+  g.fillRect(x + 11, y - 18, 2, 8); g.fillRect(x + 10, y - 20, 4, 2)  // hammer 3
+
+  // ANVIL (forward right — high Y = close, depth 118+10=128ish)
+  g.fillStyle(0x2a2822, 1); g.fillRect(x + 36, y - 10, 18, 8)
+  g.fillStyle(0x4a4840, 1); g.fillRect(x + 36, y - 12, 18, 3)
+  g.fillStyle(0x6a6858, 0.4); g.fillRect(x + 36, y - 12, 7, 1) // highlight
+  g.fillStyle(0x3a3830, 1); g.fillRect(x + 40, y - 2, 10, 5)
+  g.fillStyle(0x2a2820, 1); g.fillRect(x + 42, y + 3, 6, 2)
+
+  // COAL PILE + BARREL (far left)
+  g.fillStyle(0x1a1812, 1); g.fillEllipse(x - 44, y - 4, 20, 9)
+  g.fillStyle(0x2e2820, 0.7); g.fillEllipse(x - 42, y - 6, 12, 6)
+  g.fillStyle(0x5a4030, 1); g.fillRect(x - 58, y - 18, 12, 18) // barrel
+  g.fillStyle(0x3a2820, 0.5); for (let bl = 0; bl < 4; bl++) g.fillRect(x - 58, y - 16 + bl * 4, 12, 1)
+  g.fillStyle(0x6a5040, 0.4); g.fillRect(x - 58, y - 18, 2, 18)
 }
 
-// ── Scholar tower (Mason): stone turret, ivy, arched window with candlelight
+// ── Scholar tower (Mason): 2.5D stone turret — battlement top visible from above
 function drawScholarTower(g: Phaser.GameObjects.Graphics, x: number, y: number) {
-  // moss ground patch
-  g.fillStyle(0x2a5a2a, 0.35); g.fillEllipse(x, y, 60, 10)
-  // stone base steps
-  g.fillStyle(0x7a6a58, 1); g.fillRect(x - 18, y - 4, 36, 4)
-  g.fillStyle(0x6a5a48, 1); g.fillRect(x - 20, y - 2, 40, 2)
-  // ── Tower body (stone masonry)
-  g.fillStyle(0x6a6050, 1); g.fillRect(x - 14, y - 50, 28, 46)
-  // stone block pattern (mortar)
-  g.fillStyle(0x4a4038, 0.4)
-  g.fillRect(x - 14, y - 42, 28, 1); g.fillRect(x - 14, y - 34, 28, 1)
-  g.fillRect(x - 14, y - 26, 28, 1); g.fillRect(x - 14, y - 18, 28, 1)
-  g.fillRect(x - 7,  y - 46, 1, 40); g.fillRect(x + 0,  y - 42, 1, 34)
-  g.fillRect(x + 7,  y - 46, 1, 40)
-  // shadow right
-  g.fillStyle(0x2a2018, 0.45); g.fillRect(x + 10, y - 50, 4, 46)
-  // ivy (left side)
-  g.fillStyle(0x2a5a1a, 0.7); g.fillRect(x - 14, y - 48, 3, 22)
-  g.fillStyle(0x3a6a2a, 0.6); for (let iv = 0; iv < 5; iv++) { g.fillRect(x - 16, y - 45 + iv * 5, 4, 3); g.fillRect(x - 14, y - 43 + iv * 5, 2, 2) }
-  // ── Battlements (top: 4 merlons)
-  g.fillStyle(0x5a5040, 1)
-  for (let m = 0; m < 4; m++) g.fillRect(x - 13 + m * 9, y - 58, 6, 8)
-  g.fillStyle(0x4a4030, 0.5); for (let m = 0; m < 4; m++) g.fillRect(x - 11 + m * 9, y - 58, 2, 8)
-  // ── Arched window (center)
-  g.fillStyle(0x1a1614, 1); g.fillRect(x - 5, y - 36, 10, 14)
-  g.fillStyle(0x1a1614, 1); g.fillEllipse(x, y - 36, 10, 8)         // arch top
-  // candlelight inside
-  g.fillStyle(0xffa830, 0.65); g.fillRect(x - 4, y - 34, 8, 10)
-  g.fillStyle(0xffe080, 0.45); g.fillRect(x - 2, y - 33, 4, 7)
-  // candle
-  g.fillStyle(0xf0eee8, 1); g.fillRect(x - 1, y - 26, 2, 6)
-  g.fillStyle(0xffd060, 1); g.fillRect(x - 1, y - 28, 2, 2)
-  // frame
-  g.fillStyle(0x3a3028, 0.7); g.fillRect(x - 6, y - 37, 12, 2); g.fillRect(x - 6, y - 22, 12, 1)
-  g.fillRect(x - 6, y - 36, 1, 14); g.fillRect(x + 5, y - 36, 1, 14)
-  // ── Hanging lantern (right, from bracket)
-  g.fillStyle(0x4a3820, 1); g.fillRect(x + 14, y - 44, 1, 8); g.fillRect(x + 14, y - 44, 6, 1)
-  g.fillStyle(0x8a7050, 1); g.fillRect(x + 16, y - 38, 7, 9)
-  g.fillStyle(0xffd060, 0.75); g.fillRect(x + 17, y - 37, 5, 7)     // lantern glow
-  g.fillStyle(0xffe8a0, 0.45); g.fillRect(x + 18, y - 36, 3, 5)
-  g.fillStyle(0x6a5038, 1); g.fillRect(x + 15, y - 39, 9, 2); g.fillRect(x + 15, y - 29, 9, 2)
-  g.fillStyle(0xff9020, 0.25); g.fillEllipse(x + 20, y - 32, 18, 16) // lantern halo
-  // ── Outdoor lectern / reading stand (in front)
-  g.fillStyle(0x7a6a50, 1); g.fillRect(x - 8, y - 14, 16, 4)
-  g.fillStyle(0x5a4a38, 1); g.fillRect(x - 6, y - 13, 12, 1); g.fillRect(x - 6, y - 11, 12, 1)
-  g.fillStyle(0x3a2a18, 1); g.fillRect(x - 1, y - 10, 2, 10)
-  g.fillStyle(0x6a5840, 1); g.fillRect(x - 1, y - 18, 2, 2)
-  // open book on lectern
-  g.fillStyle(0xf0e8d4, 1); g.fillRect(x - 7, y - 17, 14, 4)
-  g.fillStyle(0x8a7858, 0.5); g.fillRect(x - 1, y - 17, 1, 4)       // spine
-  g.fillStyle(0x6a5a40, 0.4); g.fillRect(x - 6, y - 16, 5, 1); g.fillRect(x - 6, y - 14, 4, 1)
-  g.fillStyle(0x6a5a40, 0.4); g.fillRect(x + 2, y - 16, 5, 1); g.fillRect(x + 3, y - 14, 4, 1)
+  // Ground moss/shadow
+  g.fillStyle(0x1e3818, 0.4); g.fillEllipse(x + 2, y + 3, 60, 10)
+  g.fillStyle(0x2a5a2a, 0.35); g.fillEllipse(x - 8, y + 1, 30, 7)
+
+  // Stone base steps
+  g.fillStyle(0x7a6a58, 1); g.fillRect(x - 20, y - 5, 40, 6)
+  g.fillStyle(0x6a5a48, 0.7); g.fillRect(x - 22, y - 2, 44, 2)
+
+  // RIGHT SIDE WALL (depth cue — narrower tower)
+  g.fillStyle(0x4a4238, 1); g.fillRect(x + 16, y - 76, 10, 71)
+  g.fillStyle(0x2a2820, 0.5); g.fillRect(x + 16, y - 76, 2, 71)
+  g.fillStyle(0x5a5248, 0.3); g.fillRect(x + 20, y - 76, 4, 71)
+
+  // TOWER BODY — tall stone masonry
+  g.fillStyle(0x6a6050, 1); g.fillRect(x - 18, y - 76, 34, 71)
+  // Stone mortar pattern
+  g.fillStyle(0x4a4038, 0.42)
+  for (let row = 1; row <= 8; row++) g.fillRect(x - 18, y - 76 + row * 9, 34, 1)
+  g.fillRect(x - 9,  y - 76, 1, 71); g.fillRect(x + 0,  y - 67, 1, 58); g.fillRect(x + 9,  y - 76, 1, 71)
+  // Right shadow on front
+  g.fillStyle(0x2a2018, 0.45); g.fillRect(x + 12, y - 76, 4, 71)
+  // Ivy (left face)
+  g.fillStyle(0x2a5a1a, 0.65); g.fillRect(x - 18, y - 74, 3, 38)
+  g.fillStyle(0x3a6a2a, 0.55); for (let iv = 0; iv < 7; iv++) { g.fillRect(x - 20, y - 71 + iv * 6, 4, 4); g.fillRect(x - 18, y - 69 + iv * 6, 2, 3) }
+
+  // BATTLEMENTS — 4 merlons with visible top face (2.5D key element)
+  for (let m = 0; m < 4; m++) {
+    const mx = x - 15 + m * 10
+    g.fillStyle(0x5a5040, 1); g.fillRect(mx, y - 84, 7, 8) // merlon front face
+    g.fillStyle(0x4a4030, 0.5); g.fillRect(mx + 1, y - 84, 3, 8) // mortar shadow
+    // TOP FACE visible from above — 2.5D
+    g.fillStyle(0x6a6050, 1); g.fillRect(mx, y - 87, 7, 4)
+    g.fillStyle(0x7a7060, 0.5); g.fillRect(mx, y - 87, 7, 1) // top-lit edge
+    g.fillStyle(0x3a3828, 0.7); g.fillRect(mx, y - 84, 7, 1) // rear dark
+  }
+  // Wall top face between merlons (the crenelation walk)
+  g.fillStyle(0x524a3c, 1); g.fillRect(x - 18, y - 82, 34, 6)
+  g.fillStyle(0x6a6050, 0.5); g.fillRect(x - 18, y - 82, 34, 2) // lit front edge
+
+  // ARCHED WINDOW (center, two storey height)
+  g.fillStyle(0x1a1614, 1); g.fillRect(x - 6, y - 52, 12, 20)
+  g.fillStyle(0x1a1614, 1); g.fillEllipse(x, y - 52, 12, 10) // arch top
+  // Candlelight inside
+  g.fillStyle(0xffa830, 0.65); g.fillRect(x - 5, y - 50, 10, 16)
+  g.fillStyle(0xffe080, 0.45); g.fillRect(x - 3, y - 49, 6, 11)
+  // Candle
+  g.fillStyle(0xf0eee8, 1); g.fillRect(x - 1, y - 36, 2, 7)
+  g.fillStyle(0xffd060, 1); g.fillRect(x - 1, y - 39, 2, 3)
+  // Window frame
+  g.fillStyle(0x3a3028, 0.7)
+  g.fillRect(x - 7, y - 54, 14, 2); g.fillRect(x - 7, y - 32, 14, 1)
+  g.fillRect(x - 7, y - 52, 1, 20); g.fillRect(x + 6, y - 52, 1, 20)
+
+  // UPPER NARROW WINDOW
+  g.fillStyle(0x1a1614, 1); g.fillRect(x - 3, y - 70, 6, 10)
+  g.fillStyle(0x1a1614, 1); g.fillEllipse(x, y - 70, 6, 6)
+  g.fillStyle(0xffa830, 0.45); g.fillRect(x - 2, y - 68, 4, 7)
+
+  // HANGING LANTERN (right bracket)
+  g.fillStyle(0x4a3820, 1); g.fillRect(x + 18, y - 62, 1, 10); g.fillRect(x + 18, y - 62, 7, 1)
+  g.fillStyle(0x8a7050, 1); g.fillRect(x + 20, y - 54, 8, 10)
+  g.fillStyle(0xffd060, 0.75); g.fillRect(x + 21, y - 53, 6, 8)
+  g.fillStyle(0xffe8a0, 0.45); g.fillRect(x + 22, y - 52, 4, 6)
+  g.fillStyle(0x6a5038, 1); g.fillRect(x + 19, y - 55, 10, 2); g.fillRect(x + 19, y - 44, 10, 2)
+  g.fillStyle(0xff9020, 0.25); g.fillEllipse(x + 24, y - 48, 22, 18)
+
+  // OUTDOOR LECTERN + OPEN BOOK (slightly forward from tower base)
+  g.fillStyle(0x7a6a50, 1); g.fillRect(x - 9, y - 18, 18, 5)
+  g.fillStyle(0x5a4a38, 0.7); g.fillRect(x - 7, y - 17, 14, 1); g.fillRect(x - 7, y - 14, 14, 1)
+  g.fillStyle(0x3a2a18, 1); g.fillRect(x - 1, y - 13, 2, 13)
+  g.fillStyle(0x6a5840, 1); g.fillRect(x - 1, y - 22, 2, 3)
+  g.fillStyle(0xf0e8d4, 1); g.fillRect(x - 8, y - 22, 16, 5)
+  g.fillStyle(0x8a7858, 0.5); g.fillRect(x - 1, y - 22, 1, 5)
+  g.fillStyle(0x6a5a40, 0.4)
+  g.fillRect(x - 7, y - 21, 5, 1); g.fillRect(x - 7, y - 19, 4, 1); g.fillRect(x + 2, y - 21, 5, 1); g.fillRect(x + 3, y - 19, 4, 1)
 }
 
 function drawStation(g: Phaser.GameObjects.Graphics, kind: "manager"|"forge"|"study", x: number, y: number) {
@@ -581,11 +646,24 @@ function drawCampfire(g: Phaser.GameObjects.Graphics, x: number, y: number) {
 }
 
 function drawTree(g: Phaser.GameObjects.Graphics, x: number, y: number, size: 1|2 = 1) {
-  const r = size === 2 ? 13 : 9
-  g.fillStyle(0x6a3a18, 1); g.fillRect(x - 1, y, 3, 7)
-  g.fillStyle(0x3a6a2a, 1); g.fillCircle(x, y - 2, r)
-  g.fillStyle(0x4a7a3a, 1); g.fillCircle(x - 2, y - 4, Math.round(r * 0.65))
-  g.fillStyle(0x5a8a4a, 0.75); g.fillCircle(x + 2, y - 5, Math.round(r * 0.45))
+  const r  = size === 2 ? 15 : 10
+  const tH = size === 2 ? 23 : 16
+  const tW = size === 2 ? 7 : 5
+  // Ground shadow (light source top-left → shadow slightly right/below)
+  g.fillStyle(0x182a10, 0.5); g.fillEllipse(x + 4, y + 2, r * 2.2, 7)
+  // Canopy layers back→front (drawn before trunk so trunk appears in front at base)
+  g.fillStyle(0x284c18, 1); g.fillCircle(x, y - tH - r + 4, r)                            // back/shadow
+  g.fillStyle(0x356624, 1); g.fillCircle(x - Math.round(r*0.35), y - tH - Math.round(r*0.65), Math.round(r*0.78))
+  g.fillStyle(0x3d7228, 1); g.fillCircle(x + Math.round(r*0.22), y - tH - Math.round(r*0.80), Math.round(r*0.65))
+  g.fillStyle(0x52883c, 0.9); g.fillCircle(x - Math.round(r*0.28), y - tH - Math.round(r*0.48), Math.round(r*0.5)) // mid-highlight
+  g.fillStyle(0x6aaa50, 0.65); g.fillCircle(x - Math.round(r*0.12), y - tH - Math.round(r*0.88), Math.round(r*0.3)) // top catch-light
+  // Trunk drawn LAST — visible below canopy, properly upward from ground
+  g.fillStyle(0x6a3a18, 1); g.fillRect(x - Math.floor(tW/2), y - tH, tW, tH + 1)
+  g.fillStyle(0x8a5028, 0.65); g.fillRect(x - Math.floor(tW/2), y - tH, 2, tH)          // left highlight
+  g.fillStyle(0x3a1c08, 0.55); g.fillRect(x + Math.floor(tW/2) - 1, y - tH, 1, tH)     // right shadow
+  if (tH > 15) {                                                                           // bark detail on larger trees
+    g.fillStyle(0x5a3010, 0.5); g.fillRect(x - 1, y - Math.round(tH*0.65), 1, 2); g.fillRect(x + 1, y - Math.round(tH*0.38), 1, 2)
+  }
 }
 
 function drawWheat(g: Phaser.GameObjects.Graphics, x: number, y: number, ripe: boolean) {
@@ -882,7 +960,7 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
           ground.fillStyle(0x5a7040, 0.25); ground.fillRect(0, GROUND_Y, 240, BASE_H - GROUND_Y)       // farm: warm lush
           ground.fillStyle(0x2a2a22, 0.20); ground.fillRect(340, GROUND_Y, 220, BASE_H - GROUND_Y)      // forge: scorched
           ground.fillStyle(0x2a4a3a, 0.22); ground.fillRect(630, GROUND_Y, BASE_W - 630, BASE_H - GROUND_Y) // scholar: cool mossy
-          // Forge cobblestone patch
+          // Forge cobblestone patch (depth 88+22=110 area)
           ground.fillStyle(0x4a4840, 0.6); ground.fillRect(360, GROUND_Y, 180, 60)
           ground.fillStyle(0x3a3830, 0.35)
           for (let ci = 0; ci < 9; ci++) ground.fillRect(362 + ci * 20, GROUND_Y + 2, 18, 12)
@@ -899,6 +977,13 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             const y = GROUND_Y + ((i * 11) % (BASE_H - GROUND_Y - 10))
             ground.fillStyle(0x2a4222, 0.50); ground.fillRect(x, y, 1, 2)
             ground.fillStyle(0x4a6838, 0.40); ground.fillRect(x + 1, y - 1, 1, 1)
+          }
+          // 2.5D PERSPECTIVE BANDS — horizontal lines that imply ground receding upward
+          // (closer to horizon = lighter; closer to viewer = normal)
+          for (let row = 0; row < 7; row++) {
+            const gy = GROUND_Y + 4 + row * 16
+            const alpha = 0.06 + row * 0.01 // very subtle
+            ground.fillStyle(0x4a6a38, alpha); ground.fillRect(0, gy, BASE_W, 1)
           }
           // Dirt footpath
           for (let i = 0; i < 13; i++) {
@@ -921,35 +1006,37 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
           fgGfx.fillStyle(0x2e4a20, 0.8)
           for (const gx of [80,95,285,300,450,465,640,655,800,815]) { fgGfx.fillRect(gx, BASE_H - 18, 2, 10); fgGfx.fillRect(gx + 3, BASE_H - 15, 1, 8) }
 
-          // ── Zone fences
-          const fenceGfx = this.add.graphics().setDepth(3)
+          // ── Zone fences — depth = their Y position
+          const fenceGfx = this.add.graphics().setDepth(GROUND_Y + 28)
           drawFenceSection(fenceGfx, 238, GROUND_Y + 28, 54)    // east side of farm
           drawFenceSection(fenceGfx, 574, GROUND_Y + 28, 50)    // west side of scholar zone
 
-          // ── Scattered flowers (denser, more variety)
+          // ── Scattered flowers — ground level, depth by Y
           const flowerColors = [0xe84040, 0xe8d040, 0x8040e8, 0xe880a0, 0x40c8e8, 0xffa040, 0xff6090, 0xa0e840]
           const flowerSpots = [[28,148],[42,162],[62,138],[110,180],[148,172],[168,158],[230,148],[268,162],[305,170],[348,144],[395,168],[430,178],[460,154],[488,172],[518,162],[545,148],[570,160],[612,152],[648,180],[676,162],[700,148],[730,172],[758,158],[785,168],[818,152],[848,170],[872,144],[890,160]]
           const flowerGfx = this.add.graphics().setDepth(0)
           for (const [fx, fy] of flowerSpots)
             drawFlower(flowerGfx, fx, fy, flowerColors[Math.floor(fx / 34) % flowerColors.length])
 
-          // ── Rocks (more + varied sizes)
-          const rockGfx = this.add.graphics().setDepth(0)
-          drawRock(rockGfx, 258, 106, 16, 9); drawRock(rockGfx, 271, 112, 10, 6)
-          drawRock(rockGfx, 588, 104, 13, 7); drawRock(rockGfx, 601, 110, 9, 5)
-          drawRock(rockGfx, 308, 178, 12, 7); drawRock(rockGfx, 560, 170, 8, 5)
-          drawRock(rockGfx, 335, 145, 7, 4); drawRock(rockGfx, 718, 162, 10, 6)
-          drawRock(rockGfx, 850, 138, 8, 5); drawRock(rockGfx, 880, 152, 6, 4)
+          // ── Rocks — mid-ground (depth = their Y)
+          const rockNear = this.add.graphics().setDepth(178)
+          drawRock(rockNear, 308, 178, 12, 7); drawRock(rockNear, 560, 170, 8, 5)
+          const rockMid = this.add.graphics().setDepth(110)
+          drawRock(rockMid, 258, 106, 16, 9); drawRock(rockMid, 271, 112, 10, 6)
+          drawRock(rockMid, 588, 104, 13, 7); drawRock(rockMid, 601, 110, 9, 5)
+          drawRock(rockMid, 335, 145, 7, 4); drawRock(rockMid, 718, 162, 10, 6)
+          drawRock(rockMid, 850, 138, 8, 5); drawRock(rockMid, 880, 152, 6, 4)
 
-          // ── Trees (denser planting — 7 trees total)
-          const treesGfx = this.add.graphics().setDepth(0)
-          drawTree(treesGfx, 42,  GROUND_Y, 1)
-          drawTree(treesGfx, 250, GROUND_Y, 2)
-          drawTree(treesGfx, 310, GROUND_Y, 1)
-          drawTree(treesGfx, 594, GROUND_Y, 1)
-          drawTree(treesGfx, 658, GROUND_Y, 2)   // Mason's reading tree
-          drawTree(treesGfx, 740, GROUND_Y, 1)
-          drawTree(treesGfx, 890, GROUND_Y, 1)
+          // ── Trees — each gets its own graphics with depth = trunk-base Y (Y-sort)
+          // Background trees at GROUND_Y (depth 88) — behind buildings + characters
+          const tBg1 = this.add.graphics().setDepth(GROUND_Y); drawTree(tBg1,  44, GROUND_Y, 1)
+          const tBg2 = this.add.graphics().setDepth(GROUND_Y); drawTree(tBg2, 252, GROUND_Y, 2)
+          const tBg3 = this.add.graphics().setDepth(GROUND_Y); drawTree(tBg3, 312, GROUND_Y, 1)
+          const tBg4 = this.add.graphics().setDepth(GROUND_Y); drawTree(tBg4, 596, GROUND_Y, 1)
+          const tBg5 = this.add.graphics().setDepth(GROUND_Y); drawTree(tBg5, 740, GROUND_Y, 1)
+          const tBg6 = this.add.graphics().setDepth(GROUND_Y); drawTree(tBg6, 892, GROUND_Y, 1)
+          // Mid-ground reading tree (Mason's zone) at y=104 — in front of buildings(118), behind characters
+          const tMid = this.add.graphics().setDepth(104); drawTree(tMid, 660, 104, 2)
 
           // ── Bushes (more, clustered)
           const bushGfx = this.add.graphics().setDepth(0)
@@ -958,61 +1045,65 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
           drawBush(bushGfx, 876, 168); drawBush(bushGfx, 886, 174)
           drawBush(bushGfx, 330, 164); drawBush(bushGfx, 710, 158)
 
-          // ── Hay bales (farm zone) + campfire (central crossroads)
-          const propsGfx = this.add.graphics().setDepth(2)
-          drawHayBale(propsGfx, 210, 140); drawHayBale(propsGfx, 232, 144)
-          drawCampfire(propsGfx, 300, 178)    // crossroads campfire between zones
+          // ── Hay bales (depth = their Y) + campfire
+          const hayGfx = this.add.graphics().setDepth(148)
+          drawHayBale(hayGfx, 216, 148); drawHayBale(hayGfx, 238, 152)
+          const campfireGfx = this.add.graphics().setDepth(178)
+          drawCampfire(campfireGfx, 302, 178)
 
-          // ── Wheat rows for Lil Claw's farm
+          // ── Wheat rows for Lil Claw's farm — each row gets its own depth
           this.wheats = []
           const wheatXs = [34, 46, 58, 70, 82, 94]
           for (const wx of wheatXs) {
             const ripe = wx % 24 < 12
-            const wg = this.add.graphics().setDepth(1)
-            drawWheat(wg, wx, 178, ripe)
-            this.wheats.push({ g: wg, x: wx, y: 178, ripe })
-            const wg2 = this.add.graphics().setDepth(1)
-            drawWheat(wg2, wx, 166, !ripe)
-            this.wheats.push({ g: wg2, x: wx, y: 166, ripe: !ripe })
+            const wg = this.add.graphics().setDepth(168)   // nearer row
+            drawWheat(wg, wx, 168, ripe)
+            this.wheats.push({ g: wg, x: wx, y: 168, ripe })
+            const wg2 = this.add.graphics().setDepth(155)  // farther row
+            drawWheat(wg2, wx, 155, !ripe)
+            this.wheats.push({ g: wg2, x: wx, y: 155, ripe: !ripe })
           }
-          // Veggie plots (right half of Lil Claw zone)
-          const plotGfx = this.add.graphics().setDepth(1)
-          const plots = [[145,175,3],[165,175,2],[185,175,1],[145,188,1],[165,188,3],[185,188,2]]
+          // Veggie plots (depth = their Y)
+          const plotGfx = this.add.graphics().setDepth(168)
+          const plots = [[148,168,3],[168,168,2],[188,168,1],[148,178,1],[168,178,3],[188,178,2]]
           for (const [px, py, gr] of plots) drawPlot(plotGfx, px, py, gr as 0|1|2|3)
 
-          // ── Chicken coop + chickens (in Lil Claw's zone)
-          this.coopG = this.add.graphics().setDepth(1); drawCoop(this.coopG, 178, 108)
+          // ── Chicken coop + chickens (Lil Claw zone — depth 138, in front of farmhouse at 118)
+          this.coopG = this.add.graphics().setDepth(138); drawCoop(this.coopG, 188, 138)
           this.chickens = []
           for (let i = 0; i < 3; i++) {
-            const cg = this.add.graphics().setDepth(2)
-            const cx = 158 + i * 14, cy = 130
+            const cg = this.add.graphics()  // depth set dynamically in update()
+            const cx = 168 + i * 14, cy = 145
             drawChicken(cg, cx, cy, i % 2 === 0 ? "right" : "left")
+            cg.setDepth(cy)
             this.chickens.push({
               g: cg, wx: cx, wy: cy,
-              tx: 145 + Math.random() * 60,
-              ty: 122 + Math.random() * 14,
+              tx: 155 + Math.random() * 55,
+              ty: 132 + Math.random() * 20,
               dir: i % 2 === 0 ? "right" : "left",
               wait: 20 + Math.random() * 80,
             })
           }
 
-          // ── Cow (Lil Claw's livestock)
-          this.cowG = this.add.graphics().setDepth(2)
-          drawCow(this.cowG, 172, 132, "right")
+          // ── Cow (depth set dynamically in update() — initially at y=142)
+          this.cowG = this.add.graphics()
+          this.cowState = { wx: 178, wy: 142, tx: 192, ty: 138, dir: "right", wait: 60 }
+          drawCow(this.cowG, 178, 142, "right")
+          this.cowG.setDepth(142)
 
-          // ── Pond (Mason's zone, right side)
-          this.pondG = this.add.graphics().setDepth(1)
+          // ── Pond (Mason's zone — depth 174, in foreground)
+          this.pondG = this.add.graphics().setDepth(174)
           drawPond(this.pondG, 845, 174)
 
-          // ── Well and scarecrow (between zones)
-          this.wellG = this.add.graphics().setDepth(1); drawWell(this.wellG, 600, 172)
-          this.scarecrowG = this.add.graphics().setDepth(1); drawScarecrow(this.scarecrowG, 280, 172)
+          // ── Well and scarecrow — depth = their Y
+          this.wellG = this.add.graphics().setDepth(172); drawWell(this.wellG, 600, 172)
+          this.scarecrowG = this.add.graphics().setDepth(172); drawScarecrow(this.scarecrowG, 282, 172)
 
-          // ── Workstations
+          // ── Workstations — depth = station.y so characters Y-sort correctly around them
           this.stations = []
           const kinds: ("manager"|"forge"|"study")[] = ["manager", "forge", "study"]
           AGENTS.forEach((a, i) => {
-            const sg = this.add.graphics().setDepth(1)
+            const sg = this.add.graphics().setDepth(a.station.y)  // Y-sort: building base
             drawStation(sg, kinds[i], 0, 0)
             sg.setPosition(a.station.x, a.station.y).setScale(STATION_SCALE)
             this.stations.push(sg)
@@ -1038,15 +1129,15 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
                 tex.add(d * SWALK + f, 0, f * SW, d * SH, SW, SH)
           })
 
-          // ── Agents (sprites)
+          // ── Agents (sprites) — initial depth = home.y; overridden every frame for Y-sort
           AGENTS.forEach((a, i) => {
             const key = `char-${a.id}`
             const sprite = this.add.sprite(a.home.x, a.home.y, key, 0)
               .setScale(SPRITE_SCALE)
-              .setDepth(50 + i)
+              .setDepth(a.home.y)
               .setOrigin(0.5, 1)  // feet at (wx, wy)
-            const toolG = this.add.graphics().setDepth(52 + i)
-            const glow  = this.add.graphics().setDepth(45 + i)
+            const toolG = this.add.graphics().setDepth(a.home.y + 1)
+            const glow  = this.add.graphics().setDepth(a.home.y - 2)
             const nameTag = this.add.text(a.home.x, a.home.y + 6, a.name, {
               fontFamily: "monospace", fontSize: "9px",
               color: a.colorCss, stroke: "#080406", strokeThickness: 4,
@@ -1178,7 +1269,7 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             // ── Target selection (role-specific behaviors)
             if (ag.isWorking) {
               ag.tx = ag.cfg.station.x + 28
-              ag.ty = ag.cfg.station.y + 12
+              ag.ty = ag.cfg.station.y + 18  // in front of building base (station.y+18 > station.y)
 
             } else if (ag.id === "mason") {
               // Scholar: rotate through read / fish / visit / wander
@@ -1198,9 +1289,9 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
                 }
               }
               if (ag.masonMode === "read") {
-                ag.tx = 660; ag.ty = 172   // near reading tree
+                ag.tx = 662; ag.ty = 116   // near mid-ground reading tree (y=104 tree base)
               } else if (ag.masonMode === "fish") {
-                ag.tx = 832; ag.ty = 172   // pond edge
+                ag.tx = 834; ag.ty = 170   // pond edge
               } else if (ag.masonMode === "visit") {
                 ag.tx = ag.masonVisitX
                 ag.ty = ag.masonVisitY
@@ -1222,9 +1313,9 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
                 ag.goopTarget = roll < 0.35 ? "forge" : roll < 0.6 ? "anvil" : roll < 0.75 ? "logs" : "wander"
                 ag.goopTargetTimer = 200 + Math.random() * 200
               }
-              if (ag.goopTarget === "forge") { ag.tx = ag.cfg.station.x + 10; ag.ty = ag.cfg.station.y + 8 }
-              else if (ag.goopTarget === "anvil") { ag.tx = ag.cfg.station.x + 50; ag.ty = ag.cfg.station.y }
-              else if (ag.goopTarget === "logs") { ag.tx = ag.cfg.station.x - 28; ag.ty = ag.cfg.station.y + 2 }
+              if (ag.goopTarget === "forge") { ag.tx = ag.cfg.station.x + 10; ag.ty = ag.cfg.station.y + 22 }
+              else if (ag.goopTarget === "anvil") { ag.tx = ag.cfg.station.x + 52; ag.ty = ag.cfg.station.y + 15 }
+              else if (ag.goopTarget === "logs") { ag.tx = ag.cfg.station.x - 52; ag.ty = ag.cfg.station.y + 10 }
               else {
                 if (Math.abs(ag.tx - ag.wx) < 1 && Math.abs(ag.ty - ag.wy) < 1 && ag.wait <= 0) {
                   const z = ag.cfg.zone
@@ -1242,8 +1333,8 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
                 ag.lilTarget = roll < 0.4 ? "crops" : roll < 0.6 ? "coop" : "wander"
                 ag.lilTargetTimer = 240 + Math.random() * 200
               }
-              if (ag.lilTarget === "crops") { ag.tx = 80 + Math.random() * 110; ag.ty = 170 + Math.random() * 18 }
-              else if (ag.lilTarget === "coop") { ag.tx = 170; ag.ty = 135 }
+              if (ag.lilTarget === "crops") { ag.tx = 40 + Math.random() * 100; ag.ty = 155 + Math.random() * 18 }
+              else if (ag.lilTarget === "coop") { ag.tx = 188; ag.ty = 145 }  // new coop at 188,138
               else {
                 if (Math.abs(ag.tx - ag.wx) < 1 && Math.abs(ag.ty - ag.wy) < 1 && ag.wait <= 0) {
                   const z = ag.cfg.zone
@@ -1279,6 +1370,15 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
               : standing ? Math.sin(t / 430 + phase) * 0.7 : 0
             ag.sprite.setPosition(Math.round(ag.wx), Math.round(ag.wy + bob))
             ag.nameTag.setPosition(Math.round(ag.wx), Math.round(ag.wy + 6)).setAlpha(ag.isWorking ? 1 : 0.7)
+            // ── Y-sort: depth = world-Y so objects sort front-to-back by position
+            const depth = Math.round(ag.wy)
+            ag.sprite.setDepth(depth)
+            ag.toolG.setDepth(depth + 1)
+            ag.glow.setDepth(depth - 2)
+            ag.nameTag.setDepth(depth + 8900)  // always above sprites but per-character sorted
+            // ── Y-scale: characters shrink slightly when further back (2.5D depth illusion)
+            const ySc = 0.72 + 0.28 * Math.max(0, Math.min(1, (ag.wy - 110) / 72))
+            ag.sprite.setScale(SPRITE_SCALE * ySc)
 
             // ── Tool
             if (ag.isWorking) {
@@ -1330,22 +1430,22 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
           if (goopIsWorking) {
             const goopAg = this.ags.find(a => a.id === "goop")
             if (goopAg) {
-              // Sparks from forge chimney (forge station is at goop.station scaled)
-              const forgeX = AGENTS[1].station.x - 10 * STATION_SCALE
-              const forgeY = AGENTS[1].station.y - 26 * STATION_SCALE
+              // Sparks from forge chimney (smithy chimney is ~26px left, ~102px above station base)
+              const forgeX = AGENTS[1].station.x - 22
+              const forgeY = AGENTS[1].station.y - 102
               drawForgeSparks(this.sparkG, forgeX, forgeY, t)
             }
           } else {
             this.sparkG.clear()
           }
 
-          // ── Chickens (wander only in Lil Claw zone: x 145-215, y 118-142)
+          // ── Chickens (wander in front of farmhouse: y 128-155, depth = their wy)
           for (const ch of this.chickens) {
             if (ch.wait > 0) { ch.wait--; continue }
             const dx = ch.tx - ch.wx, dy = ch.ty - ch.wy, dist = Math.hypot(dx, dy)
             if (dist < 1.5) {
-              ch.tx = 145 + Math.random() * 68
-              ch.ty = 118 + Math.random() * 22
+              ch.tx = 152 + Math.random() * 58
+              ch.ty = 128 + Math.random() * 26
               ch.dir = ch.tx > ch.wx ? "right" : "left"
               ch.wait = 50 + Math.random() * 90
             } else {
@@ -1353,21 +1453,23 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             }
             drawChicken(ch.g, ch.wx, ch.wy, ch.dir)
             ch.g.setPosition(0, 0)
+            ch.g.setDepth(Math.round(ch.wy))  // Y-sort chickens
           }
 
-          // ── Cow (slow wander near coop)
+          // ── Cow (slow wander in front of farmhouse: y 128-150)
           const cs = this.cowState
           if (cs.wait > 0) { cs.wait-- }
           else {
             const dx = cs.tx - cs.wx, dy = cs.ty - cs.wy, d = Math.hypot(dx, dy)
             if (d < 1.5) {
-              cs.tx = 148 + Math.random() * 50; cs.ty = 126 + Math.random() * 14
+              cs.tx = 155 + Math.random() * 45; cs.ty = 128 + Math.random() * 20
               cs.dir = cs.tx > cs.wx ? "right" : "left"; cs.wait = 100 + Math.random() * 120
             } else {
               cs.wx += (dx / d) * 0.10; cs.wy += (dy / d) * 0.10
             }
           }
           drawCow(this.cowG, cs.wx, cs.wy, cs.dir)
+          this.cowG.setDepth(Math.round(cs.wy))  // Y-sort cow
 
           // ── Butterflies
           for (const bf of this.butterflies) {

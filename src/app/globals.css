@@ -2,52 +2,52 @@
 @import "tailwindcss";
 
 :root {
-  /* ── Warm dusk homestead — premium ops palette ───────────────────────────── */
-  --background:          #14100a;   /* deep warm earth */
-  --background-2:        #1b150d;   /* gradient companion */
-  --foreground:          #f6edd8;   /* warm cream */
-  --card:                #1f1810;   /* raised wood */
-  --card-2:              #271e13;   /* inset / well */
-  --card-foreground:     #f6edd8;
-  --primary:             #f0b429;   /* lantern gold — the one hero accent */
-  --primary-foreground:  #1a0f03;
-  --secondary:           #86b84e;   /* meadow green */
-  --secondary-foreground:#13190a;
-  --muted:               #2a2114;   /* dark earth */
-  --muted-foreground:    #ad9670;   /* warm tan */
-  --faint:               #7c6747;   /* faint label */
-  --border:              #352818;   /* hairline wood */
-  --border-strong:       #4a3920;
-  --success:             #86b84e;
-  --warning:             #f0b429;
-  --destructive:         #d2683f;   /* clay */
+  /* ── Warm parchment farmstead — bright daylight palette ─────────────────── */
+  --background:          #f5ecdb;   /* warm parchment */
+  --background-2:        #ede0c6;   /* gradient companion */
+  --foreground:          #28180a;   /* dark chocolate */
+  --card:                #fffcf2;   /* near-white warm */
+  --card-2:              #f5e8d2;   /* inset / well */
+  --card-foreground:     #28180a;
+  --primary:             #c47808;   /* harvest amber */
+  --primary-foreground:  #fff8e6;
+  --secondary:           #3a7c18;   /* farm green */
+  --secondary-foreground:#e8f5e0;
+  --muted:               #ede4cf;   /* soft parchment */
+  --muted-foreground:    #7a5830;   /* warm tan */
+  --faint:               #a07848;   /* faint label */
+  --border:              #d4b896;   /* warm sand */
+  --border-strong:       #b89060;
+  --success:             #3a7c18;
+  --warning:             #c47808;
+  --destructive:         #c04020;   /* brick red */
   --radius:              0.625rem;
 
   /* ── Agent colors ─────────────────────────────────────────────────────────── */
-  --agent-lil-claw:  #6ccb8a;   /* sage */
-  --agent-goop:      #57c2da;   /* sky teal */
-  --agent-mason:     #a594f5;   /* lavender */
+  --agent-lil-claw:  #1ea84e;   /* vivid green */
+  --agent-goop:      #1490b8;   /* vivid teal */
+  --agent-mason:     #5828c8;   /* vivid purple */
 
   /* ── RPG / farm mechanics ─────────────────────────────────────────────────── */
-  --pixel-gold:      #ffd24a;
-  --pixel-gold-dark: #9a6a12;
-  --pixel-hp-bg:     #2a1808;
-  --pixel-hp-low:    #d2683f;
-  --pixel-hp-warn:   #f0b429;
+  --pixel-gold:      #c47808;
+  --pixel-gold-dark: #783c00;
+  --pixel-hp-bg:     #ddd0b6;   /* light unfilled segment */
+  --pixel-hp-low:    #c04020;
+  --pixel-hp-warn:   #c47808;
 
   /* ── Elevation ────────────────────────────────────────────────────────────── */
-  --shadow-card: 0 1px 0 0 rgba(255,236,200,0.04) inset, 0 6px 18px -8px rgba(0,0,0,0.6);
-  --shadow-pop:  0 1px 0 0 rgba(255,236,200,0.06) inset, 0 12px 30px -10px rgba(0,0,0,0.7);
+  --shadow-card: 0 1px 0 0 rgba(255,248,220,0.8) inset, 0 4px 12px -4px rgba(80,50,20,0.10);
+  --shadow-pop:  0 1px 0 0 rgba(255,248,220,0.9) inset, 0 8px 24px -8px rgba(80,50,20,0.18);
 }
 
 * { border-color: var(--border); }
 
-html { color-scheme: dark; }
+html { color-scheme: light; }
 
 body {
   background:
-    radial-gradient(120% 70% at 50% -10%, rgba(240,180,41,0.07) 0%, transparent 55%),
-    radial-gradient(100% 60% at 100% 0%, rgba(134,184,78,0.05) 0%, transparent 50%),
+    radial-gradient(120% 70% at 50% -10%, rgba(196,120,8,0.05) 0%, transparent 55%),
+    radial-gradient(100% 60% at 100% 0%, rgba(58,124,24,0.04) 0%, transparent 50%),
     linear-gradient(180deg, var(--background-2) 0%, var(--background) 30%);
   background-attachment: fixed;
   color: var(--foreground);
@@ -96,7 +96,7 @@ body {
 
 /* ── Premium card surface ───────────────────────────────────────────────────── */
 .surface {
-  background: linear-gradient(180deg, var(--card) 0%, color-mix(in oklab, var(--card) 85%, #000) 100%);
+  background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
@@ -104,12 +104,12 @@ body {
 .surface-hover { transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
 .surface-hover:hover { border-color: var(--border-strong); box-shadow: var(--shadow-pop); }
 
-/* ── Glow utilities ─────────────────────────────────────────────────────────── */
-.text-glow        { text-shadow: 0 0 18px rgba(240,180,41,0.35); }
-.text-glow-gold   { text-shadow: 0 0 14px rgba(255,210,74,0.45); }
-.text-glow-green  { text-shadow: 0 0 12px rgba(134,184,78,0.4); }
-.text-glow-cyan   { text-shadow: 0 0 12px rgba(87,194,218,0.4); }
-.text-glow-purple { text-shadow: 0 0 12px rgba(165,148,245,0.4); }
+/* ── Glow utilities (drop-shadow for light theme) ───────────────────────────── */
+.text-glow        { text-shadow: 0 1px 8px rgba(196,120,8,0.22); }
+.text-glow-gold   { text-shadow: 0 1px 6px rgba(196,120,8,0.25); }
+.text-glow-green  { text-shadow: 0 1px 5px rgba(58,124,24,0.18); }
+.text-glow-cyan   { text-shadow: 0 1px 5px rgba(20,144,184,0.18); }
+.text-glow-purple { text-shadow: 0 1px 5px rgba(88,40,200,0.18); }
 
 /* ── Cursor / pulse ─────────────────────────────────────────────────────────── */
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
@@ -134,7 +134,7 @@ body {
 /* ── Skeleton shimmer ───────────────────────────────────────────────────────── */
 @keyframes shimmer { 0%{background-position:-400px 0} 100%{background-position:400px 0} }
 .skeleton {
-  background: linear-gradient(90deg, var(--card-2) 25%, #3a2c17 50%, var(--card-2) 75%);
+  background: linear-gradient(90deg, var(--card-2) 25%, #ddd0b8 50%, var(--card-2) 75%);
   background-size: 800px 100%;
   animation: shimmer 1.6s ease-in-out infinite;
   border-radius: 4px;
