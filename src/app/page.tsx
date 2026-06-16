@@ -7,6 +7,7 @@ import { TokenBurnCard } from "@/components/TokenBurnCard"
 import { TaskActivityCard } from "@/components/TaskActivityCard"
 import PixelGuild from "@/components/PixelGuild"
 import { QuestPanel } from "@/components/QuestPanel"
+import { CoordinationCard } from "@/components/CoordinationCard"
 import { RefreshCw, Sprout, Sun, Moon, CloudRain, AlertCircle } from "lucide-react"
 import { formatRelativeTime } from "@/lib/utils"
 
@@ -111,6 +112,12 @@ export default function DashboardPage() {
             ))}
             <QuestPanel taskDetails={state?.task_details ?? null} isLoading={loading} />
           </div>
+        </section>
+
+        {/* ── The Exchange (A2A coordination) ─────────────────────────────── */}
+        <section className="fade-rise">
+          <Eyebrow>The Exchange</Eyebrow>
+          <CoordinationCard taskDetails={state?.task_details ?? null} isLoading={loading} />
         </section>
 
         {/* ── The Ledger ──────────────────────────────────────────────────── */}
