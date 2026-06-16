@@ -8,7 +8,7 @@ const GROUND_Y = 88
 // Light source top-left; auto silhouette outline; hue-shifted color ramps.
 const SW = 24, SH = 40, SDIRS = 4, SWALK = 4
 const SPRITE_SCALE = 1.5
-const STATION_SCALE = 1.85
+const STATION_SCALE = 1.0
 const OUTLINE = 0x1b0f14
 
 const AGENTS = [
@@ -357,45 +357,227 @@ function drawForgeSparks(g: Phaser.GameObjects.Graphics, x: number, y: number, t
   }
 }
 
+// ── Farmhouse (Lil Claw): two-storey cottage w/ chimney, shuttered windows, door
+function drawFarmhouse(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+  // stone foundation
+  g.fillStyle(0x7a6a50, 1); g.fillRect(x - 24, y - 2, 48, 4)
+  g.fillStyle(0x5a5040, 1); g.fillRect(x - 24, y - 1, 48, 1)
+  // walls — warm plank wood
+  g.fillStyle(0x8a5c2a, 1); g.fillRect(x - 22, y - 24, 44, 22)
+  // plank lines
+  g.fillStyle(0x6a4418, 0.4); for (let r = 0; r < 4; r++) g.fillRect(x - 22, y - 20 + r * 5, 44, 1)
+  // shadow right + bottom
+  g.fillStyle(0x4a2c10, 0.4); g.fillRect(x + 20, y - 24, 2, 22)
+  // ── Roof: two-slope with dark ridge
+  g.fillStyle(0xb83020, 1); g.fillTriangle(x - 28, y - 24, x + 28, y - 24, x, y - 46)
+  g.fillStyle(0x861e14, 1); g.fillTriangle(x, y - 46, x + 28, y - 24, x + 14, y - 24)
+  // roof outline
+  g.fillStyle(0x3a1008, 0.6); g.fillRect(x - 28, y - 25, 56, 1)
+  // ridge cap
+  g.fillStyle(0x3a1808, 1); g.fillRect(x - 1, y - 47, 2, 3)
+  // ── Chimney (left side)
+  g.fillStyle(0x6a5040, 1); g.fillRect(x - 16, y - 55, 10, 15)
+  g.fillStyle(0x8a6a50, 1); g.fillRect(x - 16, y - 55, 10, 2)
+  g.fillStyle(0x4a3428, 0.5); g.fillRect(x - 9, y - 55, 2, 15)
+  // chimney smoke puffs (static wisps)
+  g.fillStyle(0xc8b8a4, 0.22); g.fillCircle(x - 11, y - 60, 5)
+  g.fillStyle(0xc8b8a4, 0.15); g.fillCircle(x - 9,  y - 66, 4)
+  g.fillStyle(0xc8b8a4, 0.10); g.fillCircle(x - 7,  y - 71, 3)
+  // ── Door (center)
+  g.fillStyle(0x3a2010, 1); g.fillRect(x - 5, y - 15, 10, 15)
+  g.fillStyle(0x5a3018, 0.6); g.fillRect(x - 4, y - 14, 1, 14); g.fillRect(x + 3, y - 14, 1, 14)
+  g.fillStyle(0xd4a855, 1); g.fillRect(x + 3, y - 7, 2, 2)         // door knob
+  // rounded top
+  g.fillStyle(0x2a1008, 1); g.fillRect(x - 5, y - 17, 10, 2)
+  // ── Windows (left + right with shutters)
+  for (const wx of [x - 16, x + 10]) {
+    g.fillStyle(0x2a1808, 1); g.fillRect(wx - 1, y - 22, 10, 11)
+    g.fillStyle(0x6eb4d4, 0.85); g.fillRect(wx, y - 21, 8, 9)
+    g.fillStyle(0xa0d8f0, 0.5); g.fillRect(wx, y - 21, 4, 4)        // pane highlight
+    g.fillStyle(0x2a1808, 0.7); g.fillRect(wx + 3, y - 21, 1, 9); g.fillRect(wx, y - 18, 8, 1) // cross pane
+    // shutters
+    g.fillStyle(0x5ec27e, 1); g.fillRect(wx - 3, y - 22, 3, 11); g.fillRect(wx + 8, y - 22, 3, 11)
+    g.fillStyle(0x3a9a5a, 0.5); for (let sl = 0; sl < 4; sl++) g.fillRect(wx - 3, y - 21 + sl * 3, 3, 1)
+  }
+  // ── Flower boxes under windows
+  g.fillStyle(0x6a3a18, 1); g.fillRect(x - 19, y - 12, 10, 3); g.fillRect(x + 8, y - 12, 10, 3)
+  g.fillStyle(0xc44a50, 1); for (let fp = 0; fp < 3; fp++) g.fillRect(x - 17 + fp * 3, y - 14, 2, 3)
+  g.fillStyle(0xf08050, 1); for (let fp = 0; fp < 3; fp++) g.fillRect(x + 10 + fp * 3, y - 14, 2, 3)
+  // ── Sign post (right side)
+  g.fillStyle(0x6a3a18, 1); g.fillRect(x + 27, y - 18, 2, 18)
+  g.fillStyle(0xc8a870, 1); g.fillRect(x + 24, y - 28, 18, 12)
+  g.fillStyle(0x4a2810, 1); g.fillRect(x + 24, y - 28, 18, 1); g.fillRect(x + 24, y - 17, 18, 1)
+  g.fillRect(x + 24, y - 28, 1, 12); g.fillRect(x + 41, y - 28, 1, 12)
+  // text lines on sign
+  g.fillStyle(0x4a2810, 0.6); g.fillRect(x + 27, y - 25, 12, 1); g.fillRect(x + 27, y - 22, 10, 1); g.fillRect(x + 27, y - 19, 8, 1)
+}
+
+// ── Smithy (Goop): large stone forge hall with visible fire, chimney, anvil
+function drawSmithy(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+  // cobblestone floor platform
+  g.fillStyle(0x5a5248, 1); g.fillRect(x - 36, y - 2, 72, 4)
+  g.fillStyle(0x6a6258, 0.5); for (let ci = 0; ci < 8; ci++) g.fillRect(x - 34 + ci * 9, y - 1, 8, 2)
+  // rear wall (stone)
+  g.fillStyle(0x5a5248, 1); g.fillRect(x - 28, y - 34, 56, 32)
+  // stone texture (mortar lines)
+  g.fillStyle(0x3a3230, 0.45)
+  g.fillRect(x - 28, y - 28, 56, 1); g.fillRect(x - 28, y - 22, 56, 1)
+  g.fillRect(x - 28, y - 16, 56, 1); g.fillRect(x - 28, y - 10, 56, 1)
+  g.fillRect(x - 14, y - 34, 1, 32); g.fillRect(x + 0,  y - 28, 1, 22)
+  g.fillRect(x + 14, y - 34, 1, 32)
+  // shadow right side
+  g.fillStyle(0x2a2220, 0.5); g.fillRect(x + 24, y - 34, 4, 32)
+  // ── Metal roof (sloped, dark)
+  g.fillStyle(0x4a5058, 1); g.fillTriangle(x - 32, y - 34, x + 32, y - 34, x, y - 50)
+  g.fillStyle(0x384048, 1); g.fillTriangle(x, y - 50, x + 32, y - 34, x + 16, y - 34)
+  g.fillStyle(0x5a6068, 0.4); g.fillRect(x - 10, y - 50, 20, 4)   // ridge highlight
+  // ── Chimney (left, massive)
+  g.fillStyle(0x4a4038, 1); g.fillRect(x - 24, y - 62, 14, 28)
+  g.fillStyle(0x6a5848, 1); g.fillRect(x - 24, y - 62, 14, 3)
+  g.fillStyle(0x3a3028, 0.5); g.fillRect(x - 12, y - 62, 2, 28)
+  // glowing chimney top
+  g.fillStyle(0xff8020, 0.25); g.fillCircle(x - 17, y - 66, 7)
+  g.fillStyle(0xffc060, 0.15); g.fillCircle(x - 17, y - 70, 5)
+  // ── Open forge bay (center)
+  g.fillStyle(0x1e1a16, 1); g.fillRect(x - 14, y - 26, 28, 24)
+  // fire glow layers
+  g.fillStyle(0xff4800, 0.55); g.fillRect(x - 10, y - 10, 20, 8)
+  g.fillStyle(0xff8020, 0.70); g.fillRect(x - 8, y - 9, 16, 6)
+  g.fillStyle(0xffb840, 0.80); g.fillRect(x - 5, y - 8, 10, 4)
+  g.fillStyle(0xfff060, 0.60); g.fillRect(x - 3, y - 7, 6, 2)
+  // fire ground glow
+  g.fillStyle(0xff6020, 0.18); g.fillEllipse(x, y - 5, 40, 10)
+  // bellows (left of fire)
+  g.fillStyle(0x6a3818, 1); g.fillRect(x - 14, y - 20, 6, 10)
+  g.fillStyle(0x4a2810, 1); g.fillRect(x - 14, y - 15, 6, 1); g.fillRect(x - 14, y - 12, 6, 1)
+  g.fillStyle(0x8a5028, 0.6); g.fillRect(x - 14, y - 20, 2, 10)
+  // ── Tool wall (right side of bay)
+  g.fillStyle(0x3a3028, 1); g.fillRect(x + 8, y - 26, 6, 24)
+  g.fillStyle(0x6a6058, 0.8)  // hammers
+  g.fillRect(x + 10, y - 24, 2, 6); g.fillRect(x + 9, y - 24, 4, 2)
+  g.fillRect(x + 10, y - 16, 2, 6); g.fillRect(x + 9, y - 18, 4, 2)
+  // ── Anvil (right of building)
+  g.fillStyle(0x2a2822, 1); g.fillRect(x + 30, y - 8, 16, 6)
+  g.fillStyle(0x4a4840, 1); g.fillRect(x + 30, y - 9, 16, 2)
+  g.fillStyle(0x6a6858, 0.4); g.fillRect(x + 30, y - 9, 6, 1)       // highlight
+  g.fillStyle(0x3a3830, 1); g.fillRect(x + 34, y - 2, 8, 4)
+  g.fillStyle(0x2a2820, 1); g.fillRect(x + 36, y + 2, 4, 2)
+  // ── Coal + barrel (left of building)
+  g.fillStyle(0x1a1812, 1); g.fillEllipse(x - 38, y - 3, 18, 8)     // coal pile
+  g.fillStyle(0x2a2820, 0.7); g.fillEllipse(x - 36, y - 5, 10, 5)
+  g.fillStyle(0x5a4030, 1); g.fillRect(x - 50, y - 14, 10, 14)      // barrel
+  g.fillStyle(0x3a2820, 0.5); for (let bl = 0; bl < 3; bl++) g.fillRect(x - 50, y - 12 + bl * 4, 10, 1)
+  g.fillStyle(0x6a5040, 0.4); g.fillRect(x - 50, y - 14, 2, 14)     // barrel highlight
+}
+
+// ── Scholar tower (Mason): stone turret, ivy, arched window with candlelight
+function drawScholarTower(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+  // moss ground patch
+  g.fillStyle(0x2a5a2a, 0.35); g.fillEllipse(x, y, 60, 10)
+  // stone base steps
+  g.fillStyle(0x7a6a58, 1); g.fillRect(x - 18, y - 4, 36, 4)
+  g.fillStyle(0x6a5a48, 1); g.fillRect(x - 20, y - 2, 40, 2)
+  // ── Tower body (stone masonry)
+  g.fillStyle(0x6a6050, 1); g.fillRect(x - 14, y - 50, 28, 46)
+  // stone block pattern (mortar)
+  g.fillStyle(0x4a4038, 0.4)
+  g.fillRect(x - 14, y - 42, 28, 1); g.fillRect(x - 14, y - 34, 28, 1)
+  g.fillRect(x - 14, y - 26, 28, 1); g.fillRect(x - 14, y - 18, 28, 1)
+  g.fillRect(x - 7,  y - 46, 1, 40); g.fillRect(x + 0,  y - 42, 1, 34)
+  g.fillRect(x + 7,  y - 46, 1, 40)
+  // shadow right
+  g.fillStyle(0x2a2018, 0.45); g.fillRect(x + 10, y - 50, 4, 46)
+  // ivy (left side)
+  g.fillStyle(0x2a5a1a, 0.7); g.fillRect(x - 14, y - 48, 3, 22)
+  g.fillStyle(0x3a6a2a, 0.6); for (let iv = 0; iv < 5; iv++) { g.fillRect(x - 16, y - 45 + iv * 5, 4, 3); g.fillRect(x - 14, y - 43 + iv * 5, 2, 2) }
+  // ── Battlements (top: 4 merlons)
+  g.fillStyle(0x5a5040, 1)
+  for (let m = 0; m < 4; m++) g.fillRect(x - 13 + m * 9, y - 58, 6, 8)
+  g.fillStyle(0x4a4030, 0.5); for (let m = 0; m < 4; m++) g.fillRect(x - 11 + m * 9, y - 58, 2, 8)
+  // ── Arched window (center)
+  g.fillStyle(0x1a1614, 1); g.fillRect(x - 5, y - 36, 10, 14)
+  g.fillStyle(0x1a1614, 1); g.fillEllipse(x, y - 36, 10, 8)         // arch top
+  // candlelight inside
+  g.fillStyle(0xffa830, 0.65); g.fillRect(x - 4, y - 34, 8, 10)
+  g.fillStyle(0xffe080, 0.45); g.fillRect(x - 2, y - 33, 4, 7)
+  // candle
+  g.fillStyle(0xf0eee8, 1); g.fillRect(x - 1, y - 26, 2, 6)
+  g.fillStyle(0xffd060, 1); g.fillRect(x - 1, y - 28, 2, 2)
+  // frame
+  g.fillStyle(0x3a3028, 0.7); g.fillRect(x - 6, y - 37, 12, 2); g.fillRect(x - 6, y - 22, 12, 1)
+  g.fillRect(x - 6, y - 36, 1, 14); g.fillRect(x + 5, y - 36, 1, 14)
+  // ── Hanging lantern (right, from bracket)
+  g.fillStyle(0x4a3820, 1); g.fillRect(x + 14, y - 44, 1, 8); g.fillRect(x + 14, y - 44, 6, 1)
+  g.fillStyle(0x8a7050, 1); g.fillRect(x + 16, y - 38, 7, 9)
+  g.fillStyle(0xffd060, 0.75); g.fillRect(x + 17, y - 37, 5, 7)     // lantern glow
+  g.fillStyle(0xffe8a0, 0.45); g.fillRect(x + 18, y - 36, 3, 5)
+  g.fillStyle(0x6a5038, 1); g.fillRect(x + 15, y - 39, 9, 2); g.fillRect(x + 15, y - 29, 9, 2)
+  g.fillStyle(0xff9020, 0.25); g.fillEllipse(x + 20, y - 32, 18, 16) // lantern halo
+  // ── Outdoor lectern / reading stand (in front)
+  g.fillStyle(0x7a6a50, 1); g.fillRect(x - 8, y - 14, 16, 4)
+  g.fillStyle(0x5a4a38, 1); g.fillRect(x - 6, y - 13, 12, 1); g.fillRect(x - 6, y - 11, 12, 1)
+  g.fillStyle(0x3a2a18, 1); g.fillRect(x - 1, y - 10, 2, 10)
+  g.fillStyle(0x6a5840, 1); g.fillRect(x - 1, y - 18, 2, 2)
+  // open book on lectern
+  g.fillStyle(0xf0e8d4, 1); g.fillRect(x - 7, y - 17, 14, 4)
+  g.fillStyle(0x8a7858, 0.5); g.fillRect(x - 1, y - 17, 1, 4)       // spine
+  g.fillStyle(0x6a5a40, 0.4); g.fillRect(x - 6, y - 16, 5, 1); g.fillRect(x - 6, y - 14, 4, 1)
+  g.fillStyle(0x6a5a40, 0.4); g.fillRect(x + 2, y - 16, 5, 1); g.fillRect(x + 3, y - 14, 4, 1)
+}
+
 function drawStation(g: Phaser.GameObjects.Graphics, kind: "manager"|"forge"|"study", x: number, y: number) {
   g.clear()
-  if (kind === "manager") {
-    g.fillStyle(0x6a3a18, 1); g.fillRect(x - 12, y - 10, 24, 12)
-    g.fillStyle(0x8a5a2a, 1); g.fillRect(x - 12, y - 10, 24, 2)
-    g.fillStyle(0xc44a2a, 1); g.fillTriangle(x - 16, y - 10, x + 16, y - 10, x, y - 22)
-    g.fillStyle(0x8a2a14, 1); g.fillTriangle(x, y - 22, x + 16, y - 10, x + 8, y - 10)
-    g.fillStyle(0x2a1808, 1); g.fillRect(x - 3, y - 7, 6, 9)
-    g.fillStyle(0xf3c8a4, 1); g.fillRect(x + 1, y - 3, 1, 1)
-    g.fillStyle(0x6a3a18, 1); g.fillRect(x + 18, y - 12, 1, 14)
-    g.fillStyle(0xdecb95, 1); g.fillRect(x + 17, y - 14, 14, 6)
-    g.fillStyle(0x4a2810, 1)
-    g.fillRect(x + 18, y - 13, 12, 1); g.fillRect(x + 18, y - 11, 12, 1); g.fillRect(x + 18, y - 9, 8, 1)
-  } else if (kind === "forge") {
-    g.fillStyle(0x6a6058, 1); g.fillRect(x - 14, y - 14, 28, 16)
-    g.fillStyle(0x4a4238, 1); g.fillRect(x - 14, y - 14, 28, 2)
-    g.fillStyle(0x2a1810, 1); g.fillRect(x - 8, y - 5, 16, 7)
-    g.fillStyle(0xff7a2a, 0.7); g.fillRect(x - 6, y - 3, 12, 4)
-    g.fillStyle(0xffd040, 0.5); g.fillRect(x - 4, y - 2, 8, 2)
-    g.fillStyle(0x3a3028, 1); g.fillRect(x - 10, y - 26, 6, 12)
-    g.fillStyle(0x5a4a3a, 1); g.fillRect(x - 11, y - 27, 8, 2)
-    // Anvil
-    g.fillStyle(0x2a2a2a, 1); g.fillRect(x + 16, y - 6, 10, 4)
-    g.fillStyle(0x4a4a4a, 1); g.fillRect(x + 16, y - 7, 10, 1)
-    g.fillStyle(0x1a1a1a, 1); g.fillRect(x + 18, y - 2, 6, 4)
-    // Lumber stack
-    g.fillStyle(0x6a3a18, 1); g.fillRect(x - 22, y - 5, 6, 7)
-    g.fillStyle(0x8a5a2a, 1); g.fillRect(x - 22, y - 5, 6, 1); g.fillRect(x - 23, y, 8, 3)
-  } else {
-    g.fillStyle(0x6a3a18, 1); g.fillRect(x - 14, y - 6, 28, 8)
-    g.fillStyle(0x4a2810, 1); g.fillRect(x - 14, y - 6, 28, 1); g.fillRect(x - 14, y + 1, 28, 1)
-    g.fillRect(x - 13, y + 1, 2, 6); g.fillRect(x + 11, y + 1, 2, 6)
-    g.fillStyle(0xfdfaf0, 1); g.fillRect(x - 8, y - 5, 16, 5)
-    g.fillStyle(0x8a7a5a, 1); g.fillRect(x - 7, y - 4, 14, 1); g.fillRect(x - 7, y - 2, 12, 1)
-    g.fillStyle(0x4a3a2a, 1); g.fillRect(x, y - 5, 1, 5)
-    g.fillStyle(0xe8c8a4, 1); g.fillRect(x + 12, y - 11, 2, 6)
-    g.fillStyle(0xfacc6a, 0.9); g.fillRect(x + 12, y - 13, 2, 2)
-    g.fillStyle(0xfff0a0, 0.7); g.fillRect(x + 12, y - 12, 1, 1)
-  }
+  if (kind === "manager") drawFarmhouse(g, x, y)
+  else if (kind === "forge") drawSmithy(g, x, y)
+  else drawScholarTower(g, x, y)
+}
+
+function drawCloud(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number) {
+  const h = Math.round(w * 0.38)
+  g.fillStyle(0xf0e8d8, 0.18); g.fillEllipse(x, y, w, h)
+  g.fillStyle(0xf8f0e4, 0.12); g.fillEllipse(x - w * 0.22, y - h * 0.2, w * 0.55, h * 0.75)
+  g.fillStyle(0xfdf8f0, 0.10); g.fillEllipse(x + w * 0.18, y - h * 0.25, w * 0.45, h * 0.7)
+  g.fillStyle(0xe0d8cc, 0.08); g.fillEllipse(x, y + h * 0.2, w * 0.7, h * 0.5)
+}
+
+function drawFencePost(g: Phaser.GameObjects.Graphics, x: number, y: number, h: number) {
+  g.fillStyle(0x8a6a3a, 1); g.fillRect(x, y - h, 4, h)
+  g.fillStyle(0xb89050, 0.5); g.fillRect(x, y - h, 2, h)
+  g.fillStyle(0x5a3a18, 0.5); g.fillRect(x + 3, y - h, 1, h)
+  g.fillStyle(0xa07040, 1); g.fillRect(x - 1, y - h - 3, 6, 3)       // post cap
+}
+
+function drawFenceSection(g: Phaser.GameObjects.Graphics, x: number, y: number, len: number) {
+  for (let p = 0; p <= len; p += 18) drawFencePost(g, x + p, y, 18)
+  g.fillStyle(0x8a6a3a, 1); g.fillRect(x, y - 13, len + 4, 2)
+  g.fillStyle(0x8a6a3a, 1); g.fillRect(x, y - 7, len + 4, 2)
+  g.fillStyle(0xb89050, 0.4); g.fillRect(x, y - 13, len + 4, 1)
+  g.fillStyle(0xb89050, 0.4); g.fillRect(x, y - 7, len + 4, 1)
+}
+
+function drawHayBale(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+  g.fillStyle(0xd4a030, 1); g.fillEllipse(x, y, 22, 14)
+  g.fillStyle(0xe8c050, 0.6); g.fillEllipse(x - 3, y - 2, 14, 8)
+  g.fillStyle(0xa87820, 0.5)
+  g.fillRect(x - 9, y - 2, 18, 1); g.fillRect(x - 8, y + 1, 16, 1); g.fillRect(x - 6, y - 5, 12, 1)
+  g.fillStyle(0xb89030, 0.6); g.fillRect(x - 2, y - 7, 1, 14); g.fillRect(x + 3, y - 6, 1, 12)
+}
+
+function drawCampfire(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+  // logs
+  g.fillStyle(0x5a3010, 1); g.fillRect(x - 7, y - 2, 14, 3)
+  g.fillStyle(0x3a1808, 0.6); g.fillRect(x - 6, y - 1, 12, 1)
+  // embers on ground
+  g.fillStyle(0xff4000, 0.5); g.fillEllipse(x, y, 12, 5)
+  g.fillStyle(0xff8020, 0.6); g.fillEllipse(x, y - 1, 8, 4)
+  // flames
+  g.fillStyle(0xff6010, 0.85); g.fillTriangle(x - 4, y - 2, x + 4, y - 2, x - 2, y - 11)
+  g.fillStyle(0xff8030, 0.8);  g.fillTriangle(x - 2, y - 2, x + 5, y - 2, x + 1, y - 13)
+  g.fillStyle(0xffb040, 0.7);  g.fillTriangle(x - 1, y - 2, x + 3, y - 2, x + 1, y - 9)
+  g.fillStyle(0xffe060, 0.55); g.fillTriangle(x - 1, y - 3, x + 2, y - 3, x,     y - 8)
+  // glow halo
+  g.fillStyle(0xff7020, 0.12); g.fillEllipse(x, y - 4, 32, 20)
+  g.fillStyle(0xff9040, 0.08); g.fillEllipse(x, y - 6, 48, 28)
 }
 
 function drawTree(g: Phaser.GameObjects.Graphics, x: number, y: number, size: 1|2 = 1) {
@@ -637,10 +819,10 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
           // ── Sky gradient: dusk plum → amber
           const bg = this.add.graphics().setDepth(-10)
           const sky = [
-            { t: 0.00, r: 0x2a, g: 0x22, b: 0x44 },
-            { t: 0.55, r: 0x6e, g: 0x3f, b: 0x55 },
-            { t: 0.80, r: 0xc4, g: 0x6e, b: 0x42 },
-            { t: 1.00, r: 0xf0, g: 0xb0, b: 0x52 },
+            { t: 0.00, r: 0x20, g: 0x18, b: 0x3c },
+            { t: 0.45, r: 0x5a, g: 0x30, b: 0x50 },
+            { t: 0.72, r: 0xb8, g: 0x58, b: 0x38 },
+            { t: 1.00, r: 0xf2, g: 0xa8, b: 0x48 },
           ]
           const lerp = (a: number, b: number, t: number) => Math.round(a + (b - a) * t)
           for (let y = 0; y < GROUND_Y; y++) {
@@ -653,77 +835,133 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             const col = (lerp(s0.r, s1.r, lt) << 16) | (lerp(s0.g, s1.g, lt) << 8) | lerp(s0.b, s1.b, lt)
             bg.fillStyle(col, 1); bg.fillRect(0, y, BASE_W, 1)
           }
-          // Sun
-          bg.fillStyle(0xffd27a, 0.30); bg.fillCircle(742, GROUND_Y - 6, 30)
-          bg.fillStyle(0xffe6a0, 0.55); bg.fillCircle(742, GROUND_Y - 6, 18)
-          bg.fillStyle(0xfff2cc, 0.90); bg.fillCircle(742, GROUND_Y - 6, 11)
-          // Stars
-          bg.fillStyle(0xfdf6e0, 0.8)
-          for (const [sx, sy] of [[120,16],[210,30],[330,12],[60,40],[470,20],[560,34]] as const)
-            bg.fillRect(sx, sy, 1, 1)
-          // Mountain range (jagged silhouette)
-          bg.fillStyle(0x3a3450, 0.9)
-          bg.fillTriangle(0, GROUND_Y, 90, GROUND_Y - 30, 200, GROUND_Y)
-          bg.fillTriangle(120, GROUND_Y, 220, GROUND_Y - 22, 340, GROUND_Y)
-          bg.fillStyle(0x45324a, 0.9)
-          bg.fillTriangle(280, GROUND_Y, 410, GROUND_Y - 28, 530, GROUND_Y)
-          bg.fillTriangle(460, GROUND_Y, 570, GROUND_Y - 18, 660, GROUND_Y)
-          bg.fillTriangle(620, GROUND_Y, 760, GROUND_Y - 25, 900, GROUND_Y)
+          // Setting sun (bigger, richer halo)
+          bg.fillStyle(0xff9030, 0.12); bg.fillCircle(742, GROUND_Y - 4, 44)
+          bg.fillStyle(0xffc060, 0.22); bg.fillCircle(742, GROUND_Y - 4, 32)
+          bg.fillStyle(0xffe090, 0.50); bg.fillCircle(742, GROUND_Y - 4, 20)
+          bg.fillStyle(0xfff8cc, 0.90); bg.fillCircle(742, GROUND_Y - 4, 12)
+          // Horizon bloom (wide warm strip)
+          bg.fillStyle(0xff7020, 0.10); bg.fillRect(400, GROUND_Y - 18, 500, 18)
+          bg.fillStyle(0xffb040, 0.08); bg.fillRect(500, GROUND_Y - 12, 400, 12)
+          // Stars (more, varied brightness)
+          const stars: [number, number, number][] = [[120,16,0.9],[210,30,0.7],[330,10,0.85],[60,38,0.6],[470,18,0.8],[560,32,0.65],[150,44,0.5],[290,22,0.75],[420,40,0.6],[80,12,0.7],[640,14,0.8],[380,50,0.4]]
+          for (const [sx, sy, sa] of stars) { bg.fillStyle(0xfdf6e0, sa); bg.fillRect(sx, sy, 1, 1) }
+          // Crescent moon (top-left)
+          bg.fillStyle(0xf0e8c4, 0.65); bg.fillCircle(72, 22, 9)
+          bg.fillStyle(0x38284a, 1);     bg.fillCircle(78, 20, 7)     // cutout → crescent
+          // Clouds
+          const cloudGfx = this.add.graphics().setDepth(-9)
+          drawCloud(cloudGfx, 160, 18, 80)
+          drawCloud(cloudGfx, 380, 28, 60)
+          drawCloud(cloudGfx, 620, 14, 96)
+          drawCloud(cloudGfx, 830, 32, 70)
+          // Mountain range — two layers for depth
+          bg.fillStyle(0x28284a, 0.85)
+          bg.fillTriangle(0, GROUND_Y, 90, GROUND_Y - 28, 200, GROUND_Y)
+          bg.fillTriangle(140, GROUND_Y, 240, GROUND_Y - 20, 355, GROUND_Y)
+          bg.fillStyle(0x3c2e48, 0.9)
+          bg.fillTriangle(290, GROUND_Y, 420, GROUND_Y - 32, 545, GROUND_Y)
+          bg.fillTriangle(470, GROUND_Y, 580, GROUND_Y - 20, 675, GROUND_Y)
+          bg.fillTriangle(630, GROUND_Y, 768, GROUND_Y - 28, 905, GROUND_Y)
+          // Front ridge (closer, slightly warmer tint)
+          bg.fillStyle(0x2e2232, 0.7)
+          bg.fillTriangle(0, GROUND_Y, 60, GROUND_Y - 14, 130, GROUND_Y)
+          bg.fillTriangle(200, GROUND_Y, 280, GROUND_Y - 10, 360, GROUND_Y)
+          bg.fillTriangle(550, GROUND_Y, 620, GROUND_Y - 12, 700, GROUND_Y)
+          bg.fillTriangle(820, GROUND_Y, 870, GROUND_Y - 10, 905, GROUND_Y)
           // Snow caps
-          bg.fillStyle(0xf0eee8, 0.65)
-          bg.fillTriangle(90, GROUND_Y - 30, 80, GROUND_Y - 24, 100, GROUND_Y - 24)
-          bg.fillTriangle(220, GROUND_Y - 22, 212, GROUND_Y - 17, 228, GROUND_Y - 17)
-          bg.fillTriangle(410, GROUND_Y - 28, 400, GROUND_Y - 22, 420, GROUND_Y - 22)
-          bg.fillTriangle(760, GROUND_Y - 25, 750, GROUND_Y - 19, 770, GROUND_Y - 19)
+          bg.fillStyle(0xf4f0ea, 0.60)
+          bg.fillTriangle(90, GROUND_Y - 28, 82, GROUND_Y - 22, 98, GROUND_Y - 22)
+          bg.fillTriangle(420, GROUND_Y - 32, 412, GROUND_Y - 24, 428, GROUND_Y - 24)
+          bg.fillTriangle(768, GROUND_Y - 28, 760, GROUND_Y - 20, 776, GROUND_Y - 20)
 
-          // ── Ground
+          // ── Ground base
           const ground = this.add.graphics().setDepth(-8)
-          ground.fillStyle(0x3c5733, 1); ground.fillRect(0, GROUND_Y, BASE_W, BASE_H - GROUND_Y)
-          ground.fillStyle(0x6a5a3a, 0.22); ground.fillEllipse(742, GROUND_Y + 30, 360, 120)
-          for (let i = 0; i < 80; i++) {
-            const x = (i * 17 + 11) % BASE_W
-            const y = GROUND_Y + ((i * 7) % (BASE_H - GROUND_Y))
-            ground.fillStyle(0x2e4628, 0.55); ground.fillRect(x, y, 1, 2)
-            ground.fillStyle(0x4a6a38, 0.45); ground.fillRect(x + 1, y - 1, 1, 1)
+          ground.fillStyle(0x36502e, 1); ground.fillRect(0, GROUND_Y, BASE_W, BASE_H - GROUND_Y)
+          // Zone-specific ground tints
+          ground.fillStyle(0x5a7040, 0.25); ground.fillRect(0, GROUND_Y, 240, BASE_H - GROUND_Y)       // farm: warm lush
+          ground.fillStyle(0x2a2a22, 0.20); ground.fillRect(340, GROUND_Y, 220, BASE_H - GROUND_Y)      // forge: scorched
+          ground.fillStyle(0x2a4a3a, 0.22); ground.fillRect(630, GROUND_Y, BASE_W - 630, BASE_H - GROUND_Y) // scholar: cool mossy
+          // Forge cobblestone patch
+          ground.fillStyle(0x4a4840, 0.6); ground.fillRect(360, GROUND_Y, 180, 60)
+          ground.fillStyle(0x3a3830, 0.35)
+          for (let ci = 0; ci < 9; ci++) ground.fillRect(362 + ci * 20, GROUND_Y + 2, 18, 12)
+          for (let ci = 0; ci < 8; ci++) ground.fillRect(372 + ci * 20, GROUND_Y + 16, 18, 12)
+          for (let ci = 0; ci < 9; ci++) ground.fillRect(362 + ci * 20, GROUND_Y + 30, 18, 12)
+          for (let ci = 0; ci < 8; ci++) ground.fillRect(372 + ci * 20, GROUND_Y + 44, 18, 12)
+          // Moss patches (scholar zone)
+          ground.fillStyle(0x3a6a38, 0.45); ground.fillEllipse(700, GROUND_Y + 35, 55, 20)
+          ground.fillStyle(0x2a5a28, 0.35); ground.fillEllipse(840, GROUND_Y + 50, 70, 25)
+          ground.fillStyle(0x4a7a40, 0.3); ground.fillEllipse(780, GROUND_Y + 18, 40, 14)
+          // Grass tufts (scattered)
+          for (let i = 0; i < 100; i++) {
+            const x = (i * 19 + 7) % BASE_W
+            const y = GROUND_Y + ((i * 11) % (BASE_H - GROUND_Y - 10))
+            ground.fillStyle(0x2a4222, 0.50); ground.fillRect(x, y, 1, 2)
+            ground.fillStyle(0x4a6838, 0.40); ground.fillRect(x + 1, y - 1, 1, 1)
           }
-          // Footpath
+          // Dirt footpath
           for (let i = 0; i < 13; i++) {
             const px = 60 + i * 64
-            ground.fillStyle(0x8c7e5e, 0.85); ground.fillRoundedRect(px, BASE_H - 12, 46, 7, 2)
-            ground.fillStyle(0x6a5e44, 0.5); ground.fillRoundedRect(px + 2, BASE_H - 7, 42, 2, 1)
+            ground.fillStyle(0x8a7a58, 0.80); ground.fillRoundedRect(px, BASE_H - 13, 46, 8, 2)
+            ground.fillStyle(0x6a5e44, 0.45); ground.fillRoundedRect(px + 2, BASE_H - 8, 42, 3, 1)
           }
+          // ── Foreground depth strip (bigger rocks + dark roots at very bottom)
+          const fgGfx = this.add.graphics().setDepth(200)
+          fgGfx.fillStyle(0x1c2818, 0.70); fgGfx.fillRect(0, BASE_H - 8, BASE_W, 8)
+          fgGfx.fillStyle(0x243020, 0.55); fgGfx.fillRect(0, BASE_H - 14, BASE_W, 6)
+          // large foreground rocks
+          const fgRocks: [number, number, number, number][] = [[50,BASE_H-10,28,14],[200,BASE_H-9,20,11],[390,BASE_H-11,32,14],[560,BASE_H-10,24,12],[720,BASE_H-9,26,13],[855,BASE_H-10,22,11]]
+          for (const [rx,ry,rw,rh] of fgRocks) { fgGfx.fillStyle(0x3a3630,1); fgGfx.fillEllipse(rx,ry,rw,rh); fgGfx.fillStyle(0x5a5248,0.5); fgGfx.fillEllipse(rx-rw*0.1,ry-rh*0.3,rw*0.4,rh*0.35) }
+          // exposed roots
+          fgGfx.fillStyle(0x3a2810,0.6); fgGfx.fillRect(130,BASE_H-12,3,12); fgGfx.fillRect(133,BASE_H-10,8,3)
+          fgGfx.fillRect(480,BASE_H-11,3,11); fgGfx.fillRect(483,BASE_H-9,6,2)
+          fgGfx.fillRect(780,BASE_H-10,3,10); fgGfx.fillRect(783,BASE_H-8,7,2)
+          // foreground tall grass blades
+          fgGfx.fillStyle(0x2e4a20, 0.8)
+          for (const gx of [80,95,285,300,450,465,640,655,800,815]) { fgGfx.fillRect(gx, BASE_H - 18, 2, 10); fgGfx.fillRect(gx + 3, BASE_H - 15, 1, 8) }
 
-          // ── Scattered flowers
-          const flowerColors = [0xe84040, 0xe8d040, 0x8040e8, 0xe880a0, 0x40c8e8, 0xffa040]
-          const flowerSpots = [[38,155],[55,168],[75,142],[130,185],[165,175],[250,160],[310,172],[350,145],[500,180],[540,168],[590,175],[645,158],[680,185],[720,170],[800,158],[840,172],[870,145],[888,162]]
+          // ── Zone fences
+          const fenceGfx = this.add.graphics().setDepth(3)
+          drawFenceSection(fenceGfx, 238, GROUND_Y + 28, 54)    // east side of farm
+          drawFenceSection(fenceGfx, 574, GROUND_Y + 28, 50)    // west side of scholar zone
+
+          // ── Scattered flowers (denser, more variety)
+          const flowerColors = [0xe84040, 0xe8d040, 0x8040e8, 0xe880a0, 0x40c8e8, 0xffa040, 0xff6090, 0xa0e840]
+          const flowerSpots = [[28,148],[42,162],[62,138],[110,180],[148,172],[168,158],[230,148],[268,162],[305,170],[348,144],[395,168],[430,178],[460,154],[488,172],[518,162],[545,148],[570,160],[612,152],[648,180],[676,162],[700,148],[730,172],[758,158],[785,168],[818,152],[848,170],[872,144],[890,160]]
           const flowerGfx = this.add.graphics().setDepth(0)
           for (const [fx, fy] of flowerSpots)
-            drawFlower(flowerGfx, fx, fy, flowerColors[Math.floor(fx / 50) % flowerColors.length])
+            drawFlower(flowerGfx, fx, fy, flowerColors[Math.floor(fx / 34) % flowerColors.length])
 
-          // ── Rocks
+          // ── Rocks (more + varied sizes)
           const rockGfx = this.add.graphics().setDepth(0)
-          drawRock(rockGfx, 260, 108, 14, 8)
-          drawRock(rockGfx, 272, 112, 9, 5)
-          drawRock(rockGfx, 590, 105, 12, 7)
-          drawRock(rockGfx, 600, 110, 8, 5)
-          drawRock(rockGfx, 308, 180, 10, 6)
+          drawRock(rockGfx, 258, 106, 16, 9); drawRock(rockGfx, 271, 112, 10, 6)
+          drawRock(rockGfx, 588, 104, 13, 7); drawRock(rockGfx, 601, 110, 9, 5)
+          drawRock(rockGfx, 308, 178, 12, 7); drawRock(rockGfx, 560, 170, 8, 5)
+          drawRock(rockGfx, 335, 145, 7, 4); drawRock(rockGfx, 718, 162, 10, 6)
+          drawRock(rockGfx, 850, 138, 8, 5); drawRock(rockGfx, 880, 152, 6, 4)
 
-          // ── Trees (5 total: 2 original + reading tree + 2 more)
-          const treeLeftG  = this.add.graphics().setDepth(0)
-          const treeRightG = this.add.graphics().setDepth(0)
-          const treeReadG  = this.add.graphics().setDepth(0)  // Mason's reading tree
-          const treeExtraG = this.add.graphics().setDepth(0)
-          const treeExtra2G= this.add.graphics().setDepth(0)
-          drawTree(treeLeftG,  248, GROUND_Y, 2)
-          drawTree(treeRightG, 595, GROUND_Y, 1)
-          drawTree(treeReadG,  658, GROUND_Y, 2)   // Mason reads here
-          drawTree(treeExtraG, 310, GROUND_Y, 1)
-          drawTree(treeExtra2G, 42, GROUND_Y, 1)
+          // ── Trees (denser planting — 7 trees total)
+          const treesGfx = this.add.graphics().setDepth(0)
+          drawTree(treesGfx, 42,  GROUND_Y, 1)
+          drawTree(treesGfx, 250, GROUND_Y, 2)
+          drawTree(treesGfx, 310, GROUND_Y, 1)
+          drawTree(treesGfx, 594, GROUND_Y, 1)
+          drawTree(treesGfx, 658, GROUND_Y, 2)   // Mason's reading tree
+          drawTree(treesGfx, 740, GROUND_Y, 1)
+          drawTree(treesGfx, 890, GROUND_Y, 1)
 
-          // ── Bushes
-          const bushA = this.add.graphics().setDepth(0); drawBush(bushA, 18, 170)
-          const bushB = this.add.graphics().setDepth(0); drawBush(bushB, 880, 172)
-          const bushC = this.add.graphics().setDepth(0); drawBush(bushC, 580, 168)
+          // ── Bushes (more, clustered)
+          const bushGfx = this.add.graphics().setDepth(0)
+          drawBush(bushGfx, 18, 168); drawBush(bushGfx, 26, 174); drawBush(bushGfx, 10, 172)
+          drawBush(bushGfx, 576, 166); drawBush(bushGfx, 584, 172)
+          drawBush(bushGfx, 876, 168); drawBush(bushGfx, 886, 174)
+          drawBush(bushGfx, 330, 164); drawBush(bushGfx, 710, 158)
+
+          // ── Hay bales (farm zone) + campfire (central crossroads)
+          const propsGfx = this.add.graphics().setDepth(2)
+          drawHayBale(propsGfx, 210, 140); drawHayBale(propsGfx, 232, 144)
+          drawCampfire(propsGfx, 300, 178)    // crossroads campfire between zones
 
           // ── Wheat rows for Lil Claw's farm
           this.wheats = []
@@ -810,8 +1048,10 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             const toolG = this.add.graphics().setDepth(52 + i)
             const glow  = this.add.graphics().setDepth(45 + i)
             const nameTag = this.add.text(a.home.x, a.home.y + 6, a.name, {
-              fontFamily: "monospace", fontSize: "7px",
-              color: "#f5edd6", stroke: "#1a0e00", strokeThickness: 2, resolution: 3,
+              fontFamily: "monospace", fontSize: "9px",
+              color: a.colorCss, stroke: "#080406", strokeThickness: 4,
+              resolution: 4, backgroundColor: "rgba(6,3,2,0.72)",
+              padding: { x: 4, y: 2 },
             }).setOrigin(0.5, 0).setDepth(9999)
             this.ags.push({
               id: a.id, cfg: a,
