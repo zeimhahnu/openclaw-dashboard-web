@@ -818,17 +818,32 @@ function drawButterfly(g: Phaser.GameObjects.Graphics, x: number, y: number, ope
 
 // ─── Component ────────────────────────────────────────────────────────────
 
+export type WeatherCondition = "sunny" | "cloudy" | "rain" | "storm"
+
 export interface PixelGuildProps {
   agents?: Record<string, ApiAgentState> | null
   taskDetails?: Record<string, AgentTaskDetails> | null
   height?: number
+  mytHour?: number
+  weather?: WeatherCondition
 }
 
-export default function PixelGuild({ agents = null, taskDetails = null, height = 240 }: PixelGuildProps) {
+export default function PixelGuild({ agents = null, taskDetails = null, height = 240, mytHour, weather }: PixelGuildProps) {
   const hostRef = useRef<HTMLDivElement>(null)
-  const dataRef = useRef<{ agents: Record<string, ApiAgentState> | null; taskDetails: Record<string, AgentTaskDetails> | null }>({ agents: null, taskDetails: null })
+  const dataRef = useRef<{
+    agents: Record<string, ApiAgentState> | null
+    taskDetails: Record<string, AgentTaskDetails> | null
+    mytHour: number
+    weather: WeatherCondition
+  }>({ agents: null, taskDetails: null, mytHour: new Date().getHours(), weather: "sunny" })
 
-  useEffect(() => { dataRef.current = { agents, taskDetails } }, [agents, taskDetails])
+  useEffect(() => {
+    dataRef.current = {
+      agents, taskDetails,
+      mytHour: mytHour ?? new Date().getHours(),
+      weather: weather ?? "sunny",
+    }
+  }, [agents, taskDetails, mytHour, weather])
 
   useEffect(() => {
     let game: import("phaser").Game | null = null
@@ -887,6 +902,8 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
         fireflies: Firefly[] = []
         wheats: WheatStalk[] = []
         handoffPackets: HandoffPacket[] = []
+        rainG!: Phaser.GameObjects.Graphics
+        rainDrops: { x: number; y: number; len: number; speed: number }[] = []
         coopG!: Phaser.GameObjects.Graphics
         wellG!: Phaser.GameObjects.Graphics
         scarecrowG!: Phaser.GameObjects.Graphics
@@ -1219,8 +1236,17 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
           this.sparkG   = this.add.graphics().setDepth(60)
           this.fishingG = this.add.graphics().setDepth(60)
 
-          // ── Sky overlay for time-of-day tint
+          // ── Sky overlay for time-of-day + weather tint
           this.skyOverlay = this.add.graphics().setDepth(9000)
+
+          // ── Rain layer (drawn above sky tint, below UI hearts/packets)
+          this.rainG = this.add.graphics().setDepth(9002)
+          this.rainDrops = Array.from({ length: 70 }, () => ({
+            x: Math.random() * BASE_W,
+            y: Math.random() * BASE_H,
+            len: 4 + Math.random() * 5,
+            speed: 2.4 + Math.random() * 2.2,
+          }))
         }
 
         drawSeedPackets(n: number) {
@@ -1244,17 +1270,36 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
 
         update() {
           const t = this.time.now
-          const { agents: apiAgents } = dataRef.current
+          const { agents: apiAgents, mytHour, weather } = dataRef.current
+          const isBadWeather = weather === "rain" || weather === "storm"
+          const isNight = mytHour < 6 || mytHour >= 22
 
-          // ── Time-of-day tint
-          const hour = new Date().getHours()
+          // ── Time-of-day tint (MYT hour, fed from the real clock — not the
+          // viewer's browser locale) + weather darkening, stacked.
           let tint = 0x000000, tintA = 0
-          if (hour >= 6  && hour < 8)  { tint = 0xffc080; tintA = 0.06 }
-          else if (hour >= 8  && hour < 17) { tint = 0xfff8d0; tintA = 0.0 }
-          else if (hour >= 17 && hour < 20) { tint = 0xff9050; tintA = 0.08 }
-          else                              { tint = 0x2030a0; tintA = 0.18 }
+          if (mytHour >= 5  && mytHour < 7)  { tint = 0x6a2f6a; tintA = 0.22 }  // dawn
+          else if (mytHour >= 7  && mytHour < 9)  { tint = 0xffc080; tintA = 0.10 }  // morning
+          else if (mytHour >= 9  && mytHour < 16) { tint = 0xfff8d0; tintA = 0.0  }  // midday
+          else if (mytHour >= 16 && mytHour < 18) { tint = 0xff9050; tintA = 0.10 }  // golden hour
+          else if (mytHour >= 18 && mytHour < 20) { tint = 0xb84a30; tintA = 0.16 }  // dusk
+          else                                     { tint = 0x141040; tintA = 0.40 }  // night
           this.skyOverlay.clear()
           if (tintA > 0) { this.skyOverlay.fillStyle(tint, tintA); this.skyOverlay.fillRect(0, 0, BASE_W, BASE_H) }
+          if (weather === "cloudy") { this.skyOverlay.fillStyle(0x808890, 0.12); this.skyOverlay.fillRect(0, 0, BASE_W, BASE_H) }
+          else if (weather === "rain")  { this.skyOverlay.fillStyle(0x404858, 0.22); this.skyOverlay.fillRect(0, 0, BASE_W, BASE_H) }
+          else if (weather === "storm") { this.skyOverlay.fillStyle(0x282838, 0.34); this.skyOverlay.fillRect(0, 0, BASE_W, BASE_H) }
+
+          // ── Rain particles
+          this.rainG.clear()
+          if (isBadWeather) {
+            const stormy = weather === "storm"
+            this.rainG.lineStyle(1, 0xaad4ff, stormy ? 0.5 : 0.35)
+            for (const d of this.rainDrops) {
+              d.y += d.speed * (stormy ? 1.7 : 1)
+              if (d.y > BASE_H) { d.y = -10; d.x = Math.random() * BASE_W }
+              this.rainG.lineBetween(d.x, d.y, d.x - 2, d.y + d.len)
+            }
+          }
 
           // ── Agents
           let goopIsWorking = false
@@ -1283,7 +1328,11 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             if (ag.id === "goop") goopIsWorking = ag.isWorking
 
             // ── Target selection (role-specific behaviors)
-            if (ag.isWorking) {
+            if (isBadWeather && !ag.isWorking) {
+              // Seek shelter at own station instead of wandering in the rain
+              ag.tx = ag.cfg.station.x + (ag.id === "goop" ? 10 : 22)
+              ag.ty = ag.cfg.station.y + 18
+            } else if (ag.isWorking) {
               ag.tx = ag.cfg.station.x + 28
               ag.ty = ag.cfg.station.y + 18  // in front of building base (station.y+18 > station.y)
 
@@ -1368,8 +1417,9 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             if (walking) {
               const absDx = Math.abs(dx), absDy = Math.abs(dy)
               ag.dir = absDx > absDy ? (dx > 0 ? 3 : 2) : (dy > 0 ? 0 : 1)
-              ag.wx += (dx / dist) * 0.38
-              ag.wy += (dy / dist) * 0.38
+              const speedMul = isNight && !ag.isWorking ? 0.55 : 1
+              ag.wx += (dx / dist) * 0.38 * speedMul
+              ag.wy += (dy / dist) * 0.38 * speedMul
               // Working agents walk faster cycle; idle walk normal
               ag.frameTick++
               const walkThr = ag.isWorking ? 3 : 5
@@ -1501,12 +1551,13 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             if (ch.wait > 0) { ch.wait--; continue }
             const dx = ch.tx - ch.wx, dy = ch.ty - ch.wy, dist = Math.hypot(dx, dy)
             if (dist < 1.5) {
-              ch.tx = 152 + Math.random() * 58
-              ch.ty = 128 + Math.random() * 26
+              if (isBadWeather) { ch.tx = 185 + Math.random() * 10; ch.ty = 138 + Math.random() * 8 }
+              else { ch.tx = 152 + Math.random() * 58; ch.ty = 128 + Math.random() * 26 }
               ch.dir = ch.tx > ch.wx ? "right" : "left"
-              ch.wait = 50 + Math.random() * 90
+              ch.wait = isBadWeather ? 140 + Math.random() * 120 : 50 + Math.random() * 90
             } else {
-              ch.wx += (dx / dist) * 0.17; ch.wy += (dy / dist) * 0.12
+              const hurry = isBadWeather ? 1.6 : 1
+              ch.wx += (dx / dist) * 0.17 * hurry; ch.wy += (dy / dist) * 0.12 * hurry
             }
             drawChicken(ch.g, ch.wx, ch.wy, ch.dir)
             ch.g.setPosition(0, 0)
@@ -1519,10 +1570,13 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
           else {
             const dx = cs.tx - cs.wx, dy = cs.ty - cs.wy, d = Math.hypot(dx, dy)
             if (d < 1.5) {
-              cs.tx = 155 + Math.random() * 45; cs.ty = 128 + Math.random() * 20
-              cs.dir = cs.tx > cs.wx ? "right" : "left"; cs.wait = 100 + Math.random() * 120
+              if (isBadWeather) { cs.tx = 168 + Math.random() * 14; cs.ty = 136 + Math.random() * 10 }
+              else { cs.tx = 155 + Math.random() * 45; cs.ty = 128 + Math.random() * 20 }
+              cs.dir = cs.tx > cs.wx ? "right" : "left"
+              cs.wait = isBadWeather ? 160 + Math.random() * 140 : 100 + Math.random() * 120
             } else {
-              cs.wx += (dx / d) * 0.10; cs.wy += (dy / d) * 0.10
+              const hurry = isBadWeather ? 1.5 : 1
+              cs.wx += (dx / d) * 0.10 * hurry; cs.wy += (dy / d) * 0.10 * hurry
             }
           }
           drawCow(this.cowG, cs.wx, cs.wy, cs.dir)

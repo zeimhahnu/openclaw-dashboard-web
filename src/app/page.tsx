@@ -1,27 +1,72 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { useDashboardApi } from "@/hooks/useDashboardApi"
 import { CompactAgentRow, ActivityFeed } from "@/components/AgentStatusCard"
 import { RouterStatsCard } from "@/components/RouterStatsCard"
 import { TokenBurnCard } from "@/components/TokenBurnCard"
 import { TaskActivityCard } from "@/components/TaskActivityCard"
-import PixelGuild from "@/components/PixelGuild"
+import PixelGuild, { type WeatherCondition } from "@/components/PixelGuild"
 import { CoordinationCard } from "@/components/CoordinationCard"
 import { RefreshCw, Sprout, Sun, Moon, CloudRain, AlertCircle } from "lucide-react"
 import { formatRelativeTime } from "@/lib/utils"
+
+// Kuala Lumpur is UTC+8 year-round (no DST) — the scene's sky always reflects
+// MYT, regardless of what timezone the browser viewing the dashboard is in.
+function getMytHour(): number {
+  const utcMs = Date.now()
+  return new Date(utcMs + 8 * 3600_000).getUTCHours()
+}
+
+function useMytHour(): number {
+  const [hour, setHour] = useState(getMytHour)
+  useEffect(() => {
+    const id = setInterval(() => setHour(getMytHour()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+  return hour
+}
+
+// wttr.in weather codes -> our 4-bucket condition. No API key needed.
+function mapWeatherCode(code: number): WeatherCondition {
+  if ([389, 392, 386, 395, 200].includes(code)) return "storm"
+  if ([176, 263, 266, 281, 284, 293, 296, 299, 302, 305, 308, 311, 314, 353, 356, 359, 365, 368, 371].includes(code)) return "rain"
+  if ([119, 122, 143, 248, 260].includes(code)) return "cloudy"
+  return "sunny"
+}
+
+function useKlWeather(): WeatherCondition {
+  const [weather, setWeather] = useState<WeatherCondition>("sunny")
+  useEffect(() => {
+    let cancelled = false
+    const fetchWeather = async () => {
+      try {
+        const res = await fetch("https://wttr.in/Kuala+Lumpur?format=j1")
+        if (!res.ok) return
+        const data = await res.json()
+        const code = parseInt(data?.current_condition?.[0]?.weatherCode ?? "", 10)
+        if (!cancelled && Number.isFinite(code)) setWeather(mapWeatherCode(code))
+      } catch {
+        // keep last known condition — don't flip the scene on a flaky fetch
+      }
+    }
+    fetchWeather()
+    const id = setInterval(fetchWeather, 15 * 60_000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [])
+  return weather
+}
 
 const AGENTS = ["lil-claw", "goop", "mason"] as const
 
 const FARM_OPENED_AT = new Date("2026-04-01").getTime()
 const FARM_DAY = Math.max(1, Math.floor((Date.now() - FARM_OPENED_AT) / 86400000))
-function timeOfDay(): { label: string; Icon: typeof Sun } {
-  const h = new Date().getHours()
+function timeOfDay(h: number): { label: string; Icon: typeof Sun } {
   if (h < 6)  return { label: "Night",     Icon: Moon }
   if (h < 12) return { label: "Morning",   Icon: Sun }
   if (h < 18) return { label: "Afternoon", Icon: Sun }
   return { label: "Evening", Icon: Moon }
 }
-const TOD = timeOfDay()
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return <div className="eyebrow mb-2 px-0.5">{children}</div>
@@ -36,6 +81,9 @@ const AGENT_COLORS: Record<string, string> = {
 export default function DashboardPage() {
   const { state, error, loading, refetch } = useDashboardApi(7000)
   const gold = state?.router?.total_cost_usd ?? 0
+  const mytHour = useMytHour()
+  const weather = useKlWeather()
+  const TOD = timeOfDay(mytHour)
 
   const today       = new Date().toISOString().slice(0, 10)
   const todayCost   = state?.router_usage?.by_day?.[today]?.cost_usd ?? 0
@@ -103,6 +151,8 @@ export default function DashboardPage() {
                 agents={state?.agents ?? null}
                 taskDetails={state?.task_details ?? null}
                 height={280}
+                mytHour={mytHour}
+                weather={weather}
               />
 
               {/* Subtle ground fade — anchors the HUD panels */}
