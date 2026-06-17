@@ -29,6 +29,12 @@ function fmtCost(v: number): string {
   return "$" + v.toFixed(4)
 }
 
+function fmtTokens(v: number): string {
+  if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + "M"
+  if (v >= 1_000) return (v / 1_000).toFixed(1) + "K"
+  return String(v)
+}
+
 function burnColor(dailyAvg: number): string {
   if (dailyAvg < 0.50)  return "text-[#7aad5a]"
   if (dailyAvg <= 2.00) return "text-[#e8a935]"
@@ -190,31 +196,56 @@ export function TokenBurnCard({ usage, isLoading }: TokenBurnCardProps) {
 
       {/* By-model breakdown (real data from API) */}
       {by_model && Object.keys(by_model).length > 0 && (
-        <div className="border-t border-[var(--border)] pt-2 space-y-1.5">
-          <div className="font-code text-[9px] text-[var(--muted-foreground)] mb-1">{"// by-model (14d)"}</div>
-          {Object.entries(by_model)
-            .sort(([, a], [, b]) => b.cost_usd - a.cost_usd)
-            .map(([model, m]) => {
-              const totalCost = Object.values(by_model).reduce((s, v) => s + v.cost_usd, 0)
-              const sharePct = totalCost > 0 ? (m.cost_usd / totalCost) * 100 : 0
-              const barColor = m.cost_usd > 1 ? "#c45a3a" : m.cost_usd > 0.10 ? "#e8a935" : "#7aad5a"
-              return (
-                <div key={model} className="flex items-center gap-2">
-                  <span className="font-code text-[10px] w-28 shrink-0 text-[var(--foreground)] truncate" title={model}>
-                    {model}
-                  </span>
-                  <div className="flex-1 h-2 bg-[var(--muted)] rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${Math.max(2, sharePct)}%`, background: barColor }}
-                    />
-                  </div>
-                  <span className="font-code text-[9px] text-[var(--muted-foreground)] w-12 text-right shrink-0">
-                    {fmtCost(m.cost_usd)}
-                  </span>
-                </div>
-              )
-            })}
+        <div className="border-t border-[var(--border)] pt-2">
+          <div className="font-code text-[9px] text-[var(--muted-foreground)] mb-1.5">{"// by-model (14d)"}</div>
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="border-b border-[var(--border)]">
+                <th className="font-code text-[8px] text-[var(--muted-foreground)] text-left pb-1 font-normal">model</th>
+                <th className="font-code text-[8px] text-[var(--muted-foreground)] text-right pb-1 font-normal">calls</th>
+                <th className="font-code text-[8px] text-[var(--muted-foreground)] text-right pb-1 font-normal">in</th>
+                <th className="font-code text-[8px] text-[var(--muted-foreground)] text-right pb-1 font-normal">out</th>
+                <th className="font-code text-[8px] text-[var(--muted-foreground)] text-right pb-1 font-normal">cost</th>
+                <th className="font-code text-[8px] text-[var(--muted-foreground)] text-right pb-1 font-normal w-16">share</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(by_model)
+                .sort(([, a], [, b]) => b.cost_usd - a.cost_usd)
+                .map(([model, m]) => {
+                  const totalCost = Object.values(by_model).reduce((s, v) => s + v.cost_usd, 0)
+                  const sharePct = totalCost > 0 ? (m.cost_usd / totalCost) * 100 : 0
+                  const barColor = m.cost_usd > 1 ? "#c45a3a" : m.cost_usd > 0.10 ? "#e8a935" : "#7aad5a"
+                  return (
+                    <tr key={model} className="border-b border-[var(--border)]/50 last:border-b-0">
+                      <td className="font-code text-[9px] text-[var(--foreground)] py-1 pr-2 truncate max-w-[120px]" title={model}>
+                        {model}
+                      </td>
+                      <td className="font-code text-[9px] text-[var(--muted-foreground)] text-right py-1 pr-2">
+                        {m.calls}
+                      </td>
+                      <td className="font-code text-[9px] text-[var(--muted-foreground)] text-right py-1 pr-2">
+                        {fmtTokens(m.input_tokens)}
+                      </td>
+                      <td className="font-code text-[9px] text-[var(--muted-foreground)] text-right py-1 pr-2">
+                        {fmtTokens(m.output_tokens)}
+                      </td>
+                      <td className="font-code text-[9px] text-right py-1 pr-2" style={{ color: barColor }}>
+                        {fmtCost(m.cost_usd)}
+                      </td>
+                      <td className="py-1 w-16">
+                        <div className="h-1.5 bg-[var(--muted)] rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-700"
+                            style={{ width: `${Math.max(4, sharePct)}%`, background: barColor }}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+            </tbody>
+          </table>
         </div>
       )}
 
