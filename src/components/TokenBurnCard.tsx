@@ -8,19 +8,20 @@ interface DailyCostEntry {
   cost_usd: number
 }
 
+interface ModelUsageEntry {
+  calls: number
+  input_tokens: number
+  output_tokens: number
+  cost_usd: number
+}
+
 interface TokenBurnCardProps {
   usage: {
     totals: { input_tokens: number; output_tokens: number; cost_usd: number }
     by_day: Record<string, DailyCostEntry>
+    by_model: Record<string, ModelUsageEntry>
   } | null
   isLoading: boolean
-}
-
-function formatTokens(n: number): string {
-  if (n === 0) return "—"
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M"
-  if (n >= 1_000) return (n / 1_000).toFixed(1) + "K"
-  return String(n)
 }
 
 function fmtCost(v: number): string {
@@ -46,13 +47,6 @@ function TrendIcon({ trend }: { trend: "rising" | "falling" | "flat" }) {
   return                          <Minus         className="h-3 w-3 text-[#e8a935]" />
 }
 
-// Per-agent cost tier (rough estimate based on model family)
-const AGENT_TIER: Record<string, { label: string; tier: "cheap" | "moderate" | "expensive"; color: string }> = {
-  "lil-claw": { label: "Lil Claw",  tier: "cheap",     color: "#5ec27e" },
-  "goop":     { label: "Goop",      tier: "cheap",     color: "#52b8d0" },
-  "mason":    { label: "Mason",     tier: "expensive", color: "#9b87f0" },
-}
-
 export function TokenBurnCard({ usage, isLoading }: TokenBurnCardProps) {
   if (isLoading || !usage) {
     return (
@@ -76,10 +70,9 @@ export function TokenBurnCard({ usage, isLoading }: TokenBurnCardProps) {
     )
   }
 
-  const { by_day } = usage
-  const days = Object.keys(by_day).sort().slice(-7)
+  const { by_day, by_model } = usage
+  const days = Object.keys(by_day).sort()
 
-// Per-agent cost tier
   const today = new Date().toISOString().slice(0, 10)
   const todayCost = by_day[today]?.cost_usd ?? 0
 
@@ -109,14 +102,7 @@ export function TokenBurnCard({ usage, isLoading }: TokenBurnCardProps) {
     if (v.cost_usd > peakCost) { peakCost = v.cost_usd; peakDay = d }
   }
 
-  // Per-agent model roster (corrected: VPS agents on MiniMax-M3, local on Sonnet 4.6)
-  const agentModels = [
-    { id: "lil-claw", model: "MiniMax-M3",  ...AGENT_TIER["lil-claw"] },
-    { id: "goop",     model: "MiniMax-M3",  ...AGENT_TIER["goop"] },
-    { id: "mason",    model: "Sonnet 4.6",  ...AGENT_TIER["mason"] },
-  ]
-
-  // 7-day sparkline
+  // 14-day sparkline (all available days)
   const maxDayCost = days.reduce((m, d) => Math.max(m, by_day[d]?.cost_usd ?? 0), 0.001)
 
   const burnColorClass = burnColor(avg7d)
@@ -128,7 +114,7 @@ export function TokenBurnCard({ usage, isLoading }: TokenBurnCardProps) {
       <div className="flex items-center gap-2 mb-3 border-b border-[var(--border)] pb-2">
         <Flame className="h-3.5 w-3.5 text-[var(--warning)]" />
         <span className="font-code text-xs font-semibold">Upkeep</span>
-        <span className="ml-auto font-code text-[10px] text-[var(--muted-foreground)]">7d ledger</span>
+        <span className="ml-auto font-code text-[10px] text-[var(--muted-foreground)]">7d ↔ 14d</span>
       </div>
 
       {/* Today's cost + 7d avg + trend row */}
@@ -202,25 +188,35 @@ export function TokenBurnCard({ usage, isLoading }: TokenBurnCardProps) {
         </div>
       )}
 
-      {/* Per-agent breakdown */}
-      <div className="border-t border-[var(--border)] pt-2 space-y-1.5">
-        <div className="font-code text-[9px] text-[var(--muted-foreground)] mb-1">{"// per-villager (est.)"}</div>
-        {agentModels.map((agent) => (
-          <div key={agent.id} className="flex items-center gap-2">
-            <span className="font-code text-[10px] w-14 shrink-0" style={{ color: agent.color }}>
-              {agent.label}
-            </span>
-            <span className="font-code text-[9px] text-[var(--muted-foreground)] flex-1">{agent.model}</span>
-            <span className={`font-code text-[10px] font-bold ${
-              agent.tier === "expensive" ? "text-[#c45a3a]"
-                : agent.tier === "moderate" ? "text-[#e8a935]"
-                : "text-[#7aad5a]"
-            }`}>
-              {agent.tier === "expensive" ? "pricy" : agent.tier === "moderate" ? "fair" : "thrifty"}
-            </span>
-          </div>
-        ))}
-      </div>
+      {/* By-model breakdown (real data from API) */}
+      {by_model && Object.keys(by_model).length > 0 && (
+        <div className="border-t border-[var(--border)] pt-2 space-y-1.5">
+          <div className="font-code text-[9px] text-[var(--muted-foreground)] mb-1">{"// by-model (14d)"}</div>
+          {Object.entries(by_model)
+            .sort(([, a], [, b]) => b.cost_usd - a.cost_usd)
+            .map(([model, m]) => {
+              const totalCost = Object.values(by_model).reduce((s, v) => s + v.cost_usd, 0)
+              const sharePct = totalCost > 0 ? (m.cost_usd / totalCost) * 100 : 0
+              const barColor = m.cost_usd > 1 ? "#c45a3a" : m.cost_usd > 0.10 ? "#e8a935" : "#7aad5a"
+              return (
+                <div key={model} className="flex items-center gap-2">
+                  <span className="font-code text-[10px] w-28 shrink-0 text-[var(--foreground)] truncate" title={model}>
+                    {model}
+                  </span>
+                  <div className="flex-1 h-2 bg-[var(--muted)] rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${Math.max(2, sharePct)}%`, background: barColor }}
+                    />
+                  </div>
+                  <span className="font-code text-[9px] text-[var(--muted-foreground)] w-12 text-right shrink-0">
+                    {fmtCost(m.cost_usd)}
+                  </span>
+                </div>
+              )
+            })}
+        </div>
+      )}
 
       {/* No data state */}
       {Object.keys(by_day).length === 0 && (

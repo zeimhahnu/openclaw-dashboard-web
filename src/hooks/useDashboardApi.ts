@@ -30,9 +30,17 @@ export interface DailyCostEntry {
   cost_usd: number
 }
 
+export interface ModelUsageEntry {
+  calls: number
+  input_tokens: number
+  output_tokens: number
+  cost_usd: number
+}
+
 export interface RouterUsage {
   totals: { input_tokens: number; output_tokens: number; cost_usd: number }
   by_day: Record<string, DailyCostEntry>
+  by_model: Record<string, ModelUsageEntry>
 }
 
 export interface DashboardState {
