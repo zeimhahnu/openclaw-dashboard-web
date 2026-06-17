@@ -138,7 +138,7 @@ export function CompactAgentRow({ agentName, data, taskDetails, walTails, isLoad
     if (pingState !== "idle") return
     setPingState("sending")
     try {
-      const res = await fetch("/api/ping", {
+      const res = await fetch("/ping", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ agentId: agentName }),
@@ -274,8 +274,9 @@ export function CompactAgentRow({ agentName, data, taskDetails, walTails, isLoad
           </span>
         </div>
 
-        {/* Ask button — only for VPS agents; Mason is the dashboard itself */}
-        {agentName !== "mason" && <button
+        {/* Ask button — system-triggered ping via Telegram (gateway picks the
+            sending bot so an agent never self-pings; works for Mason too). */}
+        <button
           onClick={handlePing}
           disabled={pingState !== "idle"}
           title={`Ask ${meta.display} for a status update via Telegram`}
@@ -314,7 +315,7 @@ export function CompactAgentRow({ agentName, data, taskDetails, walTails, isLoad
               <span>Ask</span>
             </>
           )}
-        </button>}
+        </button>
       </div>
     </div>
   )
