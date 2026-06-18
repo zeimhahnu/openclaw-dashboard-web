@@ -2,17 +2,29 @@
 
 import { Flame, TrendingUp, TrendingDown, Minus } from "lucide-react"
 
-interface DailyCostEntry {
+type DailyCostEntry = {
   input_tokens: number
   output_tokens: number
   cost_usd: number
 }
 
-interface ModelUsageEntry {
+type ModelUsageEntry = {
   calls: number
   input_tokens: number
   output_tokens: number
   cost_usd: number
+}
+
+interface UpkeepSnapshot {
+  date: string
+  ts: string
+  agents: Record<string, { inbox: number; outbox: number }>
+  system: { load: number; mem_pct: number; disk_pct: number; uptime_h: number }
+}
+
+interface MetricsHistory {
+  days: number
+  series: UpkeepSnapshot[]
 }
 
 interface TokenBurnCardProps {
@@ -21,6 +33,7 @@ interface TokenBurnCardProps {
     by_day: Record<string, DailyCostEntry>
     by_model: Record<string, ModelUsageEntry>
   } | null
+  metricsHistory: MetricsHistory | null
   isLoading: boolean
 }
 
@@ -53,7 +66,7 @@ function TrendIcon({ trend }: { trend: "rising" | "falling" | "flat" }) {
   return                          <Minus         className="h-3 w-3 text-[#e8a935]" />
 }
 
-export function TokenBurnCard({ usage, isLoading }: TokenBurnCardProps) {
+export function TokenBurnCard({ usage, metricsHistory, isLoading }: TokenBurnCardProps) {
   if (isLoading || !usage) {
     return (
       <div className="bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[var(--warning)] rounded p-3">
@@ -149,6 +162,45 @@ export function TokenBurnCard({ usage, isLoading }: TokenBurnCardProps) {
           <div className="font-code text-[9px] text-[var(--muted-foreground)]">trend</div>
         </div>
       </div>
+
+      {/* 14-day system load sparkline from metrics history */}
+      {metricsHistory && metricsHistory.series.length > 1 && (() => {
+        const series = metricsHistory.series
+        const loads = series.map((s) => s.system?.load ?? 0)
+        const maxLoad = Math.max(...loads, 0.01)
+        return (
+          <div className="mb-3">
+            <div className="font-code text-[8px] text-[var(--muted-foreground)] mb-1">// system load (14d)</div>
+            <svg viewBox={`0 0 ${series.length * 8} 36`} className="w-full h-10" preserveAspectRatio="none">
+              <polyline
+                fill="none"
+                stroke="var(--warning)"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                points={loads.map((l, i) => `${i * 8 + 4},${36 - (l / maxLoad) * 32}`).join(" ")}
+              />
+              {loads.map((l, i) => (
+                <circle
+                  key={i}
+                  cx={i * 8 + 4}
+                  cy={36 - (l / maxLoad) * 32}
+                  r={i === loads.length - 1 ? 2 : 1}
+                  fill={i === loads.length - 1 ? "var(--warning)" : "var(--warning)"}
+                  opacity={i === loads.length - 1 ? 1 : 0.5}
+                />
+              ))}
+            </svg>
+            <div className="flex justify-between">
+              <span className="font-code text-[6px] text-[var(--faint)]">{series[0]?.date?.slice(5)}</span>
+              <span className="font-code text-[6px] text-[var(--muted-foreground)]">
+                peak {maxLoad.toFixed(1)}
+              </span>
+              <span className="font-code text-[6px] text-[var(--faint)]">{series[series.length - 1]?.date?.slice(5)}</span>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* 7-day sparkline bars */}
       {days.length > 0 && (

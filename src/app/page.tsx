@@ -9,6 +9,7 @@ import { TaskActivityCard } from "@/components/TaskActivityCard"
 import PixelGuild, { type WeatherCondition } from "@/components/PixelGuild"
 import { CoordinationCard } from "@/components/CoordinationCard"
 import { RefreshCw, Sprout, Sun, Moon, CloudRain, AlertCircle } from "lucide-react"
+import { QuestPanel } from "@/components/QuestPanel"
 import { formatRelativeTime } from "@/lib/utils"
 
 // Kuala Lumpur is UTC+8 year-round (no DST) — the scene's sky always reflects
@@ -79,7 +80,7 @@ const AGENT_COLORS: Record<string, string> = {
 }
 
 export default function DashboardPage() {
-  const { state, error, loading, refetch } = useDashboardApi(7000)
+  const { state, error, loading, refetch } = useDashboardApi(30000)
   const gold = state?.router?.total_cost_usd ?? 0
   const mytHour = useMytHour()
   const weather = useKlWeather()
@@ -356,12 +357,18 @@ export default function DashboardPage() {
           <CoordinationCard taskDetails={state?.task_details ?? null} isLoading={loading} />
         </section>
 
+        {/* ── Chore Board (QuestPanel) ────────────────────────────────────── */}
+        <section className="fade-rise">
+          <Eyebrow>The Chore Board</Eyebrow>
+          <QuestPanel taskDetails={state?.task_details ?? null} isLoading={loading} />
+        </section>
+
         {/* ── The Ledger ──────────────────────────────────────────────────── */}
         <section className="fade-rise">
           <Eyebrow>The Ledger</Eyebrow>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <RouterStatsCard data={state?.router ?? null} isLoading={loading} />
-            <TokenBurnCard usage={state?.router_usage ?? null} isLoading={loading} />
+            <TokenBurnCard usage={state?.router_usage ?? null} metricsHistory={state?.metrics_history ?? null} isLoading={loading} />
             <TaskActivityCard
               tasks={state?.tasks ?? null}
               taskDetails={state?.task_details ?? null}

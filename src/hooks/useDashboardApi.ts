@@ -75,10 +75,23 @@ export interface AgentTaskDetails {
   list_limit: number
 }
 
+export interface UpkeepSnapshot {
+  date: string
+  ts: string
+  agents: Record<string, { inbox: number; outbox: number }>
+  system: { load: number; mem_pct: number; disk_pct: number; uptime_h: number }
+}
+
+export interface MetricsHistory {
+  days: number
+  series: UpkeepSnapshot[]
+}
+
 export interface FullDashboardState extends DashboardState {
   router_usage: RouterUsage | null
   tasks: Record<string, TaskActivity>
   task_details: Record<string, AgentTaskDetails> | null
+  metrics_history: MetricsHistory | null
 }
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
@@ -109,6 +122,12 @@ export function useDashboardApi(pollInterval = 7000) {
         task_details = await detailsRes.json()
       }
 
+      let metrics_history: MetricsHistory | null = null
+      const metricsRes = await fetch(`${API_BASE}/metrics/history?days=14`)
+      if (metricsRes.ok) {
+        metrics_history = await metricsRes.json()
+      }
+
       const [activeRes, inboxRes] = await Promise.all([
         fetch(`${API_BASE}/tasks/active`),
         fetch(`${API_BASE}/tasks/inbox`),
@@ -124,7 +143,7 @@ export function useDashboardApi(pollInterval = 7000) {
         )
       }
 
-      setState({ ...dashState, router_usage: routerUsage, tasks, task_details })
+      setState({ ...dashState, router_usage: routerUsage, tasks, task_details, metrics_history })
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to fetch")

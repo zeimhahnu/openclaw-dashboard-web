@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Zap, ChevronDown, ChevronRight, Send, Sprout } from "lucide-react"
+import { Info, Zap, ChevronDown, ChevronRight, Send, Sprout } from "lucide-react"
 import type { TaskSummary, AgentTaskDetails } from "@/hooks/useDashboardApi"
 
 interface TaskActivityCardProps {
@@ -90,7 +90,19 @@ function SimpleChoreList({ names }: { names: string[] }) {
 }
 
 export function TaskActivityCard({ tasks, taskDetails, isLoading }: TaskActivityCardProps) {
-  const [expandedAgent, setExpandedAgent] = useState<string | null>(null)
+  // Auto-expand first agent that has tasks (Bug 1 fix: chore board was empty because accordion was collapsed)
+  const [expandedAgent, setExpandedAgent] = useState<string | null>(() => {
+    if (!taskDetails && !tasks) return null
+    const allAgents = [...new Set([...Object.keys(taskDetails ?? {}), ...Object.keys(tasks ?? {})])]
+    for (const a of allAgents) {
+      const hasTasks = (taskDetails?.[a]?.inbox?.length ?? 0) > 0
+        || (taskDetails?.[a]?.outbox?.length ?? 0) > 0
+        || (tasks?.[a]?.active?.length ?? 0) > 0
+        || (tasks?.[a]?.inbox?.length ?? 0) > 0
+      if (hasTasks) return a
+    }
+    return null
+  })
 
   if (isLoading) {
     return (
@@ -211,6 +223,16 @@ export function TaskActivityCard({ tasks, taskDetails, isLoading }: TaskActivity
                         SHIPPED
                       </div>
                       <RichChoreList items={richOutbox} accentColor={color} />
+                    </div>
+                  )}
+
+                  {/* Mason local-only note (Bug 4) */}
+                  {agent === "mason" && (
+                    <div className="flex items-start gap-1.5 px-2 py-1.5 mt-1 rounded border border-[#9b87f0]/30 bg-[#9b87f0]/5">
+                      <Info className="h-3 w-3 text-[#9b87f0] shrink-0 mt-0.5" />
+                      <p className="font-code text-[8px] text-[#9b87f0] leading-snug">
+                        Mason runs locally — VPS shows inbox/outbox only. Full task sync when Mode II daemon ships.
+                      </p>
                     </div>
                   )}
                 </div>
