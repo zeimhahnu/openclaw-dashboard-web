@@ -854,7 +854,7 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
       if (destroyed || !hostRef.current) return
       const host = hostRef.current
 
-      type RichFields = { session_active?: boolean; health?: "green"|"amber"|"red"; completed_today?: number }
+      type RichFields = { session_active?: boolean; health?: "green"|"amber"|"red"; completed_today?: number; current_stage?: string | null }
       type AgentLocal = {
         id: string
         cfg: typeof AGENTS[number]
@@ -1330,7 +1330,7 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
                 ag.health = ad.health ?? "green"
                 // PR3 (2026-06-20): capture activity context for caption
                 const curTask: string | undefined = (ad as ApiAgentState & RichFields).current_task || undefined
-                const stage: string | undefined = (ad as ApiAgentState & RichFields).current_stage || undefined
+                const stage: string | undefined = ((ad as ApiAgentState & RichFields).current_stage as string | null | undefined) || undefined
                 const newCaption = (ag.isWorking && (curTask || stage))
                   ? `${curTask ? curTask.slice(0, 28) : ""}${curTask && stage ? " · " : ""}${stage ?? ""}`
                   : ""
