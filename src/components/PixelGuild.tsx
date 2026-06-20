@@ -868,6 +868,7 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
         frameTick: number
         idleTime: number
         isWorking: boolean; prevWorking: boolean
+        activityTag: Phaser.GameObjects.Text
         completedPrev: number; inboxCount: number
         health: "green"|"amber"|"red"
         // Scholar (Mason) mode
@@ -1167,6 +1168,22 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
               resolution: 4, backgroundColor: "rgba(6,3,2,0.72)",
               padding: { x: 4, y: 2 },
             }).setOrigin(0.5, 0).setDepth(9999)
+
+            // ── Activity caption (PR3, 2026-06-20): shows what the agent is
+            // doing right now. Sourced from current_task + progress.json.stage.
+            // Hidden when idle. Updates every frame; cheap Phaser Text.
+            const activityTag = this.add.text(a.home.x, a.home.y + 22, "", {
+              fontFamily: '"Press Start 2P", monospace',
+              fontSize: "7px",
+              color: "#f3e9d2",
+              stroke: "#080406",
+              strokeThickness: 3,
+              resolution: 4,
+              backgroundColor: "rgba(48, 32, 20, 0.78)",
+              padding: { x: 5, y: 3 },
+              wordWrap: { width: 220 },
+              align: "center",
+            }).setOrigin(0.5, 0).setDepth(9999).setAlpha(0)
             this.ags.push({
               id: a.id, cfg: a,
               wx: a.home.x, wy: a.home.y,
@@ -1180,7 +1197,7 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
               goopTarget: "wander", goopTargetTimer: 0,
               lilTarget: "wander", lilTargetTimer: 0,
               idleAnimMode: "down", idleAnimTimer: 60 + i * 35,
-              sprite, toolG, glow, nameTag,
+              sprite, toolG, glow, nameTag, activityTag,
             })
           })
 
@@ -1311,6 +1328,16 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
                 ag.isWorking = (ad.session_active ?? false) || (ad.working_count ?? 0) > 0
                 ag.inboxCount = ad.inbox_count ?? 0
                 ag.health = ad.health ?? "green"
+                // PR3 (2026-06-20): capture activity context for caption
+                const curTask: string | undefined = (ad as ApiAgentState & RichFields).current_task || undefined
+                const stage: string | undefined = (ad as ApiAgentState & RichFields).current_stage || undefined
+                const newCaption = (ag.isWorking && (curTask || stage))
+                  ? `${curTask ? curTask.slice(0, 28) : ""}${curTask && stage ? " · " : ""}${stage ?? ""}`
+                  : ""
+                if (newCaption !== (ag as any)._lastCaption) {
+                  ag.activityTag.setText(newCaption || " ")
+                  ;(ag as any)._lastCaption = newCaption
+                }
                 const c = ad.completed_today ?? 0
                 if (c > ag.completedPrev) {
                   this.spawnHeart(ag.wx, ag.wy - 28); this.spawnHeart(ag.wx + 6, ag.wy - 24)
@@ -1464,6 +1491,13 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
 
             ag.sprite.setPosition(Math.round(ag.wx + bx_off), Math.round(ag.wy + bob))
             ag.nameTag.setPosition(Math.round(ag.wx), Math.round(ag.wy + 6)).setAlpha(ag.isWorking ? 1 : 0.7)
+            // PR3: activity caption sits under the name tag, fades in when there's something to show
+            const capTarget = ag.isWorking ? 1 : 0
+            ag.activityTag.setPosition(Math.round(ag.wx), Math.round(ag.wy + 18))
+            const curAlpha = ag.activityTag.alpha
+            if (Math.abs(curAlpha - capTarget) > 0.01) {
+              ag.activityTag.setAlpha(curAlpha + (capTarget - curAlpha) * 0.12)
+            }
 
             // ── Y-sort + depth
             const depth = Math.round(ag.wy)
