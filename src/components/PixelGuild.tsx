@@ -921,42 +921,21 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
         sparkG!: Phaser.GameObjects.Graphics
         seedGfx!: Phaser.GameObjects.Graphics
         skyOverlay!: Phaser.GameObjects.Graphics
+        skyGfx!: Phaser.GameObjects.Graphics
+        skyHour = -1  // last hour drawSky() rendered; -1 forces first draw
         stations: Phaser.GameObjects.Graphics[] = []
 
         create() {
-          // ── Sky gradient: dusk plum → amber
+          // ── Sky (time-of-day responsive). Everything that changes with the
+          // hour — gradient, sun, moon, stars — lives on skyGfx and is redrawn
+          // by drawSky() from update() when the hour rolls over. The static
+          // terrain (mountains, ground) stays on `bg` below.
+          // (2026-06-21 fix: this used to be a fixed dusk painting with a
+          // permanent sun + moon, so the scene read as night at every hour
+          // regardless of the correct mytHour prop — the bug Alex reported.)
+          this.skyGfx = this.add.graphics().setDepth(-10)
+          this.drawSky(dataRef.current.mytHour ?? 12)
           const bg = this.add.graphics().setDepth(-10)
-          const sky = [
-            { t: 0.00, r: 0x20, g: 0x18, b: 0x3c },
-            { t: 0.45, r: 0x5a, g: 0x30, b: 0x50 },
-            { t: 0.72, r: 0xb8, g: 0x58, b: 0x38 },
-            { t: 1.00, r: 0xf2, g: 0xa8, b: 0x48 },
-          ]
-          const lerp = (a: number, b: number, t: number) => Math.round(a + (b - a) * t)
-          for (let y = 0; y < GROUND_Y; y++) {
-            const t = y / GROUND_Y
-            let s0 = sky[0], s1 = sky[sky.length - 1]
-            for (let k = 0; k < sky.length - 1; k++) {
-              if (t >= sky[k].t && t <= sky[k + 1].t) { s0 = sky[k]; s1 = sky[k + 1]; break }
-            }
-            const lt = (t - s0.t) / Math.max(0.0001, s1.t - s0.t)
-            const col = (lerp(s0.r, s1.r, lt) << 16) | (lerp(s0.g, s1.g, lt) << 8) | lerp(s0.b, s1.b, lt)
-            bg.fillStyle(col, 1); bg.fillRect(0, y, BASE_W, 1)
-          }
-          // Setting sun (bigger, richer halo)
-          bg.fillStyle(0xff9030, 0.12); bg.fillCircle(742, GROUND_Y - 4, 44)
-          bg.fillStyle(0xffc060, 0.22); bg.fillCircle(742, GROUND_Y - 4, 32)
-          bg.fillStyle(0xffe090, 0.50); bg.fillCircle(742, GROUND_Y - 4, 20)
-          bg.fillStyle(0xfff8cc, 0.90); bg.fillCircle(742, GROUND_Y - 4, 12)
-          // Horizon bloom (wide warm strip)
-          bg.fillStyle(0xff7020, 0.10); bg.fillRect(400, GROUND_Y - 18, 500, 18)
-          bg.fillStyle(0xffb040, 0.08); bg.fillRect(500, GROUND_Y - 12, 400, 12)
-          // Stars (more, varied brightness)
-          const stars: [number, number, number][] = [[120,16,0.9],[210,30,0.7],[330,10,0.85],[60,38,0.6],[470,18,0.8],[560,32,0.65],[150,44,0.5],[290,22,0.75],[420,40,0.6],[80,12,0.7],[640,14,0.8],[380,50,0.4]]
-          for (const [sx, sy, sa] of stars) { bg.fillStyle(0xfdf6e0, sa); bg.fillRect(sx, sy, 1, 1) }
-          // Crescent moon (top-left)
-          bg.fillStyle(0xf0e8c4, 0.65); bg.fillCircle(72, 22, 9)
-          bg.fillStyle(0x38284a, 1);     bg.fillCircle(78, 20, 7)     // cutout → crescent
           // Clouds
           const cloudGfx = this.add.graphics().setDepth(-9)
           drawCloud(cloudGfx, 160, 18, 80)
@@ -1291,23 +1270,77 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
           this.hearts.push({ g, alpha: 1, vy: -0.3 })
         }
 
+        // Redraw the sky for a given MYT hour. Cheap (~GROUND_Y fillRects) and
+        // only called when the hour changes, so it's fine to run from update().
+        drawSky(hour: number) {
+          const g = this.skyGfx
+          g.clear()
+          type Stop = { t: number; r: number; g: number; b: number }
+          let sky: Stop[]
+          let sun = 0, sunY = GROUND_Y - 4, moon = 0, starA = 0, bloom = 0
+          if (hour < 5 || hour >= 20) {            // night
+            sky = [{ t: 0, r: 0x0a, g: 0x0e, b: 0x28 }, { t: 0.6, r: 0x16, g: 0x18, b: 0x3a }, { t: 1, r: 0x2a, g: 0x22, b: 0x44 }]
+            moon = 0.65; starA = 1
+          } else if (hour < 7) {                   // dawn
+            sky = [{ t: 0, r: 0x2a, g: 0x22, b: 0x4c }, { t: 0.55, r: 0x7a, g: 0x44, b: 0x52 }, { t: 1, r: 0xe8, g: 0x9a, b: 0x58 }]
+            sun = 0.5; starA = 0.35; bloom = 0.8; moon = 0.2
+          } else if (hour < 10) {                  // morning
+            sky = [{ t: 0, r: 0x4a, g: 0x78, b: 0xb8 }, { t: 0.6, r: 0x9a, g: 0xc0, b: 0xd8 }, { t: 1, r: 0xf0, g: 0xe6, b: 0xc0 }]
+            sun = 0.85; sunY = 70; bloom = 0.3
+          } else if (hour < 16) {                  // day
+            sky = [{ t: 0, r: 0x4f, g: 0x93, b: 0xd6 }, { t: 0.55, r: 0x86, g: 0xbe, b: 0xe6 }, { t: 1, r: 0xcf, g: 0xe9, b: 0xf2 }]
+            sun = 1; sunY = 46
+          } else if (hour < 18) {                  // golden hour
+            sky = [{ t: 0, r: 0x3e, g: 0x52, b: 0x8a }, { t: 0.55, r: 0xd8, g: 0x88, b: 0x50 }, { t: 1, r: 0xf6, g: 0xc8, b: 0x70 }]
+            sun = 0.9; sunY = GROUND_Y - 30; bloom = 0.6
+          } else {                                 // dusk (18–20)
+            sky = [{ t: 0, r: 0x20, g: 0x18, b: 0x3c }, { t: 0.5, r: 0x5a, g: 0x30, b: 0x50 }, { t: 1, r: 0xe0, g: 0x80, b: 0x44 }]
+            sun = 0.4; starA = 0.3; bloom = 0.8; moon = 0.25
+          }
+          const lerp = (a: number, b: number, t: number) => Math.round(a + (b - a) * t)
+          for (let y = 0; y < GROUND_Y; y++) {
+            const t = y / GROUND_Y
+            let s0 = sky[0], s1 = sky[sky.length - 1]
+            for (let k = 0; k < sky.length - 1; k++) {
+              if (t >= sky[k].t && t <= sky[k + 1].t) { s0 = sky[k]; s1 = sky[k + 1]; break }
+            }
+            const lt = (t - s0.t) / Math.max(0.0001, s1.t - s0.t)
+            const col = (lerp(s0.r, s1.r, lt) << 16) | (lerp(s0.g, s1.g, lt) << 8) | lerp(s0.b, s1.b, lt)
+            g.fillStyle(col, 1); g.fillRect(0, y, BASE_W, 1)
+          }
+          if (starA > 0) {
+            const stars: [number, number, number][] = [[120,16,0.9],[210,30,0.7],[330,10,0.85],[60,38,0.6],[470,18,0.8],[560,32,0.65],[150,44,0.5],[290,22,0.75],[420,40,0.6],[80,12,0.7],[640,14,0.8],[380,50,0.4]]
+            for (const [sx, sy, sa] of stars) { g.fillStyle(0xfdf6e0, sa * starA); g.fillRect(sx, sy, 1, 1) }
+          }
+          if (bloom > 0) {
+            g.fillStyle(0xff7020, 0.10 * bloom); g.fillRect(400, GROUND_Y - 18, 500, 18)
+            g.fillStyle(0xffb040, 0.08 * bloom); g.fillRect(500, GROUND_Y - 12, 400, 12)
+          }
+          if (sun > 0) {
+            g.fillStyle(0xff9030, 0.12 * sun); g.fillCircle(742, sunY, 44)
+            g.fillStyle(0xffc060, 0.22 * sun); g.fillCircle(742, sunY, 32)
+            g.fillStyle(0xffe090, 0.50 * sun); g.fillCircle(742, sunY, 20)
+            g.fillStyle(0xfff8cc, 0.92 * sun); g.fillCircle(742, sunY, 12)
+          }
+          if (moon > 0) {
+            const cut = (sky[0].r << 16) | (sky[0].g << 8) | sky[0].b  // crescent cutout = top sky colour
+            g.fillStyle(0xf0e8c4, moon); g.fillCircle(72, 22, 9)
+            g.fillStyle(cut, 1); g.fillCircle(78, 20, 7)
+          }
+        }
+
         update() {
           const t = this.time.now
           const { agents: apiAgents, mytHour, weather } = dataRef.current
           const isBadWeather = weather === "rain" || weather === "storm"
           const isNight = mytHour < 6 || mytHour >= 22
 
-          // ── Time-of-day tint (MYT hour, fed from the real clock — not the
-          // viewer's browser locale) + weather darkening, stacked.
-          let tint = 0x000000, tintA = 0
-          if (mytHour >= 5  && mytHour < 7)  { tint = 0x6a2f6a; tintA = 0.22 }  // dawn
-          else if (mytHour >= 7  && mytHour < 9)  { tint = 0xffc080; tintA = 0.10 }  // morning
-          else if (mytHour >= 9  && mytHour < 16) { tint = 0xfff8d0; tintA = 0.06 }  // midday (subtle warm wash so the sky isn't completely flat)
-          else if (mytHour >= 16 && mytHour < 18) { tint = 0xff9050; tintA = 0.12 }  // golden hour
-          else if (mytHour >= 18 && mytHour < 20) { tint = 0xb84a30; tintA = 0.18 }  // dusk
-          else                                     { tint = 0x141040; tintA = 0.40 }  // night
+          // ── Sky: redraw the gradient/sun/moon/stars when the hour rolls over.
+          if ((mytHour | 0) !== this.skyHour) { this.skyHour = mytHour | 0; this.drawSky(mytHour) }
+
+          // ── Weather darkening only (time-of-day now lives in the base sky
+          // gradient via drawSky, so no separate time tint here).
           this.skyOverlay.clear()
-          if (tintA > 0) { this.skyOverlay.fillStyle(tint, tintA); this.skyOverlay.fillRect(0, 0, BASE_W, BASE_H) }
           if (weather === "cloudy") { this.skyOverlay.fillStyle(0x808890, 0.12); this.skyOverlay.fillRect(0, 0, BASE_W, BASE_H) }
           else if (weather === "rain")  { this.skyOverlay.fillStyle(0x404858, 0.22); this.skyOverlay.fillRect(0, 0, BASE_W, BASE_H) }
           else if (weather === "storm") { this.skyOverlay.fillStyle(0x282838, 0.34); this.skyOverlay.fillRect(0, 0, BASE_W, BASE_H) }
