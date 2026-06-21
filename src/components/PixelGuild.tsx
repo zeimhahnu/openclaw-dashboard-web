@@ -835,12 +835,18 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
     taskDetails: Record<string, AgentTaskDetails> | null
     mytHour: number
     weather: WeatherCondition
-  }>({ agents: null, taskDetails: null, mytHour: new Date().getHours(), weather: "sunny" })
+  }>({ agents: null, taskDetails: null, mytHour: 12, weather: "sunny" })
+  // ^ mytHour initial = 12 (midday, neutral) — never use local browser
+  // time. The parent always passes MYT hour via props; if the prop
+  // chain is broken, we should NOT silently show "Night" when it's
+  // actually morning in KL. (Fix 2026-06-21: bug was new Date().getHours()
+  // returning 1 in a UTC browser at 01:50 UTC, scene showed Night when
+  // KL was at 09:50 morning.)
 
   useEffect(() => {
     dataRef.current = {
       agents, taskDetails,
-      mytHour: mytHour ?? new Date().getHours(),
+      mytHour: mytHour ?? 12,
       weather: weather ?? "sunny",
     }
   }, [agents, taskDetails, mytHour, weather])
@@ -1296,9 +1302,9 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
           let tint = 0x000000, tintA = 0
           if (mytHour >= 5  && mytHour < 7)  { tint = 0x6a2f6a; tintA = 0.22 }  // dawn
           else if (mytHour >= 7  && mytHour < 9)  { tint = 0xffc080; tintA = 0.10 }  // morning
-          else if (mytHour >= 9  && mytHour < 16) { tint = 0xfff8d0; tintA = 0.0  }  // midday
-          else if (mytHour >= 16 && mytHour < 18) { tint = 0xff9050; tintA = 0.10 }  // golden hour
-          else if (mytHour >= 18 && mytHour < 20) { tint = 0xb84a30; tintA = 0.16 }  // dusk
+          else if (mytHour >= 9  && mytHour < 16) { tint = 0xfff8d0; tintA = 0.06 }  // midday (subtle warm wash so the sky isn't completely flat)
+          else if (mytHour >= 16 && mytHour < 18) { tint = 0xff9050; tintA = 0.12 }  // golden hour
+          else if (mytHour >= 18 && mytHour < 20) { tint = 0xb84a30; tintA = 0.18 }  // dusk
           else                                     { tint = 0x141040; tintA = 0.40 }  // night
           this.skyOverlay.clear()
           if (tintA > 0) { this.skyOverlay.fillStyle(tint, tintA); this.skyOverlay.fillRect(0, 0, BASE_W, BASE_H) }
