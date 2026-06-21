@@ -95,6 +95,20 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen text-[var(--foreground)]">
 
+      {/* ── DEBUG OVERLAY (temporary — diagnoses stuck sky/weather) ─────── */}
+      <div
+        data-testid="debug-overlay"
+        className="fixed top-20 right-4 z-50 font-code text-[10px] px-2 py-1.5 rounded border border-[var(--border)] bg-[var(--card)]/95 shadow-md space-y-0.5"
+        style={{ minWidth: 180 }}
+      >
+        <div className="font-semibold text-[var(--primary)]">DEBUG · scene props</div>
+        <div>mytHour: <span data-testid="dbg-hour">{mytHour}</span> ({TOD.label})</div>
+        <div>weather: <span data-testid="dbg-weather">{weather}</span></div>
+        <div>clock: {new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(11, 19)} MYT</div>
+        <div>browser TZ: {Intl.DateTimeFormat().resolvedOptions().timeZone}</div>
+        <div>browser hr: {new Date().getHours()}</div>
+      </div>
+
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md">
         <div className="max-w-[1320px] mx-auto flex items-center justify-between px-6 h-16">
