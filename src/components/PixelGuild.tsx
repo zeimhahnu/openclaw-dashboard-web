@@ -7,8 +7,12 @@ const GROUND_Y = 88
 // Hi-fi chibi sprite: 24w x 40h per frame, 4 walk frames x 4 directions.
 // Light source top-left; auto silhouette outline; hue-shifted color ramps.
 const SW = 24, SH = 40, SDIRS = 4, SWALK = 4
-const SPRITE_SCALE = 1.5
-const STATION_SCALE = 1.0
+// Bumped from 1.5/1.0 — at FIT-scale on a portrait phone (~0.38x) characters
+// rendered too small to read. The panorama is fixed at BASE_W/BASE_H so the
+// whole-scene scale can't grow without cropping a village; this makes the
+// AGENTS themselves bigger relative to the background instead.
+const SPRITE_SCALE = 2.0
+const STATION_SCALE = 1.3
 const OUTLINE = 0x1b0f14
 
 const AGENTS = [
@@ -1718,6 +1722,10 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
         scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
         scene: Scene,
       })
+      // Phaser leaves the canvas at its UA default (display:inline), which
+      // reserves baseline/line-height space around it inside a block container.
+      // Force block so the canvas's own box is the only thing sized here.
+      if (game.canvas) game.canvas.style.display = "block"
     })()
 
     return () => { destroyed = true; game?.destroy(true) }
@@ -1726,7 +1734,7 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
   return (
     <div
       ref={hostRef}
-      style={{ width: "100%", height, imageRendering: "pixelated", background: "#7da848" }}
+      style={{ width: "100%", height, imageRendering: "pixelated", background: "#7da848", overflow: "hidden" }}
     />
   )
 }

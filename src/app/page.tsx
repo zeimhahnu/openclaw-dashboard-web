@@ -108,6 +108,24 @@ export default function DashboardPage() {
   const totalActive = AGENTS.reduce((s, a) => s + (state?.agents?.[a]?.working_count ?? 0), 0)
   const totalInbox  = AGENTS.reduce((s, a) => s + (state?.agents?.[a]?.inbox_count ?? 0), 0)
 
+  // The legacy `state.router` field is dead — decisions_count is never set and
+  // model_breakdown is always {} (RouterStatsCard was falling back to a
+  // hardcoded fake roster). router_usage.by_model is real and, since the
+  // gateway now merges Mason's Claude usage into it, already includes
+  // Sonnet/Opus/Haiku/Fable alongside the VPS models - derive the card from it.
+  const byModel = state?.router_usage?.by_model ?? {}
+  const modelCallCounts = Object.fromEntries(Object.entries(byModel).map(([m, v]) => [m, v.calls]))
+  const totalModelCalls = Object.values(modelCallCounts).reduce((s, c) => s + c, 0)
+  const modelMixData = state?.router_usage ? {
+    decisions_count: totalModelCalls,
+    model_breakdown: modelCallCounts,
+    total_cost_usd: state.router_usage.totals.cost_usd,
+  } : null
+  const topModels = Object.entries(byModel)
+    .map(([m, v]) => [m, v.cost_usd] as const)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+
   return (
     <main className="min-h-screen text-[var(--foreground)]">
 
@@ -163,7 +181,11 @@ export default function DashboardPage() {
         <section className="fade-rise">
           <Eyebrow>The Homestead</Eyebrow>
           <div className="surface overflow-hidden">
-            <div className="relative">
+            {/* flex column, not the default block flow: a bare <canvas> defaults to
+                display:inline, and an inline replaced element reserves baseline/
+                line-height space around itself even with zero margin/padding on
+                every ancestor - that's the ~48px gap above the scene on mobile. */}
+            <div className="relative flex flex-col">
               <PixelGuild
                 agents={state?.agents ?? null}
                 taskDetails={state?.task_details ?? null}
@@ -343,26 +365,28 @@ export default function DashboardPage() {
                 </span>
               </div>
 
-              {/* Model roster */}
-              <div>
-                <div className="font-code text-[9px] text-[var(--muted-foreground)] mb-2">// model roster</div>
-                <div className="space-y-2">
-                  {([
-                    { id: "lil-claw", model: "MiniMax-M3" },
-                    { id: "goop",     model: "MiniMax-M3" },
-                    { id: "mason",    model: "Sonnet 4.6"  },
-                  ] as const).map((a) => (
-                    <div key={a.id} className="flex items-center justify-between">
-                      <span className="font-code text-[10px] font-bold" style={{ color: AGENT_COLORS[a.id] }}>
-                        {a.id}
-                      </span>
-                      <span className="font-code text-[9px] px-1.5 py-0.5 rounded bg-[var(--muted)] border border-[var(--border)] text-[var(--muted-foreground)]">
-                        {a.model}
-                      </span>
-                    </div>
-                  ))}
+              {/* Top models by spend — real data, not a per-agent guess. The
+                  gateway can't attribute a VPS model call to one specific
+                  agent, and a static "lil-claw: X / mason: Y" list here used
+                  to claim it could (mason's was hardcoded to "Sonnet 4.6" and
+                  never changed even though he runs Opus/Sonnet/Haiku/Fable). */}
+              {topModels.length > 0 && (
+                <div>
+                  <div className="font-code text-[9px] text-[var(--muted-foreground)] mb-2">// top models (by spend)</div>
+                  <div className="space-y-2">
+                    {topModels.map(([model, cost]) => (
+                      <div key={model} className="flex items-center justify-between">
+                        <span className="font-code text-[10px] truncate" title={model}>
+                          {model}
+                        </span>
+                        <span className="font-code text-[9px] px-1.5 py-0.5 rounded bg-[var(--muted)] border border-[var(--border)] text-[var(--muted-foreground)] shrink-0">
+                          {cost === 0 ? "—" : `$${cost.toFixed(4)}`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </section>
@@ -383,7 +407,7 @@ export default function DashboardPage() {
         <section className="fade-rise">
           <Eyebrow>The Ledger</Eyebrow>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <RouterStatsCard data={state?.router ?? null} isLoading={loading} />
+            <RouterStatsCard data={modelMixData} isLoading={loading} />
             <TokenBurnCard usage={state?.router_usage ?? null} metricsHistory={state?.metrics_history ?? null} isLoading={loading} />
             <TaskActivityCard
               tasks={state?.tasks ?? null}

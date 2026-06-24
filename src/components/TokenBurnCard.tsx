@@ -163,80 +163,99 @@ export function TokenBurnCard({ usage, metricsHistory, isLoading }: TokenBurnCar
         </div>
       </div>
 
-      {/* 14-day system load sparkline from metrics history */}
-      {metricsHistory && metricsHistory.series.length > 1 && (() => {
-        const series = metricsHistory.series
-        const loads = series.map((s) => s.system?.load ?? 0)
-        const maxLoad = Math.max(...loads, 0.01)
+      {/* $ spend trend — primary chart. A baseline + Y-axis labels + filled
+          area replace the old bare bars: without a fixed 0-line and a scale
+          label, a thin line/bar set has no reference point to read values
+          from ("floating in the middle" — there was nothing to float above). */}
+      {days.length > 0 && (() => {
+        const W = 300, H = 64, padL = 28, padB = 12, padT = 10
+        const plotW = W - padL, plotH = H - padB - padT
+        const yMax = maxDayCost * 1.15 || 1
+        const x = (i: number) => padL + (days.length <= 1 ? plotW / 2 : (i / (days.length - 1)) * plotW)
+        const y = (v: number) => padT + plotH - (v / yMax) * plotH
+        const pts = days.map((d, i) => [x(i), y(by_day[d]?.cost_usd ?? 0)] as const)
+        const linePts = pts.map(([px, py]) => `${px},${py}`).join(" ")
+        const areaPts = `${padL},${y(0)} ${linePts} ${x(days.length - 1)},${y(0)}`
+        const todayIdx = days.indexOf(today)
+        const avgY = y(avg7d)
         return (
           <div className="mb-3">
-            <div className="font-code text-[8px] text-[var(--muted-foreground)] mb-1">// system load (14d)</div>
-            <svg viewBox={`0 0 ${series.length * 8} 36`} className="w-full h-10" preserveAspectRatio="none">
-              <polyline
-                fill="none"
-                stroke="var(--warning)"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                points={loads.map((l, i) => `${i * 8 + 4},${36 - (l / maxLoad) * 32}`).join(" ")}
-              />
-              {loads.map((l, i) => (
-                <circle
-                  key={i}
-                  cx={i * 8 + 4}
-                  cy={36 - (l / maxLoad) * 32}
-                  r={i === loads.length - 1 ? 2 : 1}
-                  fill={i === loads.length - 1 ? "var(--warning)" : "var(--warning)"}
-                  opacity={i === loads.length - 1 ? 1 : 0.5}
-                />
+            <div className="flex items-center justify-between mb-1">
+              <span className="font-code text-[8px] text-[var(--muted-foreground)]">{`// $ spend (${days.length}d)`}</span>
+              <span className="font-code text-[8px] text-[var(--muted-foreground)]">max {fmtCost(maxDayCost)}</span>
+            </div>
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 90 }} preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="spend-fill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--warning)" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="var(--warning)" stopOpacity="0.02" />
+                </linearGradient>
+              </defs>
+              {/* gridlines: 0 (baseline) and max, with $ labels */}
+              <line x1={padL} y1={y(0)} x2={W} y2={y(0)} stroke="var(--border)" strokeWidth="1" />
+              <line x1={padL} y1={padT} x2={W} y2={padT} stroke="var(--border)" strokeWidth="1" strokeDasharray="2,2" />
+              <text x="2" y={y(0) + 3} className="font-code" fontSize="7" fill="var(--muted-foreground)">$0</text>
+              <text x="2" y={padT + 3} className="font-code" fontSize="7" fill="var(--muted-foreground)">{fmtCost(maxDayCost)}</text>
+              {/* avg/day reference line */}
+              {avg7d > 0 && (
+                <line x1={padL} y1={avgY} x2={W} y2={avgY} stroke="var(--secondary)" strokeWidth="1" strokeDasharray="3,3" opacity="0.7" />
+              )}
+              {/* filled area + line */}
+              <polygon points={areaPts} fill="url(#spend-fill)" />
+              <polyline points={linePts} fill="none" stroke="var(--warning)" strokeWidth="2.5"
+                strokeLinecap="round" strokeLinejoin="round" />
+              {pts.map(([px, py], i) => (
+                <circle key={i} cx={px} cy={py} r={i === todayIdx ? 3 : 1.5}
+                  fill="var(--warning)" opacity={i === todayIdx ? 1 : 0.6} />
               ))}
+              {/* today's $ value, labeled directly on the chart */}
+              {todayIdx >= 0 && todayCost > 0 && (
+                <text x={Math.min(x(todayIdx) + 4, W - 36)} y={Math.max(y(todayCost) - 6, 9)}
+                  className="font-code" fontSize="8" fontWeight="bold" fill="var(--warning)">
+                  {fmtCost(todayCost)}
+                </text>
+              )}
             </svg>
-            <div className="flex justify-between">
-              <span className="font-code text-[6px] text-[var(--faint)]">{series[0]?.date?.slice(5)}</span>
-              <span className="font-code text-[6px] text-[var(--muted-foreground)]">
-                peak {maxLoad.toFixed(1)}
-              </span>
-              <span className="font-code text-[6px] text-[var(--faint)]">{series[series.length - 1]?.date?.slice(5)}</span>
+            <div className="flex justify-between mt-0.5">
+              <span className="font-code text-[6px] text-[var(--faint)]">{days[0]?.slice(5)}</span>
+              {avg7d > 0 && (
+                <span className="font-code text-[6px] text-[var(--secondary)]">avg {fmtCost(avg7d)}</span>
+              )}
+              <span className="font-code text-[6px] text-[var(--faint)]">{days[days.length - 1]?.slice(5)}</span>
             </div>
           </div>
         )
       })()}
 
-      {/* 7-day sparkline bars */}
-      {days.length > 0 && (
-        <div className="mb-3">
-          <div className="flex items-end gap-px h-10 mb-0.5">
-            {days.map((d) => {
-              const cost = by_day[d]?.cost_usd ?? 0
-              const isToday = d === today
-              const heightPct = Math.max(4, Math.round((cost / maxDayCost) * 100))
-              return (
-                <div key={d} className="flex-1 flex flex-col justify-end" title={`${d}: ${fmtCost(cost)}`}>
-                  <div
-                    className="w-full rounded-t transition-all duration-700"
-                    style={{
-                      height: `${heightPct}%`,
-                      background: isToday
-                        ? "var(--warning)"
-                        : cost > 0 ? "var(--warning)" : "var(--muted)",
-                      opacity: isToday ? 1 : cost > 0 ? 0.45 : 0.25,
-                      boxShadow: isToday && cost > 0 ? "0 0 6px var(--warning)" : "none",
-                    }}
-                  />
-                </div>
-              )
-            })}
+      {/* System load — secondary/infra context, NOT a spend metric (kept small
+          and clearly labeled so it's never mistaken for the $ chart above). */}
+      {metricsHistory && metricsHistory.series.length > 1 && (() => {
+        const series = metricsHistory.series
+        const loads = series.map((s) => s.system?.load ?? 0)
+        const maxLoad = Math.max(...loads, 0.01)
+        const W = series.length * 8, H = 28, base = H - 4
+        return (
+          <div className="mb-3 opacity-80">
+            <div className="font-code text-[7px] text-[var(--muted-foreground)] mb-1">{"// server CPU load (not $) — " + series.length + "d"}</div>
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-6" preserveAspectRatio="none">
+              <line x1="0" y1={base} x2={W} y2={base} stroke="var(--border)" strokeWidth="1" />
+              <polyline
+                fill="none"
+                stroke="var(--secondary)"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                points={loads.map((l, i) => `${i * 8 + 4},${base - (l / maxLoad) * (base - 4)}`).join(" ")}
+              />
+            </svg>
+            <div className="flex justify-between">
+              <span className="font-code text-[6px] text-[var(--faint)]">{series[0]?.date?.slice(5)}</span>
+              <span className="font-code text-[6px] text-[var(--muted-foreground)]">peak {maxLoad.toFixed(1)}</span>
+              <span className="font-code text-[6px] text-[var(--faint)]">{series[series.length - 1]?.date?.slice(5)}</span>
+            </div>
           </div>
-          <div className="flex gap-px">
-            {days.map((d) => (
-              <div key={d} className="flex-1 text-center font-code text-[var(--faint)]"
-                   style={{ fontSize: "6px" }}>
-                {d.slice(8)}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Peak day */}
       {peakDay && peakCost > 0 && (

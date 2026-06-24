@@ -24,6 +24,7 @@ function modelAccentColor(model: string): string {
   if (m.includes("owl") || m.includes("openrouter")) return "#e8a935"
   if (m.includes("haiku"))                            return "#9b87f0"
   if (m.includes("sonnet"))                           return "#52b8d0"
+  if (m.includes("fable"))                            return "#c45a8f"
   if (m.includes("opus"))                             return "#d48fb0"
   if (m.includes("gpt-4o-mini"))                      return "#7aad5a"
   if (m.includes("gpt"))                              return "#e8a935"
@@ -38,6 +39,7 @@ function toolIcon(model: string): string {
   if (m.includes("owl") || m.includes("openrouter")) return "◎"
   if (m.includes("haiku"))                            return "◈"
   if (m.includes("sonnet"))                           return "◆"
+  if (m.includes("fable"))                            return "◇"
   if (m.includes("opus"))                             return "◆"
   return "·"
 }
@@ -128,10 +130,10 @@ export function RouterStatsCard({ data, isLoading }: RouterStatsCardProps) {
         <div className="bg-[var(--muted)] rounded p-2 border border-[var(--border)]">
           <div className="flex items-center gap-1 mb-0.5">
             <Activity className="h-3 w-3 text-[var(--secondary)]" />
-            <span className="font-code text-[10px] text-[var(--muted-foreground)]">decisions</span>
+            <span className="font-code text-[10px] text-[var(--muted-foreground)]">model calls</span>
           </div>
           <span className="font-code text-xl font-bold text-[var(--secondary)] text-glow-green block">
-            {data.decisions_count}
+            {data.decisions_count > 0 ? data.decisions_count : "—"}
           </span>
         </div>
         <div className="bg-[var(--muted)] rounded p-2 border border-[var(--border)]">
@@ -146,7 +148,9 @@ export function RouterStatsCard({ data, isLoading }: RouterStatsCardProps) {
         </div>
       </div>
 
-      {/* Tool breakdown */}
+      {/* Model mix — real call-volume share, across every model any agent used
+          this window (VPS router models + Mason's Claude models, merged
+          server-side). Empty only when no agent has made a single call yet. */}
       {Object.keys(data.model_breakdown).length > 0 ? (
         <div>
           <span className="font-pixel text-[7px] text-[var(--muted-foreground)] mb-2 block">
@@ -155,21 +159,9 @@ export function RouterStatsCard({ data, isLoading }: RouterStatsCardProps) {
           <ToolBreakdownBar breakdown={data.model_breakdown} />
         </div>
       ) : (
-        <div className="border-t border-[var(--border)] pt-2">
-          <span className="font-pixel text-[7px] text-[var(--muted-foreground)] mb-2 block">MODEL ROSTER</span>
-          {[
-            { name: "lil-claw", model: "MiniMax-M3", color: "#1ea84e" },
-            { name: "goop",     model: "MiniMax-M3", color: "#1490b8" },
-            { name: "mason",    model: "Sonnet 4.6",  color: "#5828c8" },
-          ].map(a => (
-            <div key={a.name} className="flex items-center gap-2 mb-1.5">
-              <span className="font-code text-[10px] w-14 shrink-0 font-semibold" style={{ color: a.color }}>
-                {a.name}
-              </span>
-              <span className="font-code text-[9px] text-[var(--muted-foreground)] flex-1">{a.model}</span>
-            </div>
-          ))}
-        </div>
+        <p className="font-code text-[10px] text-[var(--muted-foreground)] pt-2 border-t border-[var(--border)]">
+          {"// no model calls recorded yet"}
+        </p>
       )}
     </div>
   )
