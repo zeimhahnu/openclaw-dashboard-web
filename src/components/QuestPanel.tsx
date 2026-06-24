@@ -77,12 +77,17 @@ function ChoreRow({ task, kind }: { task: TaskSummary; kind: "queued" | "tending
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1">
           <div className="font-code text-[9px] text-[var(--foreground)] truncate">{task.id}</div>
-          <span
-            className="font-pixel text-[5px] px-0.5 py-0 rounded shrink-0"
-            style={{ color: ORIGIN_COLOR[origin] ?? "#6a9a6a", backgroundColor: (ORIGIN_COLOR[origin] ?? "#6a9a6a") + "15" }}
-          >
-            {origin}
-          </span>
+          {/* Omit the badge entirely when the task has no real assignedBy
+              (matches Chore Board's "by:X" pattern) - a bare "?" placeholder
+              for missing data reads as broken, not as "unattributed". */}
+          {task.assignedBy && (
+            <span
+              className="font-pixel text-[5px] px-0.5 py-0 rounded shrink-0"
+              style={{ color: ORIGIN_COLOR[origin] ?? "#6a9a6a", backgroundColor: (ORIGIN_COLOR[origin] ?? "#6a9a6a") + "15" }}
+            >
+              {origin}
+            </span>
+          )}
         </div>
         {task.description && (
           <div className="font-code text-[8px] text-[var(--muted-foreground)] truncate">{task.description}</div>

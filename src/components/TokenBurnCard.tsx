@@ -258,10 +258,14 @@ export function TokenBurnCard({ usage, metricsHistory, isLoading }: TokenBurnCar
                 </div>
                 {activeModels.length > 0 ? (
                   <div className="space-y-0.5">
+                    {/* No justify-between: on a wide desktop card that stretches
+                        "claude-opus-4-8" and "$49.8 · 167c" to opposite edges,
+                        leaving a huge gap between a short name and its value.
+                        gap-2 with no flex-1 keeps them snug, like a real table. */}
                     {activeModels.sort(([, a], [, b]) => b.cost_usd - a.cost_usd).map(([model, m]) => (
-                      <div key={model} className="flex items-center justify-between">
-                        <span className="font-code text-[8px] text-[var(--muted-foreground)] truncate">{model}</span>
-                        <span className="font-code text-[8px] text-[var(--muted-foreground)] shrink-0 ml-2">
+                      <div key={model} className="flex items-center gap-2">
+                        <span className="font-code text-[8px] text-[var(--muted-foreground)]">{model}</span>
+                        <span className="font-code text-[8px] text-[var(--muted-foreground)] shrink-0">
                           {fmtCost(m.cost_usd)} · {m.calls}c
                         </span>
                       </div>
