@@ -637,6 +637,80 @@ function drawScholarTower(g: Phaser.GameObjects.Graphics, x: number, y: number) 
   g.fillRect(x - 7, y - 21, 5, 1); g.fillRect(x - 7, y - 19, 4, 1); g.fillRect(x + 2, y - 21, 5, 1); g.fillRect(x + 3, y - 19, 4, 1)
 }
 
+// ── Mason's scholar study — a courtyard of apparatus in front of his tower so
+// the scholar actually has things to work with (desk/ledger, star-chart easel,
+// and an animated orrery). Coords are absolute world-space, depth-sorted by y.
+const MASON_DESK   = { x: 704, y: 158 }
+const MASON_ORRERY = { x: 740, y: 152 }
+const MASON_EASEL  = { x: 666, y: 154 }
+
+function drawScholarDesk(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+  g.fillStyle(0x10180e, 0.34); g.fillEllipse(x, y + 4, 58, 10)             // ground shadow
+  g.fillStyle(0x3a2614, 1); g.fillRect(x - 22, y - 2, 3, 8); g.fillRect(x + 19, y - 2, 3, 8)  // legs
+  g.fillStyle(0x6a4525, 1); g.fillRect(x - 26, y - 9, 52, 8)              // table top
+  g.fillStyle(0x8a5e34, 0.85); g.fillRect(x - 26, y - 9, 52, 2)           // lit top edge
+  g.fillStyle(0x32200f, 0.6); g.fillRect(x - 26, y - 2, 52, 1)            // front shadow
+  // open ledger (two cream pages + spine + text lines)
+  g.fillStyle(0xf2e9d0, 1); g.fillRect(x - 12, y - 13, 11, 6); g.fillRect(x + 1, y - 13, 11, 6)
+  g.fillStyle(0xcdb98c, 0.7); g.fillRect(x - 1, y - 13, 2, 6)
+  g.fillStyle(0x6a5a40, 0.5)
+  g.fillRect(x - 10, y - 12, 7, 1); g.fillRect(x - 10, y - 10, 6, 1)
+  g.fillRect(x + 3, y - 12, 7, 1); g.fillRect(x + 3, y - 10, 5, 1)
+  // stacked books (left)
+  g.fillStyle(0x8a3a2a, 1); g.fillRect(x - 25, y - 13, 9, 3)
+  g.fillStyle(0x2a5a6a, 1); g.fillRect(x - 24, y - 16, 8, 3)
+  g.fillStyle(0x4a6a2a, 1); g.fillRect(x - 23, y - 19, 7, 3)
+  g.fillStyle(0xd4b25a, 0.7); g.fillRect(x - 25, y - 12, 9, 1)
+  // scroll (right)
+  g.fillStyle(0xe8dcc0, 1); g.fillRect(x + 15, y - 12, 10, 3)
+  g.fillStyle(0xc4b48a, 0.9); g.fillCircle(x + 15, y - 11, 2); g.fillCircle(x + 25, y - 11, 2)
+  // inkwell
+  g.fillStyle(0x1a1622, 1); g.fillRect(x + 5, y - 12, 4, 5)
+  g.fillStyle(0x3a3a58, 1); g.fillRect(x + 5, y - 12, 4, 1)
+}
+
+function drawStarChart(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+  g.fillStyle(0x10180e, 0.3); g.fillEllipse(x, y + 3, 26, 6)
+  g.fillStyle(0x4a3318, 1)                                                 // easel A-frame
+  g.fillRect(x - 8, y - 22, 2, 24); g.fillRect(x + 6, y - 22, 2, 24); g.fillRect(x - 1, y - 18, 2, 20)
+  g.fillStyle(0x141a30, 1); g.fillRect(x - 11, y - 35, 22, 17)            // chart (night sky)
+  g.fillStyle(0x2a3358, 1); g.fillRect(x - 11, y - 35, 22, 1)
+  g.fillStyle(0x5a4a2a, 1); g.fillRect(x - 12, y - 36, 24, 2)             // frame top
+  const stars: [number, number][] = [[-7,-31],[-2,-28],[3,-32],[6,-26],[-4,-23],[2,-24],[8,-30]]
+  g.lineStyle(1, 0x5a6a9a, 0.7)
+  g.beginPath(); g.moveTo(x - 7, y - 31); g.lineTo(x - 2, y - 28); g.lineTo(x + 3, y - 32); g.lineTo(x + 6, y - 26); g.strokePath()
+  g.fillStyle(0xf2f0d4, 1); stars.forEach(([sx, sy]) => g.fillRect(x + sx, y + sy, 1, 1))
+}
+
+// Animated brass orrery — armillary rings whose width oscillates to fake 3D
+// rotation, a glowing sun, and two orbiting planets. Redrawn each frame.
+function drawOrrery(g: Phaser.GameObjects.Graphics, x: number, y: number, t: number) {
+  g.clear()
+  g.fillStyle(0x10180e, 0.3); g.fillEllipse(x, y + 2, 20, 5)               // shadow
+  g.fillStyle(0x3a2c18, 1); g.fillRect(x - 1, y - 9, 3, 11)                // stand
+  g.fillStyle(0x5a4428, 1); g.fillRect(x - 5, y + 1, 11, 3)               // base
+  const cx = x, cy = y - 18
+  const r = 10
+  const w1 = Math.abs(Math.sin(t / 620)) * 16 + 3
+  const w2 = Math.abs(Math.cos(t / 620)) * 16 + 3
+  g.lineStyle(1, 0xc8902a, 0.9); g.strokeEllipse(cx, cy, w1, r * 2)        // ring A
+  g.lineStyle(1, 0xe6bc5c, 0.8); g.strokeEllipse(cx, cy, r * 2, w2)        // ring B
+  g.fillStyle(0xffd24a, 1); g.fillCircle(cx, cy, 2)                        // sun
+  g.fillStyle(0xffe9a0, 0.4); g.fillCircle(cx, cy, 4)
+  const a1 = t / 480
+  g.fillStyle(0x6ab0e0, 1); g.fillCircle(Math.round(cx + Math.cos(a1) * 9), Math.round(cy + Math.sin(a1) * 4), 1.5)
+  const a2 = t / 820 + 2.1
+  g.fillStyle(0xe07a4a, 1); g.fillCircle(Math.round(cx + Math.cos(a2) * 6), Math.round(cy + Math.sin(a2) * 3), 1)
+}
+
+// A wax-sealed scroll, carried by an agent and physically passed during a handoff.
+function drawScroll(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+  g.fillStyle(0xeaddb8, 1); g.fillRect(x - 4, y - 1, 8, 3)
+  g.fillStyle(0xcdbb8c, 1); g.fillRect(x - 4, y - 1, 1, 3); g.fillRect(x + 3, y - 1, 1, 3)
+  g.fillStyle(0xfff4d8, 0.7); g.fillRect(x - 3, y - 1, 6, 1)
+  g.fillStyle(0x9a2f2f, 1); g.fillRect(x - 1, y - 2, 2, 5)
+}
+
 function drawStation(g: Phaser.GameObjects.Graphics, kind: "manager"|"forge"|"study", x: number, y: number) {
   g.clear()
   if (kind === "manager") drawFarmhouse(g, x, y)
@@ -937,6 +1011,11 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
         // Lil Claw idle sub-target
         lilTarget: "wander"|"coop"|"crops"
         lilTargetTimer: number
+        // Handoff: physically deliver a scroll to a peer, then return
+        handoffMode: "none"|"deliver"|"handing"|"return"
+        handoffPeer: string | null
+        handoffReturnX: number; handoffReturnY: number
+        handoffTimer: number
         // Sprite
         sprite: Phaser.GameObjects.Sprite
         toolG: Phaser.GameObjects.Graphics
@@ -948,8 +1027,6 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
       type Heart = { g: Phaser.GameObjects.Graphics; alpha:number; vy:number }
       type Firefly = { g: Phaser.GameObjects.Graphics; bx:number; by:number; ph:number; sp:number; hue:number }
       type WheatStalk = { g: Phaser.GameObjects.Graphics; x:number; y:number; ripe:boolean }
-      // Arc packet for handoff animation
-      type HandoffPacket = { g: Phaser.GameObjects.Graphics; fromX:number; fromY:number; toX:number; toY:number; progress:number; color:number }
 
       class Scene extends Phaser.Scene {
         ags: AgentLocal[] = []
@@ -958,7 +1035,6 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
         hearts: Heart[] = []
         fireflies: Firefly[] = []
         wheats: WheatStalk[] = []
-        handoffPackets: HandoffPacket[] = []
         rainG!: Phaser.GameObjects.Graphics
         rainDrops: { x: number; y: number; len: number; speed: number }[] = []
         coopG!: Phaser.GameObjects.Graphics
@@ -969,6 +1045,7 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
         pondG!: Phaser.GameObjects.Graphics
         fishingG!: Phaser.GameObjects.Graphics
         sparkG!: Phaser.GameObjects.Graphics
+        orreryG!: Phaser.GameObjects.Graphics
         seedGfx!: Phaser.GameObjects.Graphics
         skyOverlay!: Phaser.GameObjects.Graphics
         skyGfx!: Phaser.GameObjects.Graphics
@@ -1168,6 +1245,14 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             this.stations.push(sg)
           })
 
+          // ── Mason's scholar study: static desk + star-chart easel; the orrery
+          // is animated in update(). Gives the scholar real apparatus to work at.
+          const deskG = this.add.graphics().setDepth(MASON_DESK.y)
+          drawScholarDesk(deskG, MASON_DESK.x, MASON_DESK.y)
+          const easelG = this.add.graphics().setDepth(MASON_EASEL.y)
+          drawStarChart(easelG, MASON_EASEL.x, MASON_EASEL.y)
+          this.orreryG = this.add.graphics().setDepth(MASON_ORRERY.y)
+
           // ── Seed packets on chore board
           this.seedGfx = this.add.graphics().setDepth(2)
 
@@ -1231,6 +1316,8 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
               masonVisitX: 450, masonVisitY: 155,
               goopTarget: "wander", goopTargetTimer: 0,
               lilTarget: "wander", lilTargetTimer: 0,
+              handoffMode: "none", handoffPeer: null,
+              handoffReturnX: a.home.x, handoffReturnY: a.home.y, handoffTimer: 0,
               idleAnimMode: "down", idleAnimTimer: 60 + i * 35,
               // Stagger resting pose changes per agent (300ms between each
               // so they don't all swap on the same tick) and pick a random
@@ -1434,14 +1521,14 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
                   ;(ag as any)._lastCaption = newCaption
                 }
                 const c = ad.completed_today ?? 0
-                if (c > ag.completedPrev) {
-                  this.spawnHeart(ag.wx, ag.wy - 28); this.spawnHeart(ag.wx + 6, ag.wy - 24)
-                  // Spawn a handoff arc to a peer agent
+                if (c > ag.completedPrev && ag.completedPrev > 0 && ag.handoffMode === "none") {
+                  // Physical handoff: carry a scroll to a peer, hand it over, return.
                   const others = this.ags.filter(a => a.id !== ag.id)
                   if (others.length > 0) {
-                    const dest = others[Math.floor(t / 1000) % others.length]
-                    const pkg = this.add.graphics().setDepth(9990)
-                    this.handoffPackets.push({ g: pkg, fromX: ag.wx, fromY: ag.wy - 16, toX: dest.wx, toY: dest.wy - 16, progress: 0, color: ag.cfg.color })
+                    const dest = others[Math.floor(t / 700) % others.length]
+                    ag.handoffMode = "deliver"
+                    ag.handoffPeer = dest.id
+                    ag.handoffReturnX = ag.wx; ag.handoffReturnY = ag.wy
                   }
                 }
                 ag.completedPrev = c
@@ -1450,13 +1537,34 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             if (ag.id === "goop") goopIsWorking = ag.isWorking
 
             // ── Target selection (role-specific behaviors)
-            if (isBadWeather && !ag.isWorking) {
+            if (ag.handoffMode !== "none") {
+              // Physical handoff overrides all other targeting until complete.
+              const peer = this.ags.find(a => a.id === ag.handoffPeer)
+              if (!peer) {
+                ag.handoffMode = "none"
+              } else if (ag.handoffMode === "deliver") {
+                const side = ag.wx <= peer.wx ? -11 : 11        // approach from the near side
+                ag.tx = peer.wx + side; ag.ty = peer.wy
+                if (Math.hypot(ag.tx - ag.wx, ag.ty - ag.wy) < 4) { ag.handoffMode = "handing"; ag.handoffTimer = 120 }
+              } else if (ag.handoffMode === "handing") {
+                ag.tx = ag.wx; ag.ty = ag.wy                    // stand and exchange
+                ag.dir = peer.wx >= ag.wx ? 3 : 2              // face the peer
+                ag.handoffTimer -= 1
+                if (ag.handoffTimer === 44) this.spawnHeart(peer.wx, peer.wy - 28)  // peer acknowledges
+                if (ag.handoffTimer <= 0) ag.handoffMode = "return"
+              } else { // return to where it left off
+                ag.tx = ag.handoffReturnX; ag.ty = ag.handoffReturnY
+                if (Math.hypot(ag.tx - ag.wx, ag.ty - ag.wy) < 3) ag.handoffMode = "none"
+              }
+            } else if (isBadWeather && !ag.isWorking) {
               // Seek shelter at own station instead of wandering in the rain
               ag.tx = ag.cfg.station.x + (ag.id === "goop" ? 10 : 22)
               ag.ty = ag.cfg.station.y + 18
             } else if (ag.isWorking) {
-              ag.tx = ag.cfg.station.x + 28
-              ag.ty = ag.cfg.station.y + 18  // in front of building base (station.y+18 > station.y)
+              // Each role works at its own actual feature, not a generic spot.
+              if (ag.id === "goop") { ag.tx = ag.cfg.station.x + 52; ag.ty = ag.cfg.station.y + 15 }       // anvil
+              else if (ag.id === "lil-claw") { ag.tx = 90; ag.ty = 160 }                                    // crop bed
+              else { ag.tx = MASON_DESK.x; ag.ty = MASON_DESK.y - 9 }                                       // behind his study desk
 
             } else if (ag.id === "mason") {
               // Scholar: rotate through read / fish / visit / wander
@@ -1539,7 +1647,8 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             if (walking) {
               const absDx = Math.abs(dx), absDy = Math.abs(dy)
               ag.dir = absDx > absDy ? (dx > 0 ? 3 : 2) : (dy > 0 ? 0 : 1)
-              const speedMul = isNight && !ag.isWorking ? 0.55 : 1
+              const speedMul = (ag.handoffMode === "deliver" || ag.handoffMode === "return") ? 1.5
+                : isNight && !ag.isWorking ? 0.55 : 1
               ag.wx += (dx / dist) * 0.38 * speedMul
               ag.wy += (dy / dist) * 0.38 * speedMul
               // Working agents walk faster cycle; idle walk normal
@@ -1664,7 +1773,13 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             // ── Y-sort + depth
             const depth = Math.round(ag.wy)
             ag.sprite.setDepth(depth)
-            ag.toolG.setDepth(depth + 1)
+            // Mason writes on his desk (drawn in front of him) — lift the quill
+            // above the desk so the writing is visible, not occluded. A carried
+            // scroll rides above everyone so the handoff reads clearly.
+            ag.toolG.setDepth(
+              ag.handoffMode !== "none" ? 8950
+              : ag.id === "mason" && ag.isWorking ? MASON_DESK.y + 2
+              : depth + 1)
             ag.glow.setDepth(depth - 2)
             ag.nameTag.setDepth(depth + 8900)
 
@@ -1674,9 +1789,28 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
 
             // ── Tool OR stuck indicator (share toolG)
             ag.toolG.clear()
-            if (ag.isWorking) {
+            if (ag.handoffMode !== "none") {
+              // Carry the scroll; during the handover slide it toward the peer's hands.
+              let sx = Math.round(ag.wx) + (ag.dir === 2 ? -9 : 9)
+              let sy = Math.round(ag.wy - 15)
+              if (ag.handoffMode === "handing") {
+                const peer = this.ags.find(a => a.id === ag.handoffPeer)
+                if (peer) {
+                  const k = 1 - Math.max(0, ag.handoffTimer) / 120
+                  sx = Math.round(ag.wx + (ag.dir === 2 ? -9 : 9) + (peer.wx - ag.wx) * 0.5 * k)
+                  sy = Math.round((ag.wy - 15) + (peer.wy - ag.wy) * 0.5 * k)
+                }
+              }
+              drawScroll(ag.toolG, sx, sy)
+            } else if (ag.isWorking) {
               const dir = ag.dir === 2 ? -1 : 1
-              drawTool(ag.toolG, ag.cfg.tool, Math.round(ag.wx + bx_off) + dir * 12 + toolAnimX, Math.round(ag.wy - 18 + bob) + toolAnimY)
+              if (ag.cfg.tool === "quill") {
+                // Mason writes on his desk ledger (anchored), with a small side-to-side scratch
+                const scratch = Math.round(Math.sin(t / 90) * 2)
+                drawTool(ag.toolG, "quill", MASON_DESK.x + 3 + scratch, MASON_DESK.y - 12)
+              } else {
+                drawTool(ag.toolG, ag.cfg.tool, Math.round(ag.wx + bx_off) + dir * 12 + toolAnimX, Math.round(ag.wy - 18 + bob) + toolAnimY)
+              }
             } else if (ag.health === "red") {
               // Floating "!" above stuck character (bobs gently)
               const bx2 = Math.round(ag.wx)
@@ -1746,6 +1880,9 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             this.sparkG.clear()
           }
 
+          // ── Mason's orrery spins continuously (ambient life in the study)
+          drawOrrery(this.orreryG, MASON_ORRERY.x, MASON_ORRERY.y, t)
+
           // ── Chickens (wander in front of farmhouse: y 128-155, depth = their wy)
           for (const ch of this.chickens) {
             if (ch.wait > 0) { ch.wait--; continue }
@@ -1807,33 +1944,6 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             if (h.alpha <= 0) { h.g.destroy(); this.hearts.splice(i, 1) }
           }
 
-          // ── Handoff packets — arc animation from completing agent to receiving agent
-          for (let i = this.handoffPackets.length - 1; i >= 0; i--) {
-            const pk = this.handoffPackets[i]
-            pk.progress += 0.014  // ~70 frames to travel
-            if (pk.progress >= 1) { pk.g.destroy(); this.handoffPackets.splice(i, 1); continue }
-            const p = pk.progress
-            // Quadratic Bezier arc (midpoint lifted above both endpoints)
-            const midX = (pk.fromX + pk.toX) / 2
-            const midY = Math.min(pk.fromY, pk.toY) - 40
-            const bx3 = (1-p)*(1-p)*pk.fromX + 2*(1-p)*p*midX + p*p*pk.toX
-            const by3 = (1-p)*(1-p)*pk.fromY + 2*(1-p)*p*midY + p*p*pk.toY
-            const alpha3 = p < 0.08 ? p/0.08 : p > 0.88 ? (1-p)/0.12 : 1
-            pk.g.clear()
-            // Outer glow
-            pk.g.fillStyle(pk.color, alpha3 * 0.22); pk.g.fillCircle(bx3, by3, 6)
-            // Core dot
-            pk.g.fillStyle(pk.color, alpha3 * 0.9);  pk.g.fillCircle(bx3, by3, 2.5)
-            // Bright centre
-            pk.g.fillStyle(0xffffff,  alpha3 * 0.65); pk.g.fillCircle(bx3, by3, 1.1)
-            // Trailing ghost
-            if (p > 0.07) {
-              const pt = p - 0.07
-              const tbx = (1-pt)*(1-pt)*pk.fromX + 2*(1-pt)*pt*midX + pt*pt*pk.toX
-              const tby = (1-pt)*(1-pt)*pk.fromY + 2*(1-pt)*pt*midY + pt*pt*pk.toY
-              pk.g.fillStyle(pk.color, alpha3 * 0.22); pk.g.fillCircle(tbx, tby, 1.5)
-            }
-          }
         }
       }
 
