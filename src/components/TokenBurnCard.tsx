@@ -230,13 +230,23 @@ export function TokenBurnCard({ usage, metricsHistory, isLoading }: TokenBurnCar
       {/* System load — secondary/infra context, NOT a spend metric (kept small
           and clearly labeled so it's never mistaken for the $ chart above). */}
       {metricsHistory && metricsHistory.series.length > 1 && (() => {
-        const series = metricsHistory.series
-        const loads = series.map((s) => s.system?.load ?? 0)
+        // metrics_history snapshots multiple times a day (~12/day observed) —
+        // plotting every raw point both mislabels "Nd" with the snapshot count
+        // and crams a dense, illegible squiggle into a few hundred px. Bucket
+        // to one point per calendar day (peak load) for a clean, true trend.
+        const byDate = new Map<string, number>()
+        for (const s of metricsHistory.series) {
+          const d = s.date
+          if (!d) continue
+          byDate.set(d, Math.max(byDate.get(d) ?? 0, s.system?.load ?? 0))
+        }
+        const dates = [...byDate.keys()].sort()
+        const loads = dates.map((d) => byDate.get(d) ?? 0)
         const maxLoad = Math.max(...loads, 0.01)
-        const W = series.length * 8, H = 28, base = H - 4
+        const W = Math.max(dates.length * 8, 16), H = 28, base = H - 4
         return (
           <div className="mb-3 opacity-80">
-            <div className="font-code text-[7px] text-[var(--muted-foreground)] mb-1">{"// server CPU load (not $) — " + series.length + "d"}</div>
+            <div className="font-code text-[7px] text-[var(--muted-foreground)] mb-1">{`// server CPU load (not $) — ${dates.length}d`}</div>
             <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-6" preserveAspectRatio="none">
               <line x1="0" y1={base} x2={W} y2={base} stroke="var(--border)" strokeWidth="1" />
               <polyline
@@ -249,9 +259,9 @@ export function TokenBurnCard({ usage, metricsHistory, isLoading }: TokenBurnCar
               />
             </svg>
             <div className="flex justify-between">
-              <span className="font-code text-[6px] text-[var(--faint)]">{series[0]?.date?.slice(5)}</span>
+              <span className="font-code text-[6px] text-[var(--faint)]">{dates[0]?.slice(5)}</span>
               <span className="font-code text-[6px] text-[var(--muted-foreground)]">peak {maxLoad.toFixed(1)}</span>
-              <span className="font-code text-[6px] text-[var(--faint)]">{series[series.length - 1]?.date?.slice(5)}</span>
+              <span className="font-code text-[6px] text-[var(--faint)]">{dates[dates.length - 1]?.slice(5)}</span>
             </div>
           </div>
         )
