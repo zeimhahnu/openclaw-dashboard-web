@@ -59,7 +59,11 @@ function ToolBreakdownBar({ breakdown }: { breakdown: Record<string, number> }) 
         const icon  = toolIcon(model)
         return (
           <div key={model} className="flex items-center gap-2">
-            <span className="font-pixel text-[7px] shrink-0" style={{ color }}>{icon}</span>
+            {/* fixed-width icon column - different glyphs (● ◎ ◆ ◇) have
+                different natural advance widths in the pixel font, which was
+                shifting each row's label start position ("alignment is off"
+                on wide/desktop screens where the offset is easier to see). */}
+            <span className="font-pixel text-[7px] w-3 text-center shrink-0" style={{ color }}>{icon}</span>
             <span
               className="font-code text-[10px] w-24 truncate shrink-0"
               style={{ color }}
@@ -73,7 +77,7 @@ function ToolBreakdownBar({ breakdown }: { breakdown: Record<string, number> }) 
                 style={{ width: `${pct}%`, backgroundColor: color, boxShadow: `0 0 4px ${color}60` }}
               />
             </div>
-            <span className="font-code text-[10px] text-[var(--muted-foreground)] w-12 text-right shrink-0">
+            <span className="font-code text-[10px] text-[var(--muted-foreground)] min-w-[3.5rem] text-right shrink-0 whitespace-nowrap">
               {pct}% · {count}
             </span>
           </div>
@@ -143,7 +147,7 @@ export function RouterStatsCard({ data, isLoading }: RouterStatsCardProps) {
           </div>
           <span className="font-code text-xl font-bold text-glow-gold block"
             style={{ color: "var(--pixel-gold)" }}>
-            {data.total_cost_usd === 0 ? "—" : `$${data.total_cost_usd.toFixed(4)}`}
+            {data.total_cost_usd === 0 ? "—" : `$${data.total_cost_usd.toFixed(1)}`}
           </span>
         </div>
       </div>

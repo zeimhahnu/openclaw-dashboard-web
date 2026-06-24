@@ -29,7 +29,7 @@ function formatTokens(n: number): string {
 
 function fmtCost(v: number): string {
   if (v === 0) return "—"
-  return "$" + v.toFixed(4)
+  return "$" + v.toFixed(1)
 }
 
 export function RouterUsageCard({ usage, isLoading }: RouterUsageCardProps) {

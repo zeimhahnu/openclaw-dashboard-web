@@ -34,19 +34,27 @@ function getFlavorText(taskType: string): string {
   return FLAVOR_TEXTS.default
 }
 
-// Chore origin badge — derive from task description/id patterns
+// Chore origin badge — the real assignedBy field, normalized for display.
+// This used to guess from the description/id text (e.g. "alex" anywhere in
+// the text -> origin "Alex"), which silently disagreed with the Chore Board's
+// "by:X" (the real field) any time a task's wording happened to mention a
+// name it wasn't actually assigned by.
 function getChoreOrigin(task: TaskSummary): string {
-  const desc = (task.description ?? "").toLowerCase()
-  const id   = (task.id ?? "").toLowerCase()
-  if (/alex|user|human|client/.test(desc) || /^task-.*-alex/i.test(id)) return "Alex"
-  if (/watchdog|alarm|automated|system/.test(desc) || /watchdog/i.test(id)) return "Watchdog"
-  return "LilClaw"
+  const by = (task.assignedBy || "").toLowerCase().replace("zeimhahnu", "alex").replace("_bot", "")
+  if (by === "lil-claw" || by === "lilclaw") return "LilClaw"
+  if (by === "goop") return "Goop"
+  if (by === "mason") return "Mason"
+  if (by === "alex") return "Alex"
+  if (/watchdog/.test(by)) return "Watchdog"
+  return task.assignedBy || "?"
 }
 
 const ORIGIN_COLOR: Record<string, string> = {
   Alex:     "#e8a935",
   Watchdog: "#e8a935",
-  LilClaw:  "#9b87f0",
+  LilClaw:  AGENT_COLOR["lil-claw"],
+  Goop:     AGENT_COLOR["goop"],
+  Mason:    AGENT_COLOR["mason"],
 }
 
 function priColor(p: string) {

@@ -194,11 +194,18 @@ export default function DashboardPage() {
                 weather={weather}
               />
 
-              {/* Subtle ground fade — anchors the HUD panels */}
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%] bg-gradient-to-t from-[#0a060340] to-transparent" />
+              {/* Subtle ground fade — anchors the HUD panels. Shrunk from 42%:
+                  on a portrait phone the FIT-scaled canvas is short enough
+                  that 42% of the CONTAINER reached well into the cow/crops/
+                  coop band, darkening (and effectively hiding) scenery that
+                  wasn't even under the HUD boxes themselves. */}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[26%] bg-gradient-to-t from-[#0a060340] to-transparent" />
 
-              {/* In-scene agent HUD — utilises the green foreground as live status panels */}
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 flex gap-2 px-4 pb-3">
+              {/* In-scene agent HUD — utilises the green foreground as live status panels.
+                  Kept deliberately compact (no current-task line, tight padding): every
+                  extra px here is one less px of cow/crops/coop visible above it, and the
+                  task text is already shown on each agent's full card just below. */}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 flex gap-1.5 px-3 pb-1.5">
                 {(["lil-claw", "goop", "mason"] as const).map((a) => {
                   const d = state?.agents?.[a]
                   const color = AGENT_COLORS[a]
@@ -206,12 +213,11 @@ export default function DashboardPage() {
                   const isRed = d?.health === "red"
                   const statusColor = isRed ? "#c45a3a" : isWorking ? color : "#4e8f58"
                   const statusLabel = isRed ? "STUCK" : isWorking ? "WORKING" : "IDLE"
-                  const task = d?.current_task
 
                   return (
                     <div
                       key={a}
-                      className="flex-1 min-w-0 rounded px-2.5 py-2"
+                      className="flex-1 min-w-0 rounded px-2 py-1"
                       style={{
                         background: "rgba(10,6,3,0.78)",
                         border: `1px solid ${color}22`,
@@ -219,7 +225,7 @@ export default function DashboardPage() {
                       }}
                     >
                       {/* Name + status */}
-                      <div className="flex items-center gap-1.5 mb-1">
+                      <div className="flex items-center gap-1.5 mb-0.5">
                         <span
                           className={`w-1.5 h-1.5 rounded-full shrink-0 ${isWorking && !isRed ? "pulse-dot" : ""}`}
                           style={{ background: statusColor }}
@@ -245,15 +251,6 @@ export default function DashboardPage() {
                           <span className="text-white/25"> done</span>
                         </span>
                       </div>
-                      {/* Current task (truncated) */}
-                      {task && (
-                        <p
-                          className="font-code text-[7px] mt-0.5 truncate"
-                          style={{ color: "rgba(255,255,255,0.26)" }}
-                        >
-                          {task.length > 34 ? task.slice(0, 34) + "…" : task}
-                        </p>
-                      )}
                     </div>
                   )
                 })}
@@ -289,7 +286,7 @@ export default function DashboardPage() {
               <div className="flex items-center gap-5 flex-wrap">
                 <div className="flex items-center gap-1.5">
                   <span className="font-code text-[11px] font-bold" style={{ color: "var(--pixel-gold)" }}>
-                    {todayCost > 0 ? `$${todayCost.toFixed(4)}` : "—"}
+                    {todayCost > 0 ? `$${todayCost.toFixed(1)}` : "—"}
                   </span>
                   <span className="font-code text-[9px] text-[var(--muted-foreground)]">gold today</span>
                 </div>
@@ -361,7 +358,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between px-3 py-2 bg-[var(--muted)] border border-[var(--border)] rounded">
                 <span className="font-code text-[10px] text-[var(--muted-foreground)]">gold today</span>
                 <span className="font-code text-sm font-bold" style={{ color: "var(--pixel-gold)" }}>
-                  {todayCost > 0 ? `$${todayCost.toFixed(4)}` : "—"}
+                  {todayCost > 0 ? `$${todayCost.toFixed(1)}` : "—"}
                 </span>
               </div>
 
@@ -380,7 +377,7 @@ export default function DashboardPage() {
                           {model}
                         </span>
                         <span className="font-code text-[9px] px-1.5 py-0.5 rounded bg-[var(--muted)] border border-[var(--border)] text-[var(--muted-foreground)] shrink-0">
-                          {cost === 0 ? "—" : `$${cost.toFixed(4)}`}
+                          {cost === 0 ? "—" : `$${cost.toFixed(1)}`}
                         </span>
                       </div>
                     ))}
@@ -430,7 +427,7 @@ export default function DashboardPage() {
           </p>
           <p className="font-code text-[10px] text-[var(--faint)] tnum">
             <span style={{ color: "var(--pixel-gold)" }}>◈</span>{" "}
-            {gold.toFixed(4)} gold spent
+            {gold.toFixed(1)} gold spent
           </p>
         </footer>
 

@@ -57,6 +57,10 @@ export interface RouterUsage {
   totals: { input_tokens: number; output_tokens: number; cost_usd: number }
   by_day: Record<string, DailyCostEntry>
   by_model: Record<string, ModelUsageEntry>
+  // Day x model cross-tab — which models ran on which day, for the Upkeep
+  // chart's hover breakdown. Includes Mason's Claude usage merged in
+  // alongside the VPS router models.
+  by_day_model?: Record<string, Record<string, ModelUsageEntry>>
 }
 
 export interface DashboardState {

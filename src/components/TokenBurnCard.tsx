@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { Flame, TrendingUp, TrendingDown, Minus } from "lucide-react"
 
 type DailyCostEntry = {
@@ -32,6 +33,7 @@ interface TokenBurnCardProps {
     totals: { input_tokens: number; output_tokens: number; cost_usd: number }
     by_day: Record<string, DailyCostEntry>
     by_model: Record<string, ModelUsageEntry>
+    by_day_model?: Record<string, Record<string, ModelUsageEntry>>
   } | null
   metricsHistory: MetricsHistory | null
   isLoading: boolean
@@ -39,7 +41,7 @@ interface TokenBurnCardProps {
 
 function fmtCost(v: number): string {
   if (v === 0) return "—"
-  return "$" + v.toFixed(4)
+  return "$" + v.toFixed(1)
 }
 
 function fmtTokens(v: number): string {
@@ -67,6 +69,9 @@ function TrendIcon({ trend }: { trend: "rising" | "falling" | "flat" }) {
 }
 
 export function TokenBurnCard({ usage, metricsHistory, isLoading }: TokenBurnCardProps) {
+  // Hooks run unconditionally (before the early-return below) per React rules.
+  const [hoverDay, setHoverDay] = useState<string | null>(null)
+
   if (isLoading || !usage) {
     return (
       <div className="bg-[var(--card)] border border-[var(--border)] border-l-4 border-l-[var(--warning)] rounded p-3">
@@ -89,7 +94,7 @@ export function TokenBurnCard({ usage, metricsHistory, isLoading }: TokenBurnCar
     )
   }
 
-  const { by_day, by_model } = usage
+  const { by_day, by_model, by_day_model } = usage
   const days = Object.keys(by_day).sort()
 
   const today = new Date().toISOString().slice(0, 10)
@@ -178,13 +183,19 @@ export function TokenBurnCard({ usage, metricsHistory, isLoading }: TokenBurnCar
         const areaPts = `${padL},${y(0)} ${linePts} ${x(days.length - 1)},${y(0)}`
         const todayIdx = days.indexOf(today)
         const avgY = y(avg7d)
+        const hoverIdx = hoverDay ? days.indexOf(hoverDay) : -1
+        const hitW = days.length > 1 ? plotW / (days.length - 1) : plotW
+        const activeDay = hoverDay && by_day[hoverDay] ? hoverDay : null
+        const activeModels = activeDay ? Object.entries(by_day_model?.[activeDay] ?? {}) : []
+        const activeTotal = activeDay ? (by_day[activeDay]?.cost_usd ?? 0) : 0
         return (
           <div className="mb-3">
             <div className="flex items-center justify-between mb-1">
-              <span className="font-code text-[8px] text-[var(--muted-foreground)]">{`// $ spend (${days.length}d)`}</span>
+              <span className="font-code text-[8px] text-[var(--muted-foreground)]">{`// $ spend (${days.length}d) — hover/tap a point for the model breakdown`}</span>
               <span className="font-code text-[8px] text-[var(--muted-foreground)]">max {fmtCost(maxDayCost)}</span>
             </div>
-            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 90 }} preserveAspectRatio="none">
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 90 }} preserveAspectRatio="none"
+              onMouseLeave={() => setHoverDay(null)}>
               <defs>
                 <linearGradient id="spend-fill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="var(--warning)" stopOpacity="0.35" />
@@ -204,25 +215,61 @@ export function TokenBurnCard({ usage, metricsHistory, isLoading }: TokenBurnCar
               <polygon points={areaPts} fill="url(#spend-fill)" />
               <polyline points={linePts} fill="none" stroke="var(--warning)" strokeWidth="2.5"
                 strokeLinecap="round" strokeLinejoin="round" />
+              {/* hover guide line */}
+              {hoverIdx >= 0 && (
+                <line x1={x(hoverIdx)} y1={padT} x2={x(hoverIdx)} y2={y(0)} stroke="var(--foreground)" strokeWidth="1" opacity="0.25" />
+              )}
               {pts.map(([px, py], i) => (
-                <circle key={i} cx={px} cy={py} r={i === todayIdx ? 3 : 1.5}
-                  fill="var(--warning)" opacity={i === todayIdx ? 1 : 0.6} />
+                <circle key={i} cx={px} cy={py} r={i === hoverIdx ? 3.5 : i === todayIdx ? 3 : 1.5}
+                  fill="var(--warning)" opacity={i === hoverIdx ? 1 : i === todayIdx ? 1 : 0.6} />
               ))}
               {/* today's $ value, labeled directly on the chart */}
-              {todayIdx >= 0 && todayCost > 0 && (
+              {todayIdx >= 0 && todayCost > 0 && hoverIdx < 0 && (
                 <text x={Math.min(x(todayIdx) + 4, W - 36)} y={Math.max(y(todayCost) - 6, 9)}
                   className="font-code" fontSize="8" fontWeight="bold" fill="var(--warning)">
                   {fmtCost(todayCost)}
                 </text>
               )}
+              {/* invisible per-day hit targets, full chart height, centered on each point */}
+              {days.map((d, i) => (
+                <rect key={d} x={x(i) - hitW / 2} y="0" width={hitW} height={H}
+                  fill="transparent"
+                  onMouseEnter={() => setHoverDay(d)}
+                  onClick={() => setHoverDay(hoverDay === d ? null : d)}
+                  style={{ cursor: "pointer" }} />
+              ))}
             </svg>
-            <div className="flex justify-between mt-0.5">
-              <span className="font-code text-[6px] text-[var(--faint)]">{days[0]?.slice(5)}</span>
-              {avg7d > 0 && (
-                <span className="font-code text-[6px] text-[var(--secondary)]">avg {fmtCost(avg7d)}</span>
-              )}
-              <span className="font-code text-[6px] text-[var(--faint)]">{days[days.length - 1]?.slice(5)}</span>
-            </div>
+            {/* breakdown panel — shows the hovered/tapped day, or the date range when idle */}
+            {activeDay ? (
+              <div className="mt-1 px-2 py-1.5 rounded bg-[var(--muted)] border border-[var(--border)]">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-code text-[9px] font-bold">{activeDay}</span>
+                  <span className="font-code text-[9px] font-bold" style={{ color: "var(--warning)" }}>{fmtCost(activeTotal)}</span>
+                </div>
+                {activeModels.length > 0 ? (
+                  <div className="space-y-0.5">
+                    {activeModels.sort(([, a], [, b]) => b.cost_usd - a.cost_usd).map(([model, m]) => (
+                      <div key={model} className="flex items-center justify-between">
+                        <span className="font-code text-[8px] text-[var(--muted-foreground)] truncate">{model}</span>
+                        <span className="font-code text-[8px] text-[var(--muted-foreground)] shrink-0 ml-2">
+                          {fmtCost(m.cost_usd)} · {m.calls}c
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="font-code text-[8px] text-[var(--muted-foreground)]">{"// no per-model breakdown for this day"}</span>
+                )}
+              </div>
+            ) : (
+              <div className="flex justify-between mt-0.5">
+                <span className="font-code text-[6px] text-[var(--faint)]">{days[0]?.slice(5)}</span>
+                {avg7d > 0 && (
+                  <span className="font-code text-[6px] text-[var(--secondary)]">avg {fmtCost(avg7d)}</span>
+                )}
+                <span className="font-code text-[6px] text-[var(--faint)]">{days[days.length - 1]?.slice(5)}</span>
+              </div>
+            )}
           </div>
         )
       })()}
