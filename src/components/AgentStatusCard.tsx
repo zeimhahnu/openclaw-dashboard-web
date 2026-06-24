@@ -200,7 +200,7 @@ export function CompactAgentRow({ agentName, data, taskDetails, walTails, isLoad
       style={{ borderLeft: `3px solid ${isWilted ? "#c45a3a" : color}` }}
     >
       {/* Portrait + name/title/task — own row, full width on mobile */}
-      <div className="flex items-stretch flex-1 min-w-0">
+      <div className="flex items-stretch w-full sm:w-auto sm:flex-1 min-w-0">
         <div
           className="shrink-0 flex items-center px-3 py-2.5"
           style={{
