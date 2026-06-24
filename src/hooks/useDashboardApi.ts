@@ -6,6 +6,21 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? ""
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+export interface AgentCostWindow {
+  cost_usd: number
+  calls: number
+}
+
+// Local-agent (Mason) Claude-side token/cost burn, aggregated from his Claude
+// Code transcripts and shipped via heartbeat. VPS agents leave this null — their
+// spend is in the router-usage (gateway-sessions) block instead.
+export interface AgentCost {
+  source: string
+  last_5h: AgentCostWindow
+  last_24h: AgentCostWindow
+  last_7d: AgentCostWindow
+}
+
 export interface AgentState {
   inbox_count: number
   working_count: number
@@ -16,6 +31,7 @@ export interface AgentState {
   session_active: boolean
   health: "green" | "amber" | "red"
   completed_today: number
+  cost?: AgentCost | null
 }
 
 export interface RouterStats {

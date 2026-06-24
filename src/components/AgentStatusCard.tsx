@@ -241,6 +241,14 @@ export function CompactAgentRow({ agentName, data, taskDetails, walTails, isLoad
               "{lastWal.length > 70 ? lastWal.slice(0, 70) + "…" : lastWal}"
             </p>
           )}
+          {/* Mason's Claude-side burn (local agent only; ships its own cost via heartbeat) */}
+          {data.cost && (
+            <p className="font-code text-[9px] mt-0.5 truncate"
+               style={{ color: color + "aa" }}
+               title={`Claude token spend (API-equivalent): $${data.cost.last_24h.cost_usd.toFixed(2)} in 24h, $${data.cost.last_7d.cost_usd.toFixed(2)} in 7d`}>
+              ◈ burn ${data.cost.last_24h.cost_usd.toFixed(2)}/24h · ${data.cost.last_7d.cost_usd.toFixed(2)}/7d
+            </p>
+          )}
         </div>
       </div>
 
