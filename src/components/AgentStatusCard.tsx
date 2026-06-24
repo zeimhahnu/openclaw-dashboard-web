@@ -196,126 +196,131 @@ export function CompactAgentRow({ agentName, data, taskDetails, walTails, isLoad
 
   return (
     <div
-      className="bg-[var(--card)] border border-[var(--border)] rounded-lg overflow-hidden flex items-stretch"
+      className="bg-[var(--card)] border border-[var(--border)] rounded-lg overflow-hidden flex flex-wrap items-stretch"
       style={{ borderLeft: `3px solid ${isWilted ? "#c45a3a" : color}` }}
     >
-      {/* Portrait */}
-      <div
-        className="shrink-0 flex items-center px-3 py-2.5"
-        style={{
-          filter: isWilted
-            ? "drop-shadow(0 0 4px #c45a3a80)"
-            : isWorking ? `drop-shadow(0 0 3px ${color}80)` : "none",
-        }}
-      >
-        <AgentSprite
-          agentId={agentName}
-          color={isWilted ? "#c45a3a" : color}
-          isWorking={isWorking}
-          svgSize={42}
-        />
-      </div>
-
-      {/* Name + title + task + last WAL entry */}
-      <div className="flex-1 min-w-0 py-2.5 pr-3 flex flex-col justify-center">
-        <div className="flex items-baseline gap-2">
-          <span className="font-code text-[13px] font-bold text-[var(--foreground)] leading-none">
-            {meta.display}
-          </span>
-          <span className="font-pixel text-[6px]" style={{ color: color + "99" }}>
-            {meta.title}
-          </span>
-        </div>
-        <p className="font-code text-[10px] text-[var(--muted-foreground)] truncate mt-1">
-          {currentTask
-            ? `◆ ${currentTask.length > 60 ? currentTask.slice(0, 60) + "…" : currentTask}`
-            : isWilted ? "⚠ needs care"
-            : isWorking ? "in the field…"
-            : "taking a rest"}
-        </p>
-        {lastWal && (
-          <p className="font-code text-[9px] truncate mt-0.5 italic"
-             style={{ color: color + "88" }}
-             title={lastWal}>
-            "{lastWal.length > 70 ? lastWal.slice(0, 70) + "…" : lastWal}"
-          </p>
-        )}
-      </div>
-
-      {/* KPIs */}
-      <div className="flex items-stretch divide-x divide-[var(--border)] border-l border-[var(--border)] shrink-0">
-        {kpis.map(({ label, value, warn, active }) => (
-          <div key={label} className="flex flex-col items-center justify-center px-3.5 py-2.5 min-w-[54px]">
-            <span
-              className="font-code text-lg font-bold leading-none tnum"
-              style={{
-                color: warn ? "#c47808"
-                  : active && value > 0 ? color
-                  : "var(--foreground)",
-              }}
-            >
-              {value}
-            </span>
-            <span className="font-code text-[8px] text-[var(--muted-foreground)] mt-0.5">{label}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Status + Ask button */}
-      <div className="border-l border-[var(--border)] flex flex-col items-center justify-center gap-2 px-3 py-2.5 shrink-0">
-        {/* Status */}
-        <div className="flex items-center gap-1.5">
-          {(isWorking || isWilted) && (
-            <span className="pulse-dot w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: statusColor }} />
-          )}
-          <span className="font-code text-[9px] font-bold tracking-wider whitespace-nowrap"
-                style={{ color: statusColor }}>
-            {statusLabel}
-          </span>
-        </div>
-
-        {/* Ask button — system-triggered ping via Telegram (gateway picks the
-            sending bot so an agent never self-pings; works for Mason too). */}
-        <button
-          onClick={handlePing}
-          disabled={pingState !== "idle"}
-          title={`Ask ${meta.display} for a status update via Telegram`}
-          className="flex items-center gap-1 px-2 py-1 rounded border text-[9px] font-code font-semibold transition-all cursor-pointer disabled:cursor-default"
+      {/* Portrait + name/title/task — own row, full width on mobile */}
+      <div className="flex items-stretch flex-1 min-w-0">
+        <div
+          className="shrink-0 flex items-center px-3 py-2.5"
           style={{
-            borderColor: pingState === "sent"  ? "#3a7c18"
-                       : pingState === "error" ? "#c45a3a"
-                       : color + "60",
-            color:       pingState === "sent"  ? "#3a7c18"
-                       : pingState === "error" ? "#c45a3a"
-                       : color,
-            background:  pingState === "sent"  ? "#3a7c1810"
-                       : pingState === "error" ? "#c45a3a10"
-                       : pingState === "sending" ? color + "10"
-                       : "transparent",
+            filter: isWilted
+              ? "drop-shadow(0 0 4px #c45a3a80)"
+              : isWorking ? `drop-shadow(0 0 3px ${color}80)` : "none",
           }}
         >
-          {pingState === "sending" ? (
-            <>
-              <span className="pulse-dot w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-              <span>Pinging</span>
-            </>
-          ) : pingState === "sent" ? (
-            <>
-              <Check className="h-2.5 w-2.5" />
-              <span>Sent</span>
-            </>
-          ) : pingState === "error" ? (
-            <>
-              <X className="h-2.5 w-2.5" />
-              <span>Failed</span>
-            </>
-          ) : (
-            <>
-              <MessageSquare className="h-2.5 w-2.5" />
-              <span>Ask</span>
-            </>
+          <AgentSprite
+            agentId={agentName}
+            color={isWilted ? "#c45a3a" : color}
+            isWorking={isWorking}
+            svgSize={42}
+          />
+        </div>
+
+        {/* Name + title + task + last WAL entry */}
+        <div className="flex-1 min-w-0 py-2.5 pr-3 flex flex-col justify-center">
+          <div className="flex items-baseline gap-2 min-w-0">
+            <span className="font-code text-[13px] font-bold text-[var(--foreground)] leading-none truncate">
+              {meta.display}
+            </span>
+            <span className="font-pixel text-[6px] shrink-0 hidden sm:inline" style={{ color: color + "99" }}>
+              {meta.title}
+            </span>
+          </div>
+          <p className="font-code text-[10px] text-[var(--muted-foreground)] truncate mt-1">
+            {currentTask
+              ? `◆ ${currentTask.length > 60 ? currentTask.slice(0, 60) + "…" : currentTask}`
+              : isWilted ? "⚠ needs care"
+              : isWorking ? "in the field…"
+              : "taking a rest"}
+          </p>
+          {lastWal && (
+            <p className="font-code text-[9px] truncate mt-0.5 italic"
+               style={{ color: color + "88" }}
+               title={lastWal}>
+              "{lastWal.length > 70 ? lastWal.slice(0, 70) + "…" : lastWal}"
+            </p>
           )}
-        </button>
+        </div>
+      </div>
+
+      {/* KPIs + status/Ask — drops to its own full-width row on mobile, inline on desktop */}
+      <div className="flex items-stretch w-full sm:w-auto justify-between border-t sm:border-t-0 border-[var(--border)]">
+        {/* KPIs */}
+        <div className="flex items-stretch divide-x divide-[var(--border)] border-r sm:border-l sm:border-r-0 border-[var(--border)] shrink-0">
+          {kpis.map(({ label, value, warn, active }) => (
+            <div key={label} className="flex flex-col items-center justify-center px-3 sm:px-3.5 py-2.5 min-w-[48px] sm:min-w-[54px]">
+              <span
+                className="font-code text-lg font-bold leading-none tnum"
+                style={{
+                  color: warn ? "#c47808"
+                    : active && value > 0 ? color
+                    : "var(--foreground)",
+                }}
+              >
+                {value}
+              </span>
+              <span className="font-code text-[8px] text-[var(--muted-foreground)] mt-0.5">{label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Status + Ask button */}
+        <div className="flex flex-col items-center justify-center gap-2 px-3 py-2.5 shrink-0">
+          {/* Status */}
+          <div className="flex items-center gap-1.5">
+            {(isWorking || isWilted) && (
+              <span className="pulse-dot w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: statusColor }} />
+            )}
+            <span className="font-code text-[9px] font-bold tracking-wider whitespace-nowrap"
+                  style={{ color: statusColor }}>
+              {statusLabel}
+            </span>
+          </div>
+
+          {/* Ask button — system-triggered ping via Telegram (gateway picks the
+              sending bot so an agent never self-pings; works for Mason too). */}
+          <button
+            onClick={handlePing}
+            disabled={pingState !== "idle"}
+            title={`Ask ${meta.display} for a status update via Telegram`}
+            className="flex items-center gap-1 px-2 py-1 rounded border text-[9px] font-code font-semibold transition-all cursor-pointer disabled:cursor-default"
+            style={{
+              borderColor: pingState === "sent"  ? "#3a7c18"
+                         : pingState === "error" ? "#c45a3a"
+                         : color + "60",
+              color:       pingState === "sent"  ? "#3a7c18"
+                         : pingState === "error" ? "#c45a3a"
+                         : color,
+              background:  pingState === "sent"  ? "#3a7c1810"
+                         : pingState === "error" ? "#c45a3a10"
+                         : pingState === "sending" ? color + "10"
+                         : "transparent",
+            }}
+          >
+            {pingState === "sending" ? (
+              <>
+                <span className="pulse-dot w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                <span>Pinging</span>
+              </>
+            ) : pingState === "sent" ? (
+              <>
+                <Check className="h-2.5 w-2.5" />
+                <span>Sent</span>
+              </>
+            ) : pingState === "error" ? (
+              <>
+                <X className="h-2.5 w-2.5" />
+                <span>Failed</span>
+              </>
+            ) : (
+              <>
+                <MessageSquare className="h-2.5 w-2.5" />
+                <span>Ask</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   )
