@@ -28,6 +28,21 @@ function useMytHour(): number {
   return hour
 }
 
+// The Homestead scene is a 4.5:1 panorama (900x200). At desktop widths it nearly
+// fills a 280px box; on a phone Scale.FIT collapses it to ~80px tall, leaving a
+// big dead band. Shrink the container on mobile so the scene + HUD sit snug.
+function useIsMobile(query = "(max-width: 640px)"): boolean {
+  const [m, setM] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia(query)
+    const on = () => setM(mq.matches)
+    on()
+    mq.addEventListener("change", on)
+    return () => mq.removeEventListener("change", on)
+  }, [query])
+  return m
+}
+
 // wttr.in weather codes -> our 4-bucket condition. No API key needed.
 function mapWeatherCode(code: number): WeatherCondition {
   if ([389, 392, 386, 395, 200].includes(code)) return "storm"
@@ -84,6 +99,7 @@ export default function DashboardPage() {
   const gold = state?.router?.total_cost_usd ?? 0
   const mytHour = useMytHour()
   const weather = useKlWeather()
+  const isMobile = useIsMobile()
   const TOD = timeOfDay(mytHour)
 
   const today       = new Date().toISOString().slice(0, 10)
@@ -151,7 +167,7 @@ export default function DashboardPage() {
               <PixelGuild
                 agents={state?.agents ?? null}
                 taskDetails={state?.task_details ?? null}
-                height={280}
+                height={isMobile ? 170 : 280}
                 mytHour={mytHour}
                 weather={weather}
               />

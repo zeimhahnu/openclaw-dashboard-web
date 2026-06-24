@@ -292,7 +292,7 @@ export function CompactAgentRow({ agentName, data, taskDetails, walTails, isLoad
             onClick={handlePing}
             disabled={pingState !== "idle"}
             title={`Ask ${meta.display} for a status update via Telegram`}
-            className="flex items-center gap-1 px-2 py-1 rounded border text-[9px] font-code font-semibold transition-all cursor-pointer disabled:cursor-default"
+            className="flex items-center justify-center gap-1 px-3 py-2 min-h-[36px] rounded border text-[10px] sm:text-[9px] font-code font-semibold transition-all cursor-pointer disabled:cursor-default"
             style={{
               borderColor: pingState === "sent"  ? "#3a7c18"
                          : pingState === "error" ? "#c45a3a"
