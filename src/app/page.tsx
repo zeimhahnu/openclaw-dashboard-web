@@ -96,7 +96,6 @@ const AGENT_COLORS: Record<string, string> = {
 
 export default function DashboardPage() {
   const { state, error, loading, refetch } = useDashboardApi(30000)
-  const gold = state?.router?.total_cost_usd ?? 0
   const mytHour = useMytHour()
   const weather = useKlWeather()
   const isMobile = useIsMobile()
@@ -116,15 +115,27 @@ export default function DashboardPage() {
   const byModel = state?.router_usage?.by_model ?? {}
   const modelCallCounts = Object.fromEntries(Object.entries(byModel).map(([m, v]) => [m, v.calls]))
   const totalModelCalls = Object.values(modelCallCounts).reduce((s, c) => s + c, 0)
+  // Combined VPS+Mason total (by_model already has both merged in) - NOT
+  // router_usage.totals.cost_usd, which is VPS-only. Mixing a combined
+  // model-mix breakdown with a VPS-only "gold spent" total in the same card
+  // would repeat the exact self-contradiction just fixed in the Upkeep chart.
+  const combinedCostUsd = Object.values(byModel).reduce((s, v) => s + v.cost_usd, 0)
   const modelMixData = state?.router_usage ? {
     decisions_count: totalModelCalls,
     model_breakdown: modelCallCounts,
-    total_cost_usd: state.router_usage.totals.cost_usd,
+    total_cost_usd: combinedCostUsd,
   } : null
   const topModels = Object.entries(byModel)
     .map(([m, v]) => [m, v.cost_usd] as const)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
+  // "Today" needs day-level granularity, which by_model (a window aggregate)
+  // doesn't have - sum today's entry in the day x model cross-tab instead,
+  // falling back to the VPS-only by_day figure if Mason has no data for today.
+  const dayModelToday = state?.router_usage?.by_day_model?.[today]
+  const combinedTodayCost = dayModelToday
+    ? Object.values(dayModelToday).reduce((s, v) => s + v.cost_usd, 0)
+    : todayCost
 
   return (
     <main className="min-h-screen text-[var(--foreground)]">
@@ -286,7 +297,7 @@ export default function DashboardPage() {
               <div className="flex items-center gap-5 flex-wrap">
                 <div className="flex items-center gap-1.5">
                   <span className="font-code text-[11px] font-bold" style={{ color: "var(--pixel-gold)" }}>
-                    {todayCost > 0 ? `$${todayCost.toFixed(1)}` : "—"}
+                    {combinedTodayCost > 0 ? `$${combinedTodayCost.toFixed(1)}` : "—"}
                   </span>
                   <span className="font-code text-[9px] text-[var(--muted-foreground)]">gold today</span>
                 </div>
@@ -358,7 +369,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between px-3 py-2 bg-[var(--muted)] border border-[var(--border)] rounded">
                 <span className="font-code text-[10px] text-[var(--muted-foreground)]">gold today</span>
                 <span className="font-code text-sm font-bold" style={{ color: "var(--pixel-gold)" }}>
-                  {todayCost > 0 ? `$${todayCost.toFixed(1)}` : "—"}
+                  {combinedTodayCost > 0 ? `$${combinedTodayCost.toFixed(1)}` : "—"}
                 </span>
               </div>
 
@@ -427,7 +438,7 @@ export default function DashboardPage() {
           </p>
           <p className="font-code text-[10px] text-[var(--faint)] tnum">
             <span style={{ color: "var(--pixel-gold)" }}>◈</span>{" "}
-            {gold.toFixed(1)} gold spent
+            {combinedCostUsd.toFixed(1)} gold spent
           </p>
         </footer>
 

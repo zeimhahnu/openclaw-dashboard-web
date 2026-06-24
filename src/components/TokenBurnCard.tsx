@@ -95,24 +95,33 @@ export function TokenBurnCard({ usage, metricsHistory, isLoading }: TokenBurnCar
   }
 
   const { by_day, by_model, by_day_model } = usage
-  const days = Object.keys(by_day).sort()
+  // by_day is VPS-only; by_day_model is VPS+Mason merged (per calendar day,
+  // exact - not an approximation). Prefer the merged total wherever a day has
+  // one, so the chart's line/peak/avg and the hover panel's total always
+  // agree - a day with real Mason spend showing near-$0 on the line while the
+  // hover panel lists $85 underneath it would be a self-contradicting chart.
+  const dayTotal = (d: string): number => {
+    const dm = by_day_model?.[d]
+    if (dm) return Object.values(dm).reduce((s, m) => s + m.cost_usd, 0)
+    return by_day[d]?.cost_usd ?? 0
+  }
+  const days = [...new Set([...Object.keys(by_day), ...Object.keys(by_day_model ?? {})])].sort()
 
   const today = new Date().toISOString().slice(0, 10)
-  const todayCost = by_day[today]?.cost_usd ?? 0
+  const todayCost = dayTotal(today)
 
   // 7-day average
-  const validDays = days.filter((d) => by_day[d].cost_usd > 0)
+  const validDays = days.filter((d) => dayTotal(d) > 0)
   const avg7d = validDays.length > 0
-    ? validDays.reduce((s, d) => s + by_day[d].cost_usd, 0) / validDays.length
+    ? validDays.reduce((s, d) => s + dayTotal(d), 0) / validDays.length
     : 0
 
   // Prior 7-day window for trend
-  const allSortedDays = Object.keys(by_day).sort()
-  const cutoffIdx = allSortedDays.length - 7
-  const priorDays = allSortedDays.slice(Math.max(0, cutoffIdx - 7), cutoffIdx)
-  const avgPrior = priorDays.filter((d) => by_day[d].cost_usd > 0).length > 0
-    ? priorDays.filter((d) => by_day[d].cost_usd > 0).reduce((s, d) => s + by_day[d].cost_usd, 0)
-      / priorDays.filter((d) => by_day[d].cost_usd > 0).length
+  const cutoffIdx = days.length - 7
+  const priorDays = days.slice(Math.max(0, cutoffIdx - 7), cutoffIdx)
+  const priorValid = priorDays.filter((d) => dayTotal(d) > 0)
+  const avgPrior = priorValid.length > 0
+    ? priorValid.reduce((s, d) => s + dayTotal(d), 0) / priorValid.length
     : 0
 
   let trend: "rising" | "falling" | "flat" = "flat"
@@ -122,12 +131,13 @@ export function TokenBurnCard({ usage, metricsHistory, isLoading }: TokenBurnCar
   // Peak burn day
   let peakDay = ""
   let peakCost = 0
-  for (const [d, v] of Object.entries(by_day)) {
-    if (v.cost_usd > peakCost) { peakCost = v.cost_usd; peakDay = d }
+  for (const d of days) {
+    const c = dayTotal(d)
+    if (c > peakCost) { peakCost = c; peakDay = d }
   }
 
-  // 14-day sparkline (all available days)
-  const maxDayCost = days.reduce((m, d) => Math.max(m, by_day[d]?.cost_usd ?? 0), 0.001)
+  // sparkline (all available days)
+  const maxDayCost = days.reduce((m, d) => Math.max(m, dayTotal(d)), 0.001)
 
   const burnColorClass = burnColor(avg7d)
   const burnBgClass   = burnBg(avg7d)
@@ -178,16 +188,16 @@ export function TokenBurnCard({ usage, metricsHistory, isLoading }: TokenBurnCar
         const yMax = maxDayCost * 1.15 || 1
         const x = (i: number) => padL + (days.length <= 1 ? plotW / 2 : (i / (days.length - 1)) * plotW)
         const y = (v: number) => padT + plotH - (v / yMax) * plotH
-        const pts = days.map((d, i) => [x(i), y(by_day[d]?.cost_usd ?? 0)] as const)
+        const pts = days.map((d, i) => [x(i), y(dayTotal(d))] as const)
         const linePts = pts.map(([px, py]) => `${px},${py}`).join(" ")
         const areaPts = `${padL},${y(0)} ${linePts} ${x(days.length - 1)},${y(0)}`
         const todayIdx = days.indexOf(today)
         const avgY = y(avg7d)
         const hoverIdx = hoverDay ? days.indexOf(hoverDay) : -1
         const hitW = days.length > 1 ? plotW / (days.length - 1) : plotW
-        const activeDay = hoverDay && by_day[hoverDay] ? hoverDay : null
+        const activeDay = hoverDay && days.includes(hoverDay) ? hoverDay : null
         const activeModels = activeDay ? Object.entries(by_day_model?.[activeDay] ?? {}) : []
-        const activeTotal = activeDay ? (by_day[activeDay]?.cost_usd ?? 0) : 0
+        const activeTotal = activeDay ? dayTotal(activeDay) : 0
         return (
           <div className="mb-3">
             <div className="flex items-center justify-between mb-1">
