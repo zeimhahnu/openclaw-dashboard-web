@@ -3,10 +3,23 @@
 import { Inbox, CheckCircle2, AlertTriangle, MapPin, Sprout } from "lucide-react"
 import type { AgentTaskDetails, TaskSummary } from "@/hooks/useDashboardApi"
 
+type AgentId = "lil-claw" | "goop" | "mason"
+
+// A chore with the agent who OWNS it (whose inbox it's in). The dashboard
+// has no separate `assignee` field — the inbox the task lives in IS the
+// owner. We thread that through the panel so the Help-wanted board and the
+// Chore board stay aligned on who actually has to pick this up.
+type OwnedChore = { task: TaskSummary; owner: AgentId }
+
 const AGENT_COLOR: Record<string, string> = {
   "lil-claw": "#5ec27e",
   goop: "#52b8d0",
   mason: "#9b87f0",
+}
+const AGENT_LABEL: Record<AgentId, string> = {
+  "lil-claw": "LIL CLAW",
+  goop: "GOOP",
+  mason: "MASON",
 }
 const PRIORITY_COLOR: Record<string, string> = {
   high: "#c45a3a", medium: "#e8a935", low: "#7aad5a",
@@ -61,10 +74,13 @@ function priColor(p: string) {
   return PRIORITY_COLOR[p?.toLowerCase()] ?? "#6a9a6a"
 }
 
-function ChoreRow({ task, kind }: { task: TaskSummary; kind: "queued" | "tending" | "done" }) {
+function ChoreRow({ chore, kind }: { chore: OwnedChore; kind: "queued" | "tending" | "done" }) {
+  const { task, owner } = chore
   const failed = task.status === "failed"
-  const color = failed ? "#c45a3a" : AGENT_COLOR[task.assignedBy] ?? "#7aad5a"
+  const ownerColor = AGENT_COLOR[owner] ?? "#7aad5a"
+  const color = failed ? "#c45a3a" : ownerColor
   const origin = getChoreOrigin(task)
+  const isUnowned = !task.assignedBy
   return (
     <div
       className="flex items-start gap-1.5 px-2 py-1 rounded border"
@@ -76,14 +92,25 @@ function ChoreRow({ task, kind }: { task: TaskSummary; kind: "queued" | "tending
       <span className="mt-0.5 w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: priColor(task.priority) }} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1">
+          {/* OWNER badge — the agent whose inbox this task lives in (i.e. who
+              has to pick it up). Always shown so the board never leaves an
+              orphaned chore without a clear owner; matches the "by:X" / "for:Y"
+              pattern used by the Chore Board below. */}
+          <span
+            className="font-pixel text-[5px] px-0.5 py-0 rounded shrink-0"
+            style={{ color: ownerColor, backgroundColor: ownerColor + "20", border: `1px solid ${ownerColor}40` }}
+            title={`Owner: ${AGENT_LABEL[owner]}`}
+          >
+            {AGENT_LABEL[owner]}
+          </span>
           <div className="font-code text-[9px] text-[var(--foreground)] truncate">{task.id}</div>
-          {/* Omit the badge entirely when the task has no real assignedBy
-              (matches Chore Board's "by:X" pattern) - a bare "?" placeholder
-              for missing data reads as broken, not as "unattributed". */}
-          {task.assignedBy && (
+          {/* SENDER badge — who created/assigned it. Omitted when no real
+              assignedBy (bare "?" read as broken, not as "unattributed"). */}
+          {!isUnowned && (
             <span
               className="font-pixel text-[5px] px-0.5 py-0 rounded shrink-0"
               style={{ color: ORIGIN_COLOR[origin] ?? "#6a9a6a", backgroundColor: (ORIGIN_COLOR[origin] ?? "#6a9a6a") + "15" }}
+              title={`From: ${origin}`}
             >
               {origin}
             </span>
@@ -98,23 +125,23 @@ function ChoreRow({ task, kind }: { task: TaskSummary; kind: "queued" | "tending
   )
 }
 
-function Section({ icon, label, color, tasks, kind }: {
+function Section({ icon, label, color, chores, kind }: {
   icon: React.ReactNode; label: string; color: string
-  tasks: TaskSummary[]; kind: "queued" | "tending" | "done"
+  chores: OwnedChore[]; kind: "queued" | "tending" | "done"
 }) {
   return (
     <div>
       <div className="flex items-center gap-1.5 mb-1">
         <span style={{ color }}>{icon}</span>
         <span className="font-pixel text-[7px]" style={{ color }}>{label}</span>
-        <span className="font-code text-[9px] text-[var(--muted-foreground)] ml-auto">{tasks.length}</span>
+        <span className="font-code text-[9px] text-[var(--muted-foreground)] ml-auto">{chores.length}</span>
       </div>
       <div className="space-y-1">
-        {tasks.length === 0
+        {chores.length === 0
           ? <div className="font-code text-[8px] text-[var(--muted-foreground)] pl-1 opacity-50">{"// a tidy row"}</div>
-          : tasks.slice(0, 8).map(t => <ChoreRow key={t.id} task={t} kind={kind} />)}
-        {tasks.length > 8 && (
-          <div className="font-code text-[8px] text-[var(--muted-foreground)] pl-1">+{tasks.length - 8} more</div>
+          : chores.slice(0, 8).map(c => <ChoreRow key={`${c.owner}-${c.task.id}`} chore={c} kind={kind} />)}
+        {chores.length > 8 && (
+          <div className="font-code text-[8px] text-[var(--muted-foreground)] pl-1">+{chores.length - 8} more</div>
         )}
       </div>
     </div>
@@ -134,26 +161,80 @@ export function QuestPanel({ taskDetails, isLoading }: {
     )
   }
 
-  // Flatten all agents' chores into queued / tending / done buckets.
-  const all: TaskSummary[] = []
+  // Flatten all agents' chores into queued / tending / done buckets, KEEPING
+  // the owner (which agent's inbox the task lives in) so every row can show
+  // who actually has to pick it up — without it the Help-wanted board leaves
+  // chores as anonymous, and the Chore Board below shows a different owner.
+  const all: OwnedChore[] = []
   for (const id of Object.keys(taskDetails)) {
-    for (const t of taskDetails[id]?.inbox ?? []) all.push(t)
+    const aid = id as AgentId
+    for (const t of taskDetails[aid]?.inbox ?? []) all.push({ task: t, owner: aid })
   }
-  const failed  = all.filter(t => t.status === "failed")
-  const tending = all.filter(t => t.status === "working")
-  const queued  = all.filter(t => t.status !== "working" && t.status !== "failed")
-  const done: TaskSummary[] = []
+  const failed  = all.filter(c => c.task.status === "failed")
+  const tending = all.filter(c => c.task.status === "working")
+  // "queued" = work that still needs an agent to pick it up. Specifically:
+  //   - "pending"      — waiting for someone to claim it
+  //   - "acknowledged" — on someone's radar, not yet done
+  //   - "needs_review" — done from the worker's side, awaiting sign-off
+  //   - empty/unknown  — unknown status, treat as queued for visibility
+  // EXCLUDED from queued:
+  //   - "working"    — already in TENDING above
+  //   - "failed"     — already in WILTED above
+  //   - "complete"/"completed" — already done (would land in SHIPPED below
+  //     once the backend flushes it to outbox, but if the inbox still holds
+  //     a stray completed copy we hide it from the chore board)
+  //   - "informational" — FYI notification, not actionable work
+  // The prior logic lumped complete/informational into queued which left
+  // phantom rows on the board (visible in the screenshot: stale VORTEX
+  // notifications hanging around with nobody able to pick them up).
+  const QUEUED_STATUSES = new Set(["pending", "acknowledged", "needs_review", "", "queued"])
+  const queued  = all.filter(c => QUEUED_STATUSES.has((c.task.status ?? "").toLowerCase()))
+  const done: OwnedChore[] = []
   for (const id of Object.keys(taskDetails)) {
-    for (const t of taskDetails[id]?.outbox ?? []) done.push(t)
+    const aid = id as AgentId
+    for (const t of taskDetails[aid]?.outbox ?? []) done.push({ task: t, owner: aid })
   }
 
-  // Derive chore title from highest-priority active task
-  const activeTasks = [...failed, ...tending, ...queued]
-  const topTask = activeTasks.sort((a, b) => {
-    const p = { high: 0, medium: 1, low: 2 }
-    return (p[a.priority?.toLowerCase() as keyof typeof p] ?? 3) - (p[b.priority?.toLowerCase() as keyof typeof p] ?? 3)
-  })[0]
-  const choreTitle = topTask ? topTask.description?.slice(0, 48) ?? topTask.id : "No chores for now"
+  // Derive chore title from highest-priority *current* task. "Current" means:
+  //   1. A currently-working task (status === "working") — something actually
+  //      in flight right now, OR
+  //   2. A pending/high-priority task from the last 48 hours — the freshest
+  //      thing on the board.
+  //   3. A failed task from the last 48 hours (a wilted crop is still "today").
+  // Only then do we fall back to the absolute highest-priority queued task —
+  // and only if it's not ancient. The prior logic picked the top-priority
+  // queued task by priority alone and surfaced a week-old VORTEX
+  // notification ahead of anything actually in flight. (The user-visible
+  // symptom was "Today's Chore: [VORTEX] Found + fixed the OpenD config bug"
+  // for days, while the agents were actually tending newer things.)
+  const RECENT_H = 48
+  const isRecent = (c: OwnedChore): boolean => {
+    const ageH = c.task.age_h
+    return ageH == null || ageH < RECENT_H
+  }
+  const priWeight = (p?: string): number => {
+    const p2 = p?.toLowerCase()
+    if (p2 === "high") return 0
+    if (p2 === "medium") return 1
+    if (p2 === "low" || p2 === "normal") return 2
+    return 3
+  }
+  const sortByPriorityFreshness = (a: OwnedChore, b: OwnedChore): number => {
+    const dp = priWeight(a.task.priority) - priWeight(b.task.priority)
+    if (dp !== 0) return dp
+    return (a.task.age_h ?? Infinity) - (b.task.age_h ?? Infinity)
+  }
+  const workingTop = tending.sort(sortByPriorityFreshness)[0]
+  const recentQueued = queued.filter(isRecent).sort(sortByPriorityFreshness)[0]
+  const recentFailed = failed.filter(isRecent).sort(sortByPriorityFreshness)[0]
+  // Wilted wins over queued: a recently-failed task is the most urgent thing
+  // the farmer needs to look at, even if it's lower priority.
+  const topChore: OwnedChore | null = workingTop ?? recentFailed ?? recentQueued
+    ?? queued.sort(sortByPriorityFreshness)[0]
+    ?? null
+  const topTask = topChore?.task ?? null
+  const topOwner = topChore?.owner ?? "lil-claw"
+  const choreTitle = topTask ? topTask.description?.slice(0, 48) || topTask.id : "No chores for now"
   const flavorText = topTask ? getFlavorText(topTask.type ?? "") : getFlavorText("default")
   const topOrigin  = topTask ? getChoreOrigin(topTask) : "LilClaw"
 
@@ -168,25 +249,46 @@ export function QuestPanel({ taskDetails, isLoading }: {
       {topTask && (
         <div className="space-y-1 px-1">
           <div className="flex items-center gap-1.5">
-            <MapPin className="h-3 w-3 shrink-0" style={{ color: ORIGIN_COLOR[topOrigin] ?? "#6a9a6a" }} />
+            <MapPin className="h-3 w-3 shrink-0" style={{ color: AGENT_COLOR[topOwner] ?? "#6a9a6a" }} />
             <span className="font-pixel text-[6px] text-[var(--muted-foreground)] uppercase tracking-wider">Today&apos;s Chore</span>
+            {/* Owner badge — who has to pick this up. Always shown when a top
+                task is selected so the header never points at an orphaned
+                chore. Sender (topOrigin) follows on the right so the user
+                still knows who assigned it. */}
             <span
               className="font-pixel text-[5px] px-1 py-0 rounded ml-auto"
-              style={{ color: ORIGIN_COLOR[topOrigin] ?? "#6a9a6a", backgroundColor: (ORIGIN_COLOR[topOrigin] ?? "#6a9a6a") + "20" }}
+              style={{
+                color: AGENT_COLOR[topOwner] ?? "#6a9a6a",
+                backgroundColor: (AGENT_COLOR[topOwner] ?? "#6a9a6a") + "20",
+                border: `1px solid ${AGENT_COLOR[topOwner] ?? "#6a9a6a"}40`,
+              }}
+              title={`Owner: ${AGENT_LABEL[topOwner]}`}
             >
-              {topOrigin}
+              {AGENT_LABEL[topOwner]}
             </span>
+            {topOrigin !== AGENT_LABEL[topOwner] && topOrigin !== "?" && (
+              <span
+                className="font-pixel text-[5px] px-1 py-0 rounded"
+                style={{
+                  color: ORIGIN_COLOR[topOrigin] ?? "#6a9a6a",
+                  backgroundColor: (ORIGIN_COLOR[topOrigin] ?? "#6a9a6a") + "15",
+                }}
+                title={`From: ${topOrigin}`}
+              >
+                ← {topOrigin}
+              </span>
+            )}
           </div>
           <div className="font-code text-[9px] text-[var(--foreground)] leading-tight">{choreTitle}</div>
           <div className="font-code text-[7px] text-[var(--muted-foreground)] italic leading-snug">{flavorText}</div>
         </div>
       )}
       {failed.length > 0 && (
-        <Section icon={<AlertTriangle className="h-3 w-3" />} label="WILTED" color="#c45a3a" tasks={failed} kind="tending" />
+        <Section icon={<AlertTriangle className="h-3 w-3" />} label="WILTED" color="#c45a3a" chores={failed} kind="tending" />
       )}
-      <Section icon={<Sprout className="h-3 w-3" />} label="TENDING" color="#7aad5a" tasks={tending} kind="tending" />
-      <Section icon={<Inbox className="h-3 w-3" />} label="QUEUED" color="#e8a935" tasks={queued} kind="queued" />
-      <Section icon={<CheckCircle2 className="h-3 w-3" />} label="SHIPPED" color="#5ec27e" tasks={done} kind="done" />
+      <Section icon={<Sprout className="h-3 w-3" />} label="TENDING" color="#7aad5a" chores={tending} kind="tending" />
+      <Section icon={<Inbox className="h-3 w-3" />} label="QUEUED" color="#e8a935" chores={queued} kind="queued" />
+      <Section icon={<CheckCircle2 className="h-3 w-3" />} label="SHIPPED" color="#5ec27e" chores={done} kind="done" />
     </div>
   )
 }

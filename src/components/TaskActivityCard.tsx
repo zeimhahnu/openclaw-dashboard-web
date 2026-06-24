@@ -16,24 +16,45 @@ const AGENT_COLORS: Record<string, string> = {
   mason:      "#9b87f0",
 }
 
-function ChoreRankBadge({ priority }: { priority: string }) {
+function ChoreRankBadge({ priority, kind }: { priority: string; kind?: "queued" | "tending" | "done" }) {
+  // For shipped ("done") rows the priority field is almost always empty
+  // (outbox tasks rarely carry one), so the old `priority || "?"` fallback
+  // rendered a literal "?" on every shipped row. "?" read as a broken badge
+  // rather than as a status — so when we're in done-land we substitute
+  // "DONE" and a muted style regardless of any stale priority value.
+  if (kind === "done") {
+    return (
+      <span className="font-pixel text-[7px] px-1 border rounded shrink-0 text-[var(--muted-foreground)] border-[var(--border)] bg-[var(--muted)]">
+        DONE
+      </span>
+    )
+  }
   const map: Record<string, { cls: string; label: string }> = {
     high:   { cls: "text-[#c45a3a] border-[#c45a3a]/40 bg-[#c45a3a]/10", label: "URGENT" },
     medium: { cls: "text-[#e8a935] border-[#e8a935]/40 bg-[#e8a935]/10", label: "SOON"  },
     low:    { cls: "text-[#7aad5a] border-[#7aad5a]/40",                  label: "IDLE"  },
   }
-  const s = map[priority?.toLowerCase()] ?? {
-    cls: "text-[var(--muted-foreground)] border-[var(--border)]",
-    label: priority || "?",
+  if (priority) {
+    const s = map[priority.toLowerCase()] ?? {
+      cls: "text-[var(--muted-foreground)] border-[var(--border)]",
+      label: priority,
+    }
+    return (
+      <span className={`font-pixel text-[7px] px-1 border rounded shrink-0 ${s.cls}`}>
+        {s.label}
+      </span>
+    )
   }
+  // Empty priority on a queued/tending row: fall back to a neutral "WAITING"
+  // tag rather than a misleading "?".
   return (
-    <span className={`font-pixel text-[7px] px-1 border rounded shrink-0 ${s.cls}`}>
-      {s.label}
+    <span className="font-pixel text-[7px] px-1 border rounded shrink-0 text-[var(--muted-foreground)] border-[var(--border)]">
+      WAITING
     </span>
   )
 }
 
-function RichChoreList({ items }: { items: TaskSummary[]; accentColor?: string }) {
+function RichChoreList({ items, kind }: { items: TaskSummary[]; kind: "queued" | "tending" | "done" }) {
   if (items.length === 0) {
     return <p className="font-code text-[10px] text-[var(--muted-foreground)] pl-1">{"// empty row"}</p>
   }
@@ -42,7 +63,7 @@ function RichChoreList({ items }: { items: TaskSummary[]; accentColor?: string }
       {items.slice(0, 8).map((t) => (
         <div key={t.id} className="border border-[var(--border)] rounded p-1.5 space-y-0.5">
           <div className="flex items-center gap-1.5">
-            <ChoreRankBadge priority={t.priority} />
+            <ChoreRankBadge priority={t.priority} kind={kind} />
             <span className="font-code text-[9px] text-[var(--muted-foreground)] truncate flex-1">
               {t.id}
             </span>
@@ -210,7 +231,7 @@ export function TaskActivityCard({ tasks, taskDetails, isLoading }: TaskActivity
                     <div>
                       <div className="font-pixel text-[7px] text-[#e8a935] mb-1">QUEUED</div>
                       {richInbox.length > 0
-                        ? <RichChoreList items={richInbox} accentColor={color} />
+                        ? <RichChoreList items={richInbox} kind="queued" />
                         : <SimpleChoreList names={fallbackInbox} />
                       }
                     </div>
@@ -222,7 +243,7 @@ export function TaskActivityCard({ tasks, taskDetails, isLoading }: TaskActivity
                         <Send className="h-2.5 w-2.5" />
                         SHIPPED
                       </div>
-                      <RichChoreList items={richOutbox} accentColor={color} />
+                      <RichChoreList items={richOutbox} kind="done" />
                     </div>
                   )}
 

@@ -83,6 +83,10 @@ export interface TaskSummary {
   description: string
   assignedBy: string
   createdAt: string
+  // Age in hours, computed server-side from createdAt/completedAt. Used by the
+  // dashboard to suppress week-old queued tasks from "Today's Chore" so the
+  // narrative header always reflects something actually current.
+  age_h?: number | null
 }
 
 export interface AgentTaskDetails {

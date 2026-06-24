@@ -48,6 +48,49 @@ const AGENTS = [
   },
 ]
 
+// ─── Per-character resting poses ────────────────────────────────────────────
+// 3 poses per agent. Each pose fits their role + personality - Lil Claw
+// tends the farm, Goop minds the forge, Mason reads/ponders - and they cycle
+// when the agent is idle so the village feels alive. Different bob periods
+// and sway amounts make each pose read as a distinct moment (squat vs.
+// stretch vs. squint) rather than just three flavors of standing still.
+//
+// Picked deterministically per agent (no two adjacent cycles repeat the same
+// pose). Cycled every 5-9s when the agent has been idle > 4s.
+type RestingPose = {
+  mode: "down"|"left"|"right"|"up"
+  bobAmp: number
+  bobPeriod: number
+  sway: number
+  label: string
+}
+const RESTING_POSES: Record<string, RestingPose[]> = {
+  // Lil Claw - straw-hat farm manager with the watering can. At rest the
+  // farm manager is still doing farm things: checking the crops, watching
+  // the sky, scratching their head about a wilting row.
+  "lil-claw": [
+    { mode: "down", bobAmp: 0.9, bobPeriod: 420, sway: 0.6, label: "checking crops" },     // slight side-to-side like scanning the rows
+    { mode: "up",   bobAmp: 0.5, bobPeriod: 560, sway: 0.2, label: "watching the clouds" },// still, face tilted up
+    { mode: "right",bobAmp: 0.7, bobPeriod: 480, sway: 0.0, label: "leaning on pitchfork" },// facing the coop
+  ],
+  // Goop - goggled blacksmith, hammer always nearby. Even resting, Goop is
+  // mid-shop: watching the coals cool, polishing a finished piece, leaning
+  // against the anvil waiting for the next order.
+  "goop": [
+    { mode: "right",bobAmp: 0.8, bobPeriod: 460, sway: 0.3, label: "watching the coals" },// toward the forge
+    { mode: "down", bobAmp: 1.1, bobPeriod: 400, sway: 0.7, label: "polishing a tool" },   // busy hand motion
+    { mode: "left", bobAmp: 0.5, bobPeriod: 540, sway: 0.0, label: "leaning on the anvil" },// still
+  ],
+  // Mason - silver-hooded scholar with a quill. The scholar at rest is
+  // either in the middle of reading, gazing at the sky to think, or
+  // leaning on the quill pondering the next chapter.
+  "mason": [
+    { mode: "down", bobAmp: 0.6, bobPeriod: 520, sway: 0.3, label: "reading" },
+    { mode: "up",   bobAmp: 0.4, bobPeriod: 580, sway: 0.2, label: "gazing at the stars" },
+    { mode: "left", bobAmp: 0.7, bobPeriod: 500, sway: 0.4, label: "pondering the next line" },
+  ],
+}
+
 // ─── Hi-fi chibi sprite generation ─────────────────────────────────────────
 // Pipeline: draw each 24x40 frame into its own cell with hue-shifted color
 // ramps + cell shading (light top-left), then an automatic silhouette outline
@@ -872,9 +915,12 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
         dir: 0|1|2|3  // 0=down,1=up,2=left,3=right
         wait: number
         walkF: 0|1|2|3  // walk frame (0=stand)
-        // Idle look-around
+        // Idle look-around (legacy random-look) + new character-resting pose
         idleAnimMode: "down"|"left"|"right"|"up"
         idleAnimTimer: number
+        // Index into RESTING_POSES[agent]. Bumped whenever the timer fires.
+        restingIdx: number
+        restingTimer: number
         frameTick: number
         idleTime: number
         isWorking: boolean; prevWorking: boolean
@@ -1186,6 +1232,12 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
               goopTarget: "wander", goopTargetTimer: 0,
               lilTarget: "wander", lilTargetTimer: 0,
               idleAnimMode: "down", idleAnimTimer: 60 + i * 35,
+              // Stagger resting pose changes per agent (300ms between each
+              // so they don't all swap on the same tick) and pick a random
+              // starting pose so a fresh load doesn't show three identical
+              // "down" faces in lockstep.
+              restingIdx: Math.floor(Math.random() * (RESTING_POSES[a.id]?.length ?? 1)),
+              restingTimer: 280 + i * 40,
               sprite, toolG, glow, nameTag, activityTag,
             })
           })
@@ -1297,7 +1349,7 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
           } else if (hour < 18) {                  // golden hour
             sky = [{ t: 0, r: 0x3e, g: 0x52, b: 0x8a }, { t: 0.55, r: 0xd8, g: 0x88, b: 0x50 }, { t: 1, r: 0xf6, g: 0xc8, b: 0x70 }]
             sun = 0.9; sunY = GROUND_Y - 30; bloom = 0.6
-          } else {                                 // dusk (18–20)
+          } else {                                 // dusk (18-20)
             sky = [{ t: 0, r: 0x20, g: 0x18, b: 0x3c }, { t: 0.5, r: 0x5a, g: 0x30, b: 0x50 }, { t: 1, r: 0xe0, g: 0x80, b: 0x44 }]
             sun = 0.4; starA = 0.3; bloom = 0.8; moon = 0.25
           }
@@ -1496,15 +1548,37 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
               if (ag.frameTick > walkThr) { ag.walkF = ((ag.walkF + 1) % 4) as 0|1|2|3; ag.frameTick = 0 }
             } else {
               ag.walkF = 0; ag.frameTick = 0
-              // ── Idle look-around: periodically face different directions while standing
-              if (!ag.isWorking) {
-                ag.idleAnimTimer--
-                if (ag.idleAnimTimer <= 0) {
-                  const roll = Math.random()
-                  ag.idleAnimMode = roll < 0.38 ? "down" : roll < 0.62 ? "left" : roll < 0.82 ? "right" : "up"
-                  ag.idleAnimTimer = 72 + Math.random() * 130
+              // ── Idle behavior ────────────────────────────────────────────────
+              // WORKING agents stand facing the camera (dir=0) so the tool +
+              // bob read clearly. IDLE agents run the per-character RESTING
+              // pose cycle: 3 distinct poses per agent (checking crops /
+              // polishing a tool / reading etc.) that change every 5-9s.
+              // The cycle is the new "look around" - no more random 72-frame
+              // head twitches, the whole body settles into a different pose
+              // with its own bob period + sway so it actually reads as
+              // "doing something" instead of just "standing still".
+              if (ag.isWorking) {
+                ag.dir = 0
+              } else {
+                ag.restingTimer--
+                if (ag.restingTimer <= 0) {
+                  const poses = RESTING_POSES[ag.id] ?? []
+                  if (poses.length > 1) {
+                    // Deterministic rotation - no two consecutive cycles
+                    // repeat the same pose (so we always actually move).
+                    let next = ag.restingIdx
+                    while (next === ag.restingIdx) next = Math.floor(Math.random() * poses.length)
+                    ag.restingIdx = next
+                  }
+                  ag.restingTimer = 300 + Math.random() * 240   // 5-9s per pose
                 }
-                ag.dir = ag.idleAnimMode === "down" ? 0 : ag.idleAnimMode === "up" ? 1 : ag.idleAnimMode === "left" ? 2 : 3
+                const pose = (RESTING_POSES[ag.id] ?? [])[ag.restingIdx] ?? { mode: "down" as const, bobAmp: 0.7, bobPeriod: 450, sway: 0, label: "" }
+                ag.dir = pose.mode === "down" ? 0 : pose.mode === "up" ? 1 : pose.mode === "left" ? 2 : 3
+                ag.idleAnimMode = pose.mode
+                // Legacy idleAnimTimer is still used for compatibility with
+                // the old random-look code path (kept as a no-op safety
+                // net so other code reading it doesn't get a stale value).
+                ag.idleAnimTimer = Math.max(ag.idleAnimTimer, ag.restingTimer)
               }
             }
             if (ag.wait > 0) ag.wait--
@@ -1518,21 +1592,66 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             const phase = ag.wx * 0.05
             let bob = 0
             let bx_off = 0
+            // toolAnim offsets the tool sprite so the tool motion reads as
+            // part of the working motion (hammer swing / water pour /
+            // quill scratch). Computed per-frame; consumed by drawTool below.
+            let toolAnimX = 0
+            let toolAnimY = 0
+            // tiltRot is the visual lean of the agent while working - a tiny
+            // ~±2° rotation that sells "I'm exerting force" without needing
+            // full skeleton animation. Reset to 0 on idle/stuck.
+            let tiltRot = 0
 
             if (ag.isWorking) {
-              // WORKING — energetic bob + micro lateral sway
-              bob    = Math.sin(t / 80 + phase) * 2.2
-              bx_off = Math.sin(t / 130 + phase) * 0.8
+              // WORKING - energetic bob + micro lateral sway, ~50% bigger than
+              // before so it's obviously different from idle at a glance.
+              bob    = Math.sin(t / 78 + phase) * 3.2
+              bx_off = Math.sin(t / 120 + phase) * 1.2
+              // ── Per-tool motion - the tool animation cycles in time with
+              // the bob so a viewer can tell which agent is doing which kind
+              // of work from the tool alone (hammer rises and falls,
+              // watering can tilts and recovers, quill scratches side-to-side).
+              if (ag.cfg.tool === "hammer") {
+                // Swing: tool rises with the bob and snaps down on the
+                // bottom of the cycle (sin2 peak hits the anvil).
+                const swing = Math.max(0, Math.sin(t / 78 + phase))   // 0..1, peaks every cycle
+                toolAnimY = -swing * 5                                // hammer up by up to 5px
+                tiltRot   = (swing - 0.5) * 0.07                      // ±~2° lean with the swing
+              } else if (ag.cfg.tool === "watering") {
+                // Pour: tilt the can at the bottom of the bob, recover on top.
+                const pour = Math.max(0, -Math.sin(t / 78 + phase))   // 0..1, inverted
+                toolAnimY = pour * 2                                  // can dips down
+                toolAnimX = Math.sin(t / 78 + phase) * 2              // small lateral wobble
+                tiltRot   = -pour * 0.10                              // tilts forward to pour
+                // A water drop particle, every other cycle, while pouring
+                if (pour > 0.85 && Math.floor(t / 156) % 2 === 0) {
+                  const dropX = Math.round(ag.wx + bx_off) + (ag.dir === 2 ? -18 : 18)
+                  const dropY = Math.round(ag.wy - 24 + bob)
+                  ag.toolG.fillStyle(0x9fd4ff, 0.85); ag.toolG.fillRect(dropX, dropY, 2, 2)
+                  ag.toolG.fillStyle(0xbcd6e6, 0.5); ag.toolG.fillRect(dropX, dropY + 2, 1, 2)
+                }
+              } else {
+                // Quill: scratch motion - small left/right jitter as if writing.
+                toolAnimX = Math.sin(t / 50 + phase) * 1.6
+                toolAnimY = Math.abs(Math.sin(t / 50 + phase)) * 1.2
+                tiltRot   = Math.sin(t / 320 + phase) * 0.03          // barely-perceptible head tilt
+              }
             } else if (ag.health === "red") {
               // STUCK — horizontal trembling to signal distress
               bob    = Math.sin(t / 400 + phase) * 0.5
               bx_off = Math.sin(t / 58) * 1.9
             } else {
-              // IDLE — calm breathing bob only
-              bob = Math.sin(t / 450 + phase) * 0.7
+              // IDLE - use the per-character resting pose's bob + sway.
+              // Each pose has its own period/amplitude so the three resting
+              // poses read as three distinct moments (squat / stretch /
+              // squint) rather than three flavors of standing still.
+              const pose = (RESTING_POSES[ag.id] ?? [])[ag.restingIdx] ?? { mode: "down" as const, bobAmp: 0.7, bobPeriod: 450, sway: 0 }
+              bob    = Math.sin(t / pose.bobPeriod + phase) * pose.bobAmp
+              bx_off = Math.sin(t / (pose.bobPeriod * 0.55) + phase) * pose.sway
             }
 
             ag.sprite.setPosition(Math.round(ag.wx + bx_off), Math.round(ag.wy + bob))
+            ag.sprite.setRotation(tiltRot)
             ag.nameTag.setPosition(Math.round(ag.wx), Math.round(ag.wy + 6)).setAlpha(ag.isWorking ? 1 : 0.7)
             // PR3: activity caption sits under the name tag, fades in when there's something to show
             const capTarget = ag.isWorking ? 1 : 0
@@ -1557,7 +1676,7 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             ag.toolG.clear()
             if (ag.isWorking) {
               const dir = ag.dir === 2 ? -1 : 1
-              drawTool(ag.toolG, ag.cfg.tool, Math.round(ag.wx + bx_off) + dir * 12, Math.round(ag.wy - 18 + bob))
+              drawTool(ag.toolG, ag.cfg.tool, Math.round(ag.wx + bx_off) + dir * 12 + toolAnimX, Math.round(ag.wy - 18 + bob) + toolAnimY)
             } else if (ag.health === "red") {
               // Floating "!" above stuck character (bobs gently)
               const bx2 = Math.round(ag.wx)
@@ -1578,10 +1697,14 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             // ── Glow ring — distinct per state
             ag.glow.clear()
             if (ag.isWorking) {
-              // WORKING: brighter, faster pulse + wider aura
-              const gA = 0.28 + Math.sin(t / 280) * 0.13
-              ag.glow.fillStyle(ag.cfg.color, gA * 0.38); ag.glow.fillCircle(0, 0, 22)
-              ag.glow.fillStyle(ag.cfg.color, gA);         ag.glow.fillCircle(0, 0, 11)
+              // WORKING: brighter, faster pulse + wider aura. Synced to the
+              // bob so the pulse peaks at the bottom of each work stroke
+              // (the "impact" moment of a hammer hit, the pour of a can).
+              const beat = 0.5 + 0.5 * Math.sin(t / 78 + phase)         // 0..1, bob-synced
+              const gA = 0.42 + beat * 0.22                              // 0.42..0.64 — visibly stronger than idle
+              ag.glow.fillStyle(ag.cfg.color, gA * 0.48); ag.glow.fillCircle(0, 0, 28)  // wider outer
+              ag.glow.fillStyle(ag.cfg.color, gA * 0.85); ag.glow.fillCircle(0, 0, 15)  // brighter inner
+              ag.glow.fillStyle(0xffffff, gA * 0.18);    ag.glow.fillCircle(0, 0, 7)   // hot core
             } else if (ag.health === "red") {
               // STUCK: rapid alarm pulse, wider than working
               const gA = 0.32 + Math.sin(t / 190) * 0.18
