@@ -1537,6 +1537,12 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             if (ag.id === "goop") goopIsWorking = ag.isWorking
 
             // ── Target selection (role-specific behaviors)
+            // ponytail: Mason is the only local agent, so red health == OFFLINE
+            // for him (heartbeat stale >10min / never seen). A red VPS agent is
+            // "stuck" (daemon crash, alarm) and keeps the distress visuals below.
+            // If a second local agent ever appears, key this on the API `local`
+            // flag instead of the id.
+            const isOffline = ag.id === "mason" && ag.health === "red" && !ag.isWorking
             if (ag.handoffMode !== "none") {
               // Physical handoff overrides all other targeting until complete.
               const peer = this.ags.find(a => a.id === ag.handoffPeer)
@@ -1556,6 +1562,12 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
                 ag.tx = ag.handoffReturnX; ag.ty = ag.handoffReturnY
                 if (Math.hypot(ag.tx - ag.wx, ag.ty - ag.wy) < 3) ag.handoffMode = "none"
               }
+            } else if (isOffline) {
+              // OFFLINE: walk home and sleep. ponytail: reuse home as the bunk —
+              // the existing mover carries them there, then the asleep visuals
+              // (calm bob, Zzz, dim tint) below take over once parked.
+              ag.tx = ag.cfg.home.x
+              ag.ty = ag.cfg.home.y
             } else if (isBadWeather && !ag.isWorking) {
               // Seek shelter at own station instead of wandering in the rain
               ag.tx = ag.cfg.station.x + (ag.id === "goop" ? 10 : 22)
@@ -1745,6 +1757,10 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
                 toolAnimY = Math.abs(Math.sin(t / 50 + phase)) * 1.2
                 tiltRot   = Math.sin(t / 320 + phase) * 0.03          // barely-perceptible head tilt
               }
+            } else if (isOffline) {
+              // ASLEEP — slow, calm breathing bob; no trembling (offline != stuck).
+              bob    = Math.sin(t / 600 + phase) * 0.8
+              bx_off = 0
             } else if (ag.health === "red") {
               // STUCK — horizontal trembling to signal distress
               bob    = Math.sin(t / 400 + phase) * 0.5
@@ -1787,6 +1803,11 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             const ySc = 0.72 + 0.28 * Math.max(0, Math.min(1, (ag.wy - 110) / 72))
             ag.sprite.setScale(SPRITE_SCALE * ySc)
 
+            // ── Offline look: desaturate + dim the sprite vs the full-colour
+            // wander. Cleared each frame so coming back online snaps to colour.
+            if (isOffline) { ag.sprite.setTint(0x565a72); ag.sprite.setAlpha(0.5) }
+            else { ag.sprite.clearTint(); ag.sprite.setAlpha(1) }
+
             // ── Tool OR stuck indicator (share toolG)
             ag.toolG.clear()
             if (ag.handoffMode !== "none") {
@@ -1811,6 +1832,15 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
               } else {
                 drawTool(ag.toolG, ag.cfg.tool, Math.round(ag.wx + bx_off) + dir * 12 + toolAnimX, Math.round(ag.wy - 18 + bob) + toolAnimY)
               }
+            } else if (isOffline) {
+              // "Zzz" rising + fading above the head — asleep/offline cue
+              // (replaces the red "!" so offline never reads as an incident).
+              const zt = (t / 700) % 1
+              const zx = Math.round(ag.wx) + 5, zy = Math.round(ag.wy - 30 - zt * 9)
+              ag.toolG.fillStyle(0xc8cde8, 0.85 * (1 - zt))
+              ag.toolG.fillRect(zx, zy, 3, 1)
+              ag.toolG.fillRect(zx + 1, zy + 1, 1, 1)
+              ag.toolG.fillRect(zx, zy + 2, 3, 1)
             } else if (ag.health === "red") {
               // Floating "!" above stuck character (bobs gently)
               const bx2 = Math.round(ag.wx)
@@ -1821,7 +1851,7 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             }
 
             // ── Fishing line for Mason when fishing
-            if (ag.id === "mason" && ag.masonMode === "fish" && !ag.isWorking && dist < 5) {
+            if (ag.id === "mason" && ag.masonMode === "fish" && !ag.isWorking && !isOffline && dist < 5) {
               const bobY = 172 + Math.sin(t / 800) * 2
               drawFishingLine(this.fishingG, Math.round(ag.wx), Math.round(ag.wy - 8), bobY)
             } else if (ag.id === "mason") {
@@ -1839,6 +1869,10 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
               ag.glow.fillStyle(ag.cfg.color, gA * 0.48); ag.glow.fillCircle(0, 0, 28)  // wider outer
               ag.glow.fillStyle(ag.cfg.color, gA * 0.85); ag.glow.fillCircle(0, 0, 15)  // brighter inner
               ag.glow.fillStyle(0xffffff, gA * 0.18);    ag.glow.fillCircle(0, 0, 7)   // hot core
+            } else if (isOffline) {
+              // OFFLINE: cool, dim, slow-breathing halo — calm, not an alarm.
+              const gA = 0.10 + Math.sin(t / 900) * 0.04
+              ag.glow.fillStyle(0x565a72, gA); ag.glow.fillCircle(0, 0, 16)
             } else if (ag.health === "red") {
               // STUCK: rapid alarm pulse, wider than working
               const gA = 0.32 + Math.sin(t / 190) * 0.18
