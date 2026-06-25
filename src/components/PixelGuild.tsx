@@ -6,7 +6,13 @@ const BASE_W = 900, BASE_H = 200
 const GROUND_Y = 88
 // Hi-fi chibi sprite: 24w x 40h per frame, 4 walk frames x 4 directions.
 // Light source top-left; auto silhouette outline; hue-shifted color ramps.
-const SW = 24, SH = 40, SDIRS = 4, SWALK = 4
+const SW = 24, SH = 40, SDIRS = 4, SWALK = 5
+// SWALK = 5 (Sprint-20 sprite-grip-fix): frames 0-3 are the walk cycle,
+// frame 4 is the "grip" pose (arms forward, hands meeting) — forced when
+// isWorking && !walking so a stationary working agent reads as holding
+// the tool instead of standing next to it. walkF still cycles 0-3 in the
+// walking branch ((walkF+1) % 4) so grip is only reached via the explicit
+// stationary-working override at the frame-select site.
 // Bumped from 1.5/1.0 — at FIT-scale on a portrait phone (~0.38x) characters
 // rendered too small to read. The panorama is fixed at BASE_W/BASE_H so the
 // whole-scene scale can't grow without cropping a village; this makes the
@@ -176,8 +182,8 @@ function eye(c: C2D, x: number, y: number, look = 0) {
 
 // ── DOWN-facing body (dir 0)
 function bodyDown(c: C2D, R: Ramps, ft: Feat, f: number) {
-  const lf = [0, -1, 0, 1][f], rf = [0, 1, 0, -1][f]   // leg swing
-  const as = [0, 1, 0, -1][f]                           // arm swing
+  const lf = [0, -1, 0, 1, 0][f], rf = [0, 1, 0, -1, 0][f]   // leg swing; f=4 grip = no swing
+  const as = [0, 1, 0, -1, 0][f]                              // arm swing; f=4 overridden by grip pose below
   const wide = ft.build === "stocky" ? 1 : 0
   const cx = 12
   px(c, cx - 7, 38, 14, 2, 0x000000, 0.16)             // ground shadow
@@ -192,10 +198,19 @@ function bodyDown(c: C2D, R: Ramps, ft: Feat, f: number) {
   // apron / robe front
   if (ft.apron) { srect(c, 9, 22, 6, 9, R.accent); px(c, 11, 24, 2, 1, R.accent.hi) }
   if (ft.hat === "hood") { srect(c, 7, 22, 10, 12, R.accent); clr(c, 7, 22); clr(c, 16, 22) }  // long robe
-  // arms + hands
-  srect(c, 4 - wide, 21 + as, 3, 8, R.shirt)
-  srect(c, 17 + wide, 21 - as, 3, 8, R.shirt)
-  px(c, 4 - wide, 28 + as, 3, 2, R.skin.base); px(c, 17 + wide, 28 - as, 3, 2, R.skin.base)
+  // arms + hands — grip pose (f=4): both arms angled inward, hands meeting
+  // at front-center so the agent reads as holding a horizontal tool. Generic
+  // across hammer / watering can / quill (per Alex: ship generic first).
+  if (f === 4) {
+    srect(c, 7 - wide, 23, 3, 6, R.shirt)
+    srect(c, 14 + wide, 23, 3, 6, R.shirt)
+    px(c, 10, 28, 2, 2, R.skin.base)
+    px(c, 12, 28, 2, 2, R.skin.base)
+  } else {
+    srect(c, 4 - wide, 21 + as, 3, 8, R.shirt)
+    srect(c, 17 + wide, 21 - as, 3, 8, R.shirt)
+    px(c, 4 - wide, 28 + as, 3, 2, R.skin.base); px(c, 17 + wide, 28 - as, 3, 2, R.skin.base)
+  }
   // neck + head
   px(c, 10, 18, 4, 2, R.skin.mid)
   srect(c, 7, 8, 10, 11, R.skin)
@@ -235,8 +250,8 @@ function headgearDown(c: C2D, R: Ramps, ft: Feat) {
 
 // ── UP-facing body (dir 1): back of head, no face
 function bodyUp(c: C2D, R: Ramps, ft: Feat, f: number) {
-  const lf = [0, -1, 0, 1][f], rf = [0, 1, 0, -1][f]
-  const as = [0, 1, 0, -1][f]
+  const lf = [0, -1, 0, 1, 0][f], rf = [0, 1, 0, -1, 0][f]
+  const as = [0, 1, 0, -1, 0][f]
   const wide = ft.build === "stocky" ? 1 : 0
   px(c, 5, 38, 14, 2, 0x000000, 0.16)
   srect(c, 9 - wide, 30, 3, 7 + lf, R.pants)
@@ -246,9 +261,18 @@ function bodyUp(c: C2D, R: Ramps, ft: Feat, f: number) {
   srect(c, 6 - wide, 20, 12 + wide * 2, 11, R.shirt)
   clr(c, 6 - wide, 20); clr(c, 17 + wide, 20)
   if (ft.hat === "hood") { srect(c, 7, 22, 10, 12, R.accent); clr(c, 7, 22); clr(c, 16, 22) }
-  srect(c, 4 - wide, 21 + as, 3, 8, R.shirt)
-  srect(c, 17 + wide, 21 - as, 3, 8, R.shirt)
-  px(c, 4 - wide, 28 + as, 3, 2, R.skin.base); px(c, 17 + wide, 28 - as, 3, 2, R.skin.base)
+  // arms + hands — grip pose (f=4): arms angled inward, hands meeting at
+  // center (visible from behind as the back of both forearms).
+  if (f === 4) {
+    srect(c, 7 - wide, 23, 3, 6, R.shirt)
+    srect(c, 14 + wide, 23, 3, 6, R.shirt)
+    px(c, 10, 28, 2, 2, R.skin.base)
+    px(c, 12, 28, 2, 2, R.skin.base)
+  } else {
+    srect(c, 4 - wide, 21 + as, 3, 8, R.shirt)
+    srect(c, 17 + wide, 21 - as, 3, 8, R.shirt)
+    px(c, 4 - wide, 28 + as, 3, 2, R.skin.base); px(c, 17 + wide, 28 - as, 3, 2, R.skin.base)
+  }
   px(c, 10, 18, 4, 2, R.skin.mid)
   // back of head: hair / hat
   srect(c, 7, 8, 10, 11, R.skin)
@@ -266,8 +290,8 @@ function bodyUp(c: C2D, R: Ramps, ft: Feat, f: number) {
 
 // ── LEFT-facing profile (dir 2). Mirrored for right in buildCharCanvas.
 function bodyLeft(c: C2D, R: Ramps, ft: Feat, f: number) {
-  const fb = [0, -1, 0, 1][f], bb = [0, 1, 0, -1][f]   // front/back leg swing
-  const aw = [0, -1, 0, 1][f]                           // arm swing
+  const fb = [0, -1, 0, 1, 0][f], bb = [0, 1, 0, -1, 0][f]   // front/back leg swing; f=4 = no swing
+  const aw = [0, -1, 0, 1, 0][f]                              // arm swing; f=4 overridden by grip pose
   const wide = ft.build === "stocky" ? 1 : 0
   px(c, 6, 38, 13, 2, 0x000000, 0.16)
   // rear leg (darker), front leg
@@ -278,8 +302,17 @@ function bodyLeft(c: C2D, R: Ramps, ft: Feat, f: number) {
   clr(c, 8, 20)
   if (ft.apron) srect(c, 8, 22, 5, 9, R.accent)
   if (ft.hat === "hood") { srect(c, 8, 22, 9, 12, R.accent); clr(c, 8, 22) }
-  // front arm swings
-  srect(c, 9 + aw, 21, 3, 8, R.shirt); px(c, 9 + aw, 28, 3, 2, R.skin.base)
+  // front arm — grip pose (f=4): front arm extends forward (toward nose/tool
+  // at left edge) with the hand at the far-front; back arm stays at side.
+  // Mirrored for dir=3 (right) so right-facing working agents mirror this.
+  if (f === 4) {
+    srect(c, 4, 23, 6, 3, R.shirt)             // front arm extended forward
+    px(c, 2, 23, 3, 2, R.skin.base)             // hand at far-front
+    srect(c, 16, 21, 2, 7, R.shirt)             // back arm at side
+    px(c, 16, 28, 2, 2, R.skin.base)
+  } else {
+    srect(c, 9 + aw, 21, 3, 8, R.shirt); px(c, 9 + aw, 28, 3, 2, R.skin.base)
+  }
   // head (profile), nose to the left
   srect(c, 8, 8, 9, 11, R.skin)
   clr(c, 8, 8); clr(c, 16, 8); clr(c, 16, 18)
@@ -1706,7 +1739,13 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             if (dist < 1.5) ag.idleTime++
 
             // ── Sprite frame
-            const frameIdx = ag.dir * SWALK + ag.walkF
+            // Sprint-20 grip-fix: when working + stationary, force the grip
+            // frame (dir*SWALK + SWALK-1) so the agent looks like they're
+            // holding the tool rather than standing next to it. Working +
+            // walking still uses the walk cycle (legs animate, tool bobs).
+            const frameIdx = (ag.isWorking && !walking)
+              ? ag.dir * SWALK + (SWALK - 1)
+              : ag.dir * SWALK + ag.walkF
             ag.sprite.setFrame(frameIdx)
 
             // ── Animation state: three distinct modes
