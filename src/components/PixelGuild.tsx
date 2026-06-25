@@ -29,7 +29,7 @@ const AGENTS = [
     station:  { x: 70,  y: 118 },   // farmhouse base; depth-sorted by station.y
     zone:     { x1: 28, y1: 110, x2: 235, y2: 182 },
     pal: { skin: 0xf0c49a, hair: 0x5a3216, shirt: 0xcf5230, pants: 0x6b4322, shoe: 0x3a2410, accent: 0xb98a4a, hat: 0xe6c878 },
-    feat: { hat: "straw" as const, apron: true, build: "normal" as const, beard: false },
+    feat: { hat: "straw" as const, apron: true, build: "normal" as const, beard: false, glasses: false },
     tool: "watering" as const,
   },
   {
@@ -39,7 +39,7 @@ const AGENTS = [
     station:  { x: 410, y: 116 },   // smithy base
     zone:     { x1: 322, y1: 110, x2: 562, y2: 182 },
     pal: { skin: 0xcf9e6e, hair: 0x2a2422, shirt: 0x47728e, pants: 0x39301f, shoe: 0x241510, accent: 0x6e4a28, hat: 0x8a99a6 },
-    feat: { hat: "goggles" as const, apron: true, build: "stocky" as const, beard: true },
+    feat: { hat: "none" as const, apron: true, build: "stocky" as const, beard: true, glasses: false },
     tool: "hammer" as const,
   },
   {
@@ -49,7 +49,7 @@ const AGENTS = [
     station:  { x: 760, y: 118 },   // scholar tower base
     zone:     { x1: 634, y1: 110, x2: 882, y2: 182 },
     pal: { skin: 0xf0c49a, hair: 0xc4c2cc, shirt: 0x6a4a8c, pants: 0x352a44, shoe: 0x2a1c30, accent: 0x584088, hat: 0x6a4f9c },
-    feat: { hat: "hood" as const, apron: false, build: "slim" as const, beard: false },
+    feat: { hat: "none" as const, apron: false, build: "slim" as const, beard: false, glasses: true },
     tool: "quill" as const,
   },
 ]
@@ -104,7 +104,7 @@ const RESTING_POSES: Record<string, RestingPose[]> = {
 // blitted mirrored for the right-facing row.
 
 type Pal = { skin: number; hair: number; shirt: number; pants: number; shoe: number; accent: number; hat: number }
-type Feat = { hat: "straw"|"goggles"|"hood"; apron: boolean; build: "normal"|"stocky"|"slim"; beard: boolean }
+type Feat = { hat: "straw"|"goggles"|"hood"|"none"; apron: boolean; build: "normal"|"stocky"|"slim"; beard: boolean; glasses: boolean }
 type C2D = CanvasRenderingContext2D
 
 function rgb(h: number): string {
@@ -222,6 +222,11 @@ function bodyDown(c: C2D, R: Ramps, ft: Feat, f: number) {
   px(c, 8, 11, 3, 1, R.hair.sh); px(c, 13, 11, 3, 1, R.hair.sh)   // brows
   px(c, 11, 14, 2, 1, R.skin.sh)                        // nose
   px(c, 10, 16, 4, 1, ft.beard ? 0x7a3528 : 0x8a4332)   // mouth
+  if (ft.glasses) {                                     // card's scholar glasses, front view
+    px(c, 7, 11, 4, 2, 0x3a3142, 0.85); px(c, 12, 11, 4, 2, 0x3a3142, 0.85)
+    px(c, 11, 12, 1, 1, 0x3a3142, 0.85)                 // bridge
+    eye(c, 8, 12); eye(c, 13, 12)                       // redraw pupils inside frames
+  }
   headgearDown(c, R, ft)
 }
 
@@ -238,13 +243,16 @@ function headgearDown(c: C2D, R: Ramps, ft: Feat) {
     px(c, 7, 8, 4, 2, 0x9fd4ff); px(c, 13, 8, 4, 2, 0x9fd4ff)    // lenses
     px(c, 7, 8, 4, 1, 0xd9f0ff); px(c, 13, 8, 4, 1, 0xd9f0ff)
     px(c, 11, 9, 2, 1, 0x4a4038)
-  } else { // hood
+  } else if (ft.hat === "hood") {
     px(c, 11, 3, 2, 2, R.accent.mid)                    // hood peak
     srect(c, 6, 5, 12, 7, R.accent)                     // hood drape
     clr(c, 6, 5); clr(c, 17, 5); clr(c, 6, 6); clr(c, 17, 6)  // round crown
     px(c, 7, 10, 10, 2, R.accent.sh)                    // face-framing inner rim
     px(c, 9, 6, 6, 1, R.accent.hi)                      // top sheen
     px(c, 7, 11, 1, 6, R.accent.sh); px(c, 16, 11, 1, 6, R.accent.mid)  // hood sides past cheeks
+  } else {                                              // none — bare hair, matches agent card
+    srect(c, 7, 4, 10, 4, R.hair); clr(c, 7, 4); clr(c, 16, 4)
+    px(c, 8, 5, 8, 1, R.hair.hi)
   }
 }
 
@@ -323,6 +331,7 @@ function bodyLeft(c: C2D, R: Ramps, ft: Feat, f: number) {
   px(c, 8, 11, 3, 1, R.hair.sh)                          // brow
   px(c, 8, 16, 3, 1, ft.beard ? 0x7a3528 : 0x8a4332)     // mouth
   px(c, 15, 13, 2, 2, R.skin.mid)                        // ear hint
+  if (ft.glasses) px(c, 8, 11, 5, 2, 0x3a3142, 0.85)      // scholar glasses, side view
   headgearLeft(c, R, ft)
 }
 
@@ -335,9 +344,12 @@ function headgearLeft(c: C2D, R: Ramps, ft: Feat) {
     srect(c, 8, 5, 9, 5, R.hair); clr(c, 8, 5); clr(c, 16, 5)
     px(c, 7, 8, 11, 2, 0x2c2622)
     px(c, 8, 8, 4, 2, 0x9fd4ff); px(c, 8, 8, 4, 1, 0xd9f0ff)
-  } else {
+  } else if (ft.hat === "hood") {
     srect(c, 7, 4, 11, 8, R.accent); clr(c, 7, 4); clr(c, 17, 4)
     px(c, 8, 9, 8, 1, R.accent.sh)
+  } else {                                                // none — bare hair, matches agent card
+    srect(c, 8, 4, 9, 4, R.hair); clr(c, 8, 4); clr(c, 16, 4)
+    px(c, 9, 5, 7, 1, R.hair.hi)
   }
 }
 
