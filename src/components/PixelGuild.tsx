@@ -6,13 +6,17 @@ const BASE_W = 900, BASE_H = 200
 const GROUND_Y = 88
 // Hi-fi chibi sprite: 24w x 40h per frame, 4 walk frames x 4 directions.
 // Light source top-left; auto silhouette outline; hue-shifted color ramps.
-const SW = 24, SH = 40, SDIRS = 4, SWALK = 5
-// SWALK = 5 (Sprint-20 sprite-grip-fix): frames 0-3 are the walk cycle,
-// frame 4 is the "grip" pose (arms forward, hands meeting) — forced when
-// isWorking && !walking so a stationary working agent reads as holding
-// the tool instead of standing next to it. walkF still cycles 0-3 in the
-// walking branch ((walkF+1) % 4) so grip is only reached via the explicit
-// stationary-working override at the frame-select site.
+const SW = 24, SH = 40, SDIRS = 4, SWALK = 7
+// Frame columns per direction (SWALK = 7):
+//   0-3 = walk cycle (legs + arms swing)
+//   4   = grip pose (arms forward, hands meeting — a held, still tool)
+//   5   = work STRIKE  (arms driven down/forward, upper body bent into it)
+//   6   = work RECOVER (arms raised, torso upright)
+// A stationary working agent cycles 5<->6 (see frame-select site) so the BODY
+// animates — arms pump + the waist bends into each stroke — instead of the old
+// behaviour where the body froze on the grip frame and the whole sprite just
+// shook. walkF still cycles 0-3 ((walkF+1) % 4) for the walking branch.
+const SGRIP = 4, SWORK_A = 5, SWORK_B = 6
 // Bumped from 1.5/1.0 — at FIT-scale on a portrait phone (~0.38x) characters
 // rendered too small to read. The panorama is fixed at BASE_W/BASE_H so the
 // whole-scene scale can't grow without cropping a village; this makes the
@@ -182,30 +186,44 @@ function eye(c: C2D, x: number, y: number, look = 0) {
 
 // ── DOWN-facing body (dir 0)
 function bodyDown(c: C2D, R: Ramps, ft: Feat, f: number) {
-  const lf = [0, -1, 0, 1, 0][f], rf = [0, 1, 0, -1, 0][f]   // leg swing; f=4 grip = no swing
-  const as = [0, 1, 0, -1, 0][f]                              // arm swing; f=4 overridden by grip pose below
+  const lf = [0, -1, 0, 1, 0, 0, 0][f], rf = [0, 1, 0, -1, 0, 0, 0][f]   // leg swing; grip/work = planted
+  const as = [0, 1, 0, -1, 0, 0, 0][f]                                    // arm swing (walk frames only)
   const wide = ft.build === "stocky" ? 1 : 0
   const cx = 12
+  // Work frames bend the upper body at the waist: STRIKE (5) drops + leans into
+  // the stroke, RECOVER (6) is upright. Drawn as a canvas translate so torso +
+  // arms + head shift together while the legs stay planted.
+  const uy = f === SWORK_A ? 2 : 0
+  const lean = f === SWORK_A ? 1 : 0
   px(c, cx - 7, 38, 14, 2, 0x000000, 0.16)             // ground shadow
   // legs + shoes
   srect(c, 9 - wide, 30, 3, 7 + lf, R.pants)
   srect(c, 12 + wide, 30, 3, 7 + rf, R.pants)
   px(c, 8 - wide, 36 + lf, 4, 3, R.shoe.base); px(c, 8 - wide, 38 + lf, 4, 1, R.shoe.sh)
   px(c, 12 + wide, 36 + rf, 4, 3, R.shoe.base); px(c, 12 + wide, 38 + rf, 4, 1, R.shoe.sh)
+  if (uy || lean) { c.save(); c.translate(lean, uy) }   // waist bend (work frames)
   // torso
   srect(c, 6 - wide, 20, 12 + wide * 2, 11, R.shirt)
   clr(c, 6 - wide, 20); clr(c, 17 + wide, 20)
   // apron / robe front
   if (ft.apron) { srect(c, 9, 22, 6, 9, R.accent); px(c, 11, 24, 2, 1, R.accent.hi) }
   if (ft.hat === "hood") { srect(c, 7, 22, 10, 12, R.accent); clr(c, 7, 22); clr(c, 16, 22) }  // long robe
-  // arms + hands — grip pose (f=4): both arms angled inward, hands meeting
-  // at front-center so the agent reads as holding a horizontal tool. Generic
-  // across hammer / watering can / quill (per Alex: ship generic first).
-  if (f === 4) {
+  // arms + hands — grip (4): arms angled inward, hands meeting (held tool).
+  // STRIKE (5): both arms driven down. RECOVER (6): arms lifted up + out.
+  // Cycling 5<->6 reads as the arms pumping through a work stroke.
+  if (f === SGRIP) {
     srect(c, 7 - wide, 23, 3, 6, R.shirt)
     srect(c, 14 + wide, 23, 3, 6, R.shirt)
     px(c, 10, 28, 2, 2, R.skin.base)
     px(c, 12, 28, 2, 2, R.skin.base)
+  } else if (f === SWORK_A) {
+    srect(c, 6 - wide, 24, 3, 7, R.shirt)
+    srect(c, 15 + wide, 24, 3, 7, R.shirt)
+    px(c, 7 - wide, 30, 3, 2, R.skin.base); px(c, 14 + wide, 30, 3, 2, R.skin.base)
+  } else if (f === SWORK_B) {
+    srect(c, 4 - wide, 18, 3, 7, R.shirt)
+    srect(c, 17 + wide, 18, 3, 7, R.shirt)
+    px(c, 4 - wide, 17, 3, 2, R.skin.base); px(c, 17 + wide, 17, 3, 2, R.skin.base)
   } else {
     srect(c, 4 - wide, 21 + as, 3, 8, R.shirt)
     srect(c, 17 + wide, 21 - as, 3, 8, R.shirt)
@@ -228,6 +246,7 @@ function bodyDown(c: C2D, R: Ramps, ft: Feat, f: number) {
     eye(c, 8, 12); eye(c, 13, 12)                       // redraw pupils inside frames
   }
   headgearDown(c, R, ft)
+  if (uy || lean) c.restore()
 }
 
 function headgearDown(c: C2D, R: Ramps, ft: Feat) {
@@ -258,24 +277,35 @@ function headgearDown(c: C2D, R: Ramps, ft: Feat) {
 
 // ── UP-facing body (dir 1): back of head, no face
 function bodyUp(c: C2D, R: Ramps, ft: Feat, f: number) {
-  const lf = [0, -1, 0, 1, 0][f], rf = [0, 1, 0, -1, 0][f]
-  const as = [0, 1, 0, -1, 0][f]
+  const lf = [0, -1, 0, 1, 0, 0, 0][f], rf = [0, 1, 0, -1, 0, 0, 0][f]
+  const as = [0, 1, 0, -1, 0, 0, 0][f]
   const wide = ft.build === "stocky" ? 1 : 0
+  const uy = f === SWORK_A ? 2 : 0
+  const lean = f === SWORK_A ? 1 : 0
   px(c, 5, 38, 14, 2, 0x000000, 0.16)
   srect(c, 9 - wide, 30, 3, 7 + lf, R.pants)
   srect(c, 12 + wide, 30, 3, 7 + rf, R.pants)
   px(c, 8 - wide, 36 + lf, 4, 3, R.shoe.base); px(c, 8 - wide, 38 + lf, 4, 1, R.shoe.sh)
   px(c, 12 + wide, 36 + rf, 4, 3, R.shoe.base); px(c, 12 + wide, 38 + rf, 4, 1, R.shoe.sh)
+  if (uy || lean) { c.save(); c.translate(lean, uy) }   // waist bend (work frames)
   srect(c, 6 - wide, 20, 12 + wide * 2, 11, R.shirt)
   clr(c, 6 - wide, 20); clr(c, 17 + wide, 20)
   if (ft.hat === "hood") { srect(c, 7, 22, 10, 12, R.accent); clr(c, 7, 22); clr(c, 16, 22) }
-  // arms + hands — grip pose (f=4): arms angled inward, hands meeting at
-  // center (visible from behind as the back of both forearms).
-  if (f === 4) {
+  // arms — grip (4): forearms meeting (from behind). STRIKE (5): arms down.
+  // RECOVER (6): arms lifted. Cycling 5<->6 reads as the arms pumping.
+  if (f === SGRIP) {
     srect(c, 7 - wide, 23, 3, 6, R.shirt)
     srect(c, 14 + wide, 23, 3, 6, R.shirt)
     px(c, 10, 28, 2, 2, R.skin.base)
     px(c, 12, 28, 2, 2, R.skin.base)
+  } else if (f === SWORK_A) {
+    srect(c, 6 - wide, 24, 3, 7, R.shirt)
+    srect(c, 15 + wide, 24, 3, 7, R.shirt)
+    px(c, 7 - wide, 30, 3, 2, R.skin.base); px(c, 14 + wide, 30, 3, 2, R.skin.base)
+  } else if (f === SWORK_B) {
+    srect(c, 4 - wide, 18, 3, 7, R.shirt)
+    srect(c, 17 + wide, 18, 3, 7, R.shirt)
+    px(c, 4 - wide, 17, 3, 2, R.skin.base); px(c, 17 + wide, 17, 3, 2, R.skin.base)
   } else {
     srect(c, 4 - wide, 21 + as, 3, 8, R.shirt)
     srect(c, 17 + wide, 21 - as, 3, 8, R.shirt)
@@ -294,30 +324,44 @@ function bodyUp(c: C2D, R: Ramps, ft: Feat, f: number) {
     srect(c, 7, 7, 10, 9, R.hair); clr(c, 7, 7); clr(c, 16, 7)
     px(c, 8, 8, 8, 1, R.hair.hi)
   }
+  if (uy || lean) c.restore()
 }
 
 // ── LEFT-facing profile (dir 2). Mirrored for right in buildCharCanvas.
 function bodyLeft(c: C2D, R: Ramps, ft: Feat, f: number) {
-  const fb = [0, -1, 0, 1, 0][f], bb = [0, 1, 0, -1, 0][f]   // front/back leg swing; f=4 = no swing
-  const aw = [0, -1, 0, 1, 0][f]                              // arm swing; f=4 overridden by grip pose
+  const fb = [0, -1, 0, 1, 0, 0, 0][f], bb = [0, 1, 0, -1, 0, 0, 0][f]   // front/back leg swing; grip/work = planted
+  const aw = [0, -1, 0, 1, 0, 0, 0][f]                                    // arm swing (walk frames only)
   const wide = ft.build === "stocky" ? 1 : 0
+  // Profile work bend: lean the upper body FORWARD (toward the tool at the left
+  // edge) and drop slightly on the strike — a visible bend at the waist.
+  const uy = f === SWORK_A ? 1 : 0
+  const lean = f === SWORK_A ? -1 : 0
   px(c, 6, 38, 13, 2, 0x000000, 0.16)
   // rear leg (darker), front leg
   px(c, 12, 30, 3, 7 + bb, R.pants.sh); px(c, 12, 36 + bb, 4, 3, R.shoe.sh)
   srect(c, 9, 30, 3, 7 + fb, R.pants); px(c, 8, 36 + fb, 5, 3, R.shoe.base); px(c, 8, 38 + fb, 5, 1, R.shoe.sh)
+  if (uy || lean) { c.save(); c.translate(lean, uy) }   // waist bend (work frames)
   // torso (profile, slimmer)
   srect(c, 8, 20, 9 + wide, 11, R.shirt)
   clr(c, 8, 20)
   if (ft.apron) srect(c, 8, 22, 5, 9, R.accent)
   if (ft.hat === "hood") { srect(c, 8, 22, 9, 12, R.accent); clr(c, 8, 22) }
-  // front arm — grip pose (f=4): front arm extends forward (toward nose/tool
-  // at left edge) with the hand at the far-front; back arm stays at side.
-  // Mirrored for dir=3 (right) so right-facing working agents mirror this.
-  if (f === 4) {
+  // front arm — grip (4): extended fwd, holding. STRIKE (5): driven down-forward
+  // (into the work). RECOVER (6): lifted up. back arm stays at side. Mirrored
+  // for dir=3 (right) so right-facing working agents mirror this.
+  if (f === SGRIP) {
     srect(c, 4, 23, 6, 3, R.shirt)             // front arm extended forward
     px(c, 2, 23, 3, 2, R.skin.base)             // hand at far-front
     srect(c, 16, 21, 2, 7, R.shirt)             // back arm at side
     px(c, 16, 28, 2, 2, R.skin.base)
+  } else if (f === SWORK_A) {
+    srect(c, 5, 24, 4, 5, R.shirt)              // front arm driven down-forward
+    px(c, 3, 28, 3, 2, R.skin.base)             // hand low-front (the strike)
+    srect(c, 16, 21, 2, 7, R.shirt); px(c, 16, 28, 2, 2, R.skin.base)  // back arm at side
+  } else if (f === SWORK_B) {
+    srect(c, 6, 18, 3, 6, R.shirt)              // front arm raised
+    px(c, 6, 17, 3, 2, R.skin.base)             // hand high (the lift)
+    srect(c, 16, 21, 2, 7, R.shirt); px(c, 16, 28, 2, 2, R.skin.base)  // back arm at side
   } else {
     srect(c, 9 + aw, 21, 3, 8, R.shirt); px(c, 9 + aw, 28, 3, 2, R.skin.base)
   }
@@ -333,6 +377,7 @@ function bodyLeft(c: C2D, R: Ramps, ft: Feat, f: number) {
   px(c, 15, 13, 2, 2, R.skin.mid)                        // ear hint
   if (ft.glasses) px(c, 8, 11, 5, 2, 0x3a3142, 0.85)      // scholar glasses, side view
   headgearLeft(c, R, ft)
+  if (uy || lean) c.restore()
 }
 
 function headgearLeft(c: C2D, R: Ramps, ft: Feat) {
@@ -1755,8 +1800,15 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             // frame (dir*SWALK + SWALK-1) so the agent looks like they're
             // holding the tool rather than standing next to it. Working +
             // walking still uses the walk cycle (legs animate, tool bobs).
+            // Working + stationary: cycle the strike (5) / recover (6) frames so
+            // the BODY animates — arms pump and the waist bends into each stroke —
+            // instead of freezing on the static grip frame and letting a whole-
+            // sprite bob do all the "motion" (which read as a shake). Synced to
+            // the work cadence (t/78) the tool + glow use; strike sits at the
+            // bottom of the stroke (sin<=0), recover at the top.
+            const workFrame = Math.sin(t / 78 + ag.wx * 0.05) <= 0 ? SWORK_A : SWORK_B
             const frameIdx = (ag.isWorking && !walking)
-              ? ag.dir * SWALK + (SWALK - 1)
+              ? ag.dir * SWALK + workFrame
               : ag.dir * SWALK + ag.walkF
             ag.sprite.setFrame(frameIdx)
 
@@ -1775,10 +1827,12 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             let tiltRot = 0
 
             if (ag.isWorking) {
-              // WORKING - energetic bob + micro lateral sway, ~50% bigger than
-              // before so it's obviously different from idle at a glance.
-              bob    = Math.sin(t / 78 + phase) * 3.2
-              bx_off = Math.sin(t / 120 + phase) * 1.2
+              // WORKING - the BODY now carries the motion (arms + waist bend via
+              // the strike/recover frames), so keep the whole-sprite bob SMALL:
+              // a gentle settle on each stroke, not the old big jitter that read
+              // as the whole character shaking.
+              bob    = Math.sin(t / 78 + phase) * 1.3
+              bx_off = Math.sin(t / 120 + phase) * 0.5
               // ── Per-tool motion - the tool animation cycles in time with
               // the bob so a viewer can tell which agent is doing which kind
               // of work from the tool alone (hammer rises and falls,
