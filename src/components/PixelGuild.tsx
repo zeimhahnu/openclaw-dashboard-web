@@ -217,13 +217,15 @@ function bodyDown(c: C2D, R: Ramps, ft: Feat, f: number) {
     px(c, 10, 28, 2, 2, R.skin.base)
     px(c, 12, 28, 2, 2, R.skin.base)
   } else if (f === SWORK_A) {
-    srect(c, 6 - wide, 24, 3, 7, R.shirt)
-    srect(c, 15 + wide, 24, 3, 7, R.shirt)
-    px(c, 7 - wide, 30, 3, 2, R.skin.base); px(c, 14 + wide, 30, 3, 2, R.skin.base)
+    // strike: both hands driven down + inward to the work surface in front
+    srect(c, 7 - wide, 25, 3, 6, R.shirt)
+    srect(c, 14 + wide, 25, 3, 6, R.shirt)
+    px(c, 8 - wide, 30, 3, 2, R.skin.base); px(c, 13 + wide, 30, 3, 2, R.skin.base)
   } else if (f === SWORK_B) {
-    srect(c, 4 - wide, 18, 3, 7, R.shirt)
-    srect(c, 17 + wide, 18, 3, 7, R.shirt)
-    px(c, 4 - wide, 17, 3, 2, R.skin.base); px(c, 17 + wide, 17, 3, 2, R.skin.base)
+    // recover: a SMALL lift — hands stay low over the work, not raised overhead
+    srect(c, 6 - wide, 22, 3, 6, R.shirt)
+    srect(c, 15 + wide, 22, 3, 6, R.shirt)
+    px(c, 7 - wide, 27, 3, 2, R.skin.base); px(c, 14 + wide, 27, 3, 2, R.skin.base)
   } else {
     srect(c, 4 - wide, 21 + as, 3, 8, R.shirt)
     srect(c, 17 + wide, 21 - as, 3, 8, R.shirt)
@@ -733,6 +735,8 @@ function drawScholarTower(g: Phaser.GameObjects.Graphics, x: number, y: number) 
 const MASON_DESK   = { x: 704, y: 158 }
 const MASON_ORRERY = { x: 740, y: 152 }
 const MASON_EASEL  = { x: 666, y: 154 }
+const MASON_SCOPE  = { x: 826, y: 150 }   // telescope — Mason gazes up at it at night
+const GOOP_BENCH   = { x: 360, y: 152 }   // carpentry workbench — Goop builds here
 
 function drawScholarDesk(g: Phaser.GameObjects.Graphics, x: number, y: number) {
   g.fillStyle(0x10180e, 0.34); g.fillEllipse(x, y + 4, 58, 10)             // ground shadow
@@ -791,6 +795,39 @@ function drawOrrery(g: Phaser.GameObjects.Graphics, x: number, y: number, t: num
   g.fillStyle(0x6ab0e0, 1); g.fillCircle(Math.round(cx + Math.cos(a1) * 9), Math.round(cy + Math.sin(a1) * 4), 1.5)
   const a2 = t / 820 + 2.1
   g.fillStyle(0xe07a4a, 1); g.fillCircle(Math.round(cx + Math.cos(a2) * 6), Math.round(cy + Math.sin(a2) * 3), 1)
+}
+
+// Goop's carpentry workbench — a plank clamped on top mid-build, saw + chips.
+function drawWorkbench(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+  g.fillStyle(0x10180e, 0.34); g.fillEllipse(x, y + 4, 48, 9)                 // ground shadow
+  g.fillStyle(0x3a2614, 1); g.fillRect(x - 18, y - 1, 3, 8); g.fillRect(x + 15, y - 1, 3, 8)  // legs
+  g.fillStyle(0x6a4a28, 1); g.fillRect(x - 22, y - 8, 44, 7)                  // benchtop
+  g.fillStyle(0x8a6438, 0.85); g.fillRect(x - 22, y - 8, 44, 2)              // lit top edge
+  g.fillStyle(0x32200f, 0.6); g.fillRect(x - 22, y - 2, 44, 1)               // front shadow
+  // workpiece (a plank being built) clamped on top
+  g.fillStyle(0xb98a4a, 1); g.fillRect(x - 12, y - 12, 22, 4)
+  g.fillStyle(0xd8a860, 0.8); g.fillRect(x - 12, y - 12, 22, 1)
+  g.fillStyle(0x7a5a30, 0.8); g.fillRect(x - 6, y - 11, 1, 3); g.fillRect(x + 3, y - 11, 1, 3)  // nail marks
+  g.fillStyle(0x9aa0a8, 1); g.fillRect(x + 15, y - 12, 8, 2)                 // saw blade on the side
+  g.fillStyle(0x6a4a28, 1); g.fillRect(x + 22, y - 13, 2, 4)                 // saw handle
+  g.fillStyle(0xc8a060, 0.8); g.fillRect(x - 20, y - 1, 2, 1); g.fillRect(x + 12, y, 2, 1)      // woodchips
+}
+
+// Mason's brass telescope on a tripod, tube angled up to the sky.
+function drawTelescope(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+  g.fillStyle(0x10180e, 0.32); g.fillEllipse(x, y + 3, 24, 6)                // shadow
+  g.lineStyle(2, 0x3a2c18, 1)                                                // tripod legs
+  g.beginPath(); g.moveTo(x, y - 9); g.lineTo(x - 7, y + 2); g.strokePath()
+  g.beginPath(); g.moveTo(x, y - 9); g.lineTo(x + 7, y + 2); g.strokePath()
+  g.beginPath(); g.moveTo(x, y - 9); g.lineTo(x + 1, y + 2); g.strokePath()
+  g.fillStyle(0x5a4428, 1); g.fillRect(x - 2, y - 12, 5, 4)                  // mount head
+  g.lineStyle(4, 0xb8862c, 1)                                               // brass tube, angled up-right
+  g.beginPath(); g.moveTo(x - 4, y - 8); g.lineTo(x + 12, y - 22); g.strokePath()
+  g.lineStyle(2, 0xe0b24a, 0.7)                                             // sheen
+  g.beginPath(); g.moveTo(x - 2, y - 10); g.lineTo(x + 11, y - 21); g.strokePath()
+  g.fillStyle(0x2a3358, 1); g.fillCircle(x + 13, y - 23, 3)                  // objective lens
+  g.fillStyle(0x9fd4ff, 0.85); g.fillCircle(x + 13, y - 23, 2)
+  g.fillStyle(0x3a2c18, 1); g.fillRect(x - 6, y - 7, 2, 2)                   // eyepiece
 }
 
 // A wax-sealed scroll, carried by an agent and physically passed during a handoff.
@@ -1088,6 +1125,7 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
         frameTick: number
         idleTime: number
         isWorking: boolean; prevWorking: boolean
+        workDir: 0|1|2|3  // facing to adopt while parked at the work station
         activityTag: Phaser.GameObjects.Text
         completedPrev: number; inboxCount: number
         health: "green"|"amber"|"red"
@@ -1342,6 +1380,11 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
           const easelG = this.add.graphics().setDepth(MASON_EASEL.y)
           drawStarChart(easelG, MASON_EASEL.x, MASON_EASEL.y)
           this.orreryG = this.add.graphics().setDepth(MASON_ORRERY.y)
+          // Telescope (Mason gazes up at it at night) + Goop's carpentry workbench.
+          const scopeG = this.add.graphics().setDepth(MASON_SCOPE.y)
+          drawTelescope(scopeG, MASON_SCOPE.x, MASON_SCOPE.y)
+          const benchG = this.add.graphics().setDepth(GOOP_BENCH.y)
+          drawWorkbench(benchG, GOOP_BENCH.x, GOOP_BENCH.y)
 
           // ── Seed packets on chore board
           this.seedGfx = this.add.graphics().setDepth(2)
@@ -1400,7 +1443,7 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
               tx: a.home.x, ty: a.home.y,
               dir: 0, wait: 30 + i * 40,
               walkF: 0, frameTick: 0, idleTime: 0,
-              isWorking: false, prevWorking: false,
+              isWorking: false, prevWorking: false, workDir: 0,
               completedPrev: 0, inboxCount: 0, health: "green",
               masonMode: "wander", masonTimer: 200 + Math.random() * 200,
               masonVisitX: 450, masonVisitY: 155,
@@ -1663,10 +1706,23 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
               ag.tx = ag.cfg.station.x + (ag.id === "goop" ? 10 : 22)
               ag.ty = ag.cfg.station.y + 18
             } else if (ag.isWorking) {
-              // Each role works at its own actual feature, not a generic spot.
-              if (ag.id === "goop") { ag.tx = ag.cfg.station.x + 52; ag.ty = ag.cfg.station.y + 15 }       // anvil
-              else if (ag.id === "lil-claw") { ag.tx = 90; ag.ty = 160 }                                    // crop bed
-              else { ag.tx = MASON_DESK.x; ag.ty = MASON_DESK.y - 9 }                                       // behind his study desk
+              // Each role works at its OWN station with its own action + facing.
+              // workDir is applied once parked (below) so the agent faces the work.
+              if (ag.id === "goop") {
+                // Carpenter stands to the LEFT of the bench, faces right, and
+                // hammers the workpiece on it (profile reads as real carpentry,
+                // and keeps the bench clear of the name banner under his feet).
+                ag.tx = GOOP_BENCH.x - 17; ag.ty = GOOP_BENCH.y; ag.workDir = 3
+              } else if (ag.id === "lil-claw") {
+                // Farm manager bent over the garden bed, tending the soil.
+                ag.tx = 96; ag.ty = 158; ag.workDir = 0
+              } else if (isNight) {
+                // Scholar at the telescope, gazing up at the night sky.
+                ag.tx = MASON_SCOPE.x - 14; ag.ty = MASON_SCOPE.y + 3; ag.workDir = 1
+              } else {
+                // Scholar studying at his desk by day.
+                ag.tx = MASON_DESK.x; ag.ty = MASON_DESK.y - 9; ag.workDir = 0
+              }
 
             } else if (ag.id === "mason") {
               // Scholar: rotate through read / fish / visit / wander
@@ -1769,7 +1825,7 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
               // with its own bob period + sway so it actually reads as
               // "doing something" instead of just "standing still".
               if (ag.isWorking) {
-                ag.dir = 0
+                ag.dir = ag.workDir   // face the work (down=build/tend, up=telescope)
               } else {
                 ag.restingTimer--
                 if (ag.restingTimer <= 0) {
@@ -1806,7 +1862,12 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             // sprite bob do all the "motion" (which read as a shake). Synced to
             // the work cadence (t/78) the tool + glow use; strike sits at the
             // bottom of the stroke (sin<=0), recover at the top.
-            const workFrame = Math.sin(t / 78 + ag.wx * 0.05) <= 0 ? SWORK_A : SWORK_B
+            // Mason's work is observation/study (telescope, reading) — a steady
+            // hold with a gentle bob, NOT the arm-pumping work stroke that suits
+            // Goop's hammering and Lil Claw's tending. So he holds the grip pose.
+            const workFrame = ag.id === "mason"
+              ? SGRIP
+              : (Math.sin(t / 78 + ag.wx * 0.05) <= 0 ? SWORK_A : SWORK_B)
             const frameIdx = (ag.isWorking && !walking)
               ? ag.dir * SWALK + workFrame
               : ag.dir * SWALK + ag.walkF
@@ -1931,11 +1992,22 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
             } else if (ag.isWorking) {
               const dir = ag.dir === 2 ? -1 : 1
               if (ag.cfg.tool === "quill") {
-                // Mason writes on his desk ledger (anchored), with a small side-to-side scratch
-                const scratch = Math.round(Math.sin(t / 90) * 2)
-                drawTool(ag.toolG, "quill", MASON_DESK.x + 3 + scratch, MASON_DESK.y - 12)
+                if (isNight) {
+                  // Stargazing at the telescope — no quill; a faint twinkle at the lens
+                  const tw = 0.35 + 0.65 * Math.abs(Math.sin(t / 240))
+                  ag.toolG.fillStyle(0xf2f0d4, tw); ag.toolG.fillRect(MASON_SCOPE.x + 12, MASON_SCOPE.y - 24, 1, 1)
+                  ag.toolG.fillStyle(0x9fd4ff, tw * 0.6); ag.toolG.fillRect(MASON_SCOPE.x + 14, MASON_SCOPE.y - 22, 1, 1)
+                } else {
+                  // Studying at the desk — quill scratch on the ledger
+                  const scratch = Math.round(Math.sin(t / 90) * 2)
+                  drawTool(ag.toolG, "quill", MASON_DESK.x + 3 + scratch, MASON_DESK.y - 12)
+                }
+              } else if (ag.cfg.tool === "hammer") {
+                // Goop hammers the workpiece on the bench to his right
+                drawTool(ag.toolG, "hammer", Math.round(ag.wx + bx_off + 12 + toolAnimX), Math.round(ag.wy - 7 + bob + toolAnimY))
               } else {
-                drawTool(ag.toolG, ag.cfg.tool, Math.round(ag.wx + bx_off) + dir * 12 + toolAnimX, Math.round(ag.wy - 18 + bob) + toolAnimY)
+                // watering can / tending — held low + forward over the garden bed
+                drawTool(ag.toolG, ag.cfg.tool, Math.round(ag.wx + bx_off) + dir * 10 + toolAnimX, Math.round(ag.wy - 10 + bob) + toolAnimY)
               }
             } else if (isOffline) {
               // "Zzz" rising + fading above the head — asleep/offline cue
