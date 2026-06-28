@@ -356,13 +356,12 @@ function bodyLeft(c: C2D, R: Ramps, ft: Feat, f: number) {
     px(c, 2, 23, 3, 2, R.skin.base)             // hand at far-front
     srect(c, 16, 21, 2, 7, R.shirt)             // back arm at side
     px(c, 16, 28, 2, 2, R.skin.base)
-  } else if (f === SWORK_A) {
-    srect(c, 5, 24, 4, 5, R.shirt)              // front arm driven down-forward
-    px(c, 3, 28, 3, 2, R.skin.base)             // hand low-front (the strike)
-    srect(c, 16, 21, 2, 7, R.shirt); px(c, 16, 28, 2, 2, R.skin.base)  // back arm at side
-  } else if (f === SWORK_B) {
-    srect(c, 6, 18, 3, 6, R.shirt)              // front arm raised
-    px(c, 6, 17, 3, 2, R.skin.base)             // hand high (the lift)
+  } else if (f === SWORK_A || f === SWORK_B) {
+    // Both work frames hold the SAME forward grip so the tool can be anchored to
+    // the hand and stay held; the work motion is carried by the waist bend (uy)
+    // and the tool's own swing/pour, not by the arm flailing up and down.
+    srect(c, 4, 24, 5, 4, R.shirt)              // front forearm reaching forward-low
+    px(c, 2, 26, 3, 2, R.skin.base)             // gripping hand (stable anchor @ ~3,26)
     srect(c, 16, 21, 2, 7, R.shirt); px(c, 16, 28, 2, 2, R.skin.base)  // back arm at side
   } else {
     srect(c, 9 + aw, 21, 3, 8, R.shirt); px(c, 9 + aw, 28, 3, 2, R.skin.base)
@@ -2006,7 +2005,6 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
               }
               drawScroll(ag.toolG, sx, sy)
             } else if (ag.isWorking) {
-              const dir = ag.dir === 2 ? -1 : 1
               if (ag.cfg.tool === "quill") {
                 if (isNight) {
                   // Stargazing at the telescope — no quill; a faint twinkle at the lens
@@ -2018,12 +2016,20 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
                   const scratch = Math.round(Math.sin(t / 90) * 2)
                   drawTool(ag.toolG, "quill", MASON_DESK.x + 3 + scratch, MASON_DESK.y - 12)
                 }
-              } else if (ag.cfg.tool === "hammer") {
-                // Goop hammers the workpiece on the bench to his right
-                drawTool(ag.toolG, "hammer", Math.round(ag.wx + bx_off + 12 + toolAnimX), Math.round(ag.wy - 7 + bob + toolAnimY))
               } else {
-                // watering can — held low + forward, pouring over the garden bed
-                drawTool(ag.toolG, ag.cfg.tool, Math.round(ag.wx + bx_off) + dir * 7 + toolAnimX, Math.round(ag.wy - 4 + bob) + toolAnimY)
+                // Hold the tool IN the gripping hand. Map the stable grip pixel
+                // (~sprite 3,26 facing left; mirrored to 21 facing right) to world
+                // via the sprite origin (0.5,1) + current render scale, so the
+                // tool tracks the hand instead of floating at a fixed offset.
+                const scl = SPRITE_SCALE * ySc
+                const handSx = ag.dir === 3 ? 21 : 3
+                const hx = Math.round(ag.wx + bx_off + (handSx - 12) * scl)
+                const hy = Math.round(ag.wy + bob + sitY + (26 - 40) * scl)
+                if (ag.cfg.tool === "hammer") {
+                  drawTool(ag.toolG, "hammer", hx + toolAnimX, hy + 5 + toolAnimY)
+                } else {
+                  drawTool(ag.toolG, ag.cfg.tool, hx + toolAnimX, hy + 4 + toolAnimY)
+                }
               }
             } else if (isOffline) {
               // "Zzz" rising + fading above the head — asleep/offline cue
