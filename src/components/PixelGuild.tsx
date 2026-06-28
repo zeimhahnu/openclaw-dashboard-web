@@ -830,6 +830,14 @@ function drawTelescope(g: Phaser.GameObjects.Graphics, x: number, y: number) {
   g.fillStyle(0x3a2c18, 1); g.fillRect(x - 6, y - 7, 2, 2)                   // eyepiece
 }
 
+// A small wooden stool — Mason sits on it to study at his desk by day.
+function drawStool(g: Phaser.GameObjects.Graphics, x: number, y: number) {
+  g.fillStyle(0x10180e, 0.3); g.fillEllipse(x, y + 3, 16, 5)
+  g.fillStyle(0x5a3c1e, 1); g.fillRect(x - 6, y - 5, 12, 3)                   // seat
+  g.fillStyle(0x7a5430, 0.85); g.fillRect(x - 6, y - 5, 12, 1)               // lit edge
+  g.fillStyle(0x3a2614, 1); g.fillRect(x - 5, y - 2, 2, 5); g.fillRect(x + 3, y - 2, 2, 5)  // legs
+}
+
 // A wax-sealed scroll, carried by an agent and physically passed during a handoff.
 function drawScroll(g: Phaser.GameObjects.Graphics, x: number, y: number) {
   g.fillStyle(0xeaddb8, 1); g.fillRect(x - 4, y - 1, 8, 3)
@@ -1385,6 +1393,10 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
           drawTelescope(scopeG, MASON_SCOPE.x, MASON_SCOPE.y)
           const benchG = this.add.graphics().setDepth(GOOP_BENCH.y)
           drawWorkbench(benchG, GOOP_BENCH.x, GOOP_BENCH.y)
+          // Stool Mason sits on to study (depth 146 = behind him at desk-work
+          // depth ~149, so he renders over the seat).
+          const stoolG = this.add.graphics().setDepth(146)
+          drawStool(stoolG, MASON_DESK.x, MASON_DESK.y - 2)
 
           // ── Seed packets on chore board
           this.seedGfx = this.add.graphics().setDepth(2)
@@ -1714,13 +1726,14 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
                 // and keeps the bench clear of the name banner under his feet).
                 ag.tx = GOOP_BENCH.x - 17; ag.ty = GOOP_BENCH.y; ag.workDir = 3
               } else if (ag.id === "lil-claw") {
-                // Farm manager bent over the garden bed, tending the soil.
-                ag.tx = 96; ag.ty = 158; ag.workDir = 0
+                // Farm manager faces her crop rows and waters them (profile —
+                // the watering pour reads against the visible wheat/carrot beds).
+                ag.tx = 112; ag.ty = 162; ag.workDir = 2
               } else if (isNight) {
-                // Scholar at the telescope, gazing up at the night sky.
-                ag.tx = MASON_SCOPE.x - 14; ag.ty = MASON_SCOPE.y + 3; ag.workDir = 1
+                // Scholar at the telescope eyepiece, facing it, tube up to the sky.
+                ag.tx = MASON_SCOPE.x - 13; ag.ty = MASON_SCOPE.y - 1; ag.workDir = 3
               } else {
-                // Scholar studying at his desk by day.
+                // Scholar sits at his desk to study by day (sit offset at render).
                 ag.tx = MASON_DESK.x; ag.ty = MASON_DESK.y - 9; ag.workDir = 0
               }
 
@@ -1941,7 +1954,10 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
               bx_off = Math.sin(t / (pose.bobPeriod * 0.55) + phase) * pose.sway
             }
 
-            ag.sprite.setPosition(Math.round(ag.wx + bx_off), Math.round(ag.wy + bob))
+            // Mason sinks onto his stool to study by day; the desk (drawn in
+            // front) hides his folded legs so he reads as seated, not standing.
+            const sitY = (ag.id === "mason" && ag.isWorking && !isNight) ? 6 : 0
+            ag.sprite.setPosition(Math.round(ag.wx + bx_off), Math.round(ag.wy + bob + sitY))
             ag.sprite.setRotation(tiltRot)
             ag.nameTag.setPosition(Math.round(ag.wx), Math.round(ag.wy + 6)).setAlpha(ag.isWorking ? 1 : 0.7)
             // PR3: activity caption sits under the name tag, fades in when there's something to show
@@ -2006,8 +2022,8 @@ export default function PixelGuild({ agents = null, taskDetails = null, height =
                 // Goop hammers the workpiece on the bench to his right
                 drawTool(ag.toolG, "hammer", Math.round(ag.wx + bx_off + 12 + toolAnimX), Math.round(ag.wy - 7 + bob + toolAnimY))
               } else {
-                // watering can / tending — held low + forward over the garden bed
-                drawTool(ag.toolG, ag.cfg.tool, Math.round(ag.wx + bx_off) + dir * 10 + toolAnimX, Math.round(ag.wy - 10 + bob) + toolAnimY)
+                // watering can — held low + forward, pouring over the garden bed
+                drawTool(ag.toolG, ag.cfg.tool, Math.round(ag.wx + bx_off) + dir * 7 + toolAnimX, Math.round(ag.wy - 4 + bob) + toolAnimY)
               }
             } else if (isOffline) {
               // "Zzz" rising + fading above the head — asleep/offline cue
