@@ -200,7 +200,7 @@ canvas{display:block;width:100%;image-rendering:pixelated;touch-action:manipulat
 // content-hashed bundles and fatal for these stable filenames: without a new
 // URL, a redeploy can never invalidate them and the browser will not even
 // revalidate. BUMP THIS ON EVERY CHANGE to these modules. Do not "tidy" it away.
-const V = '4';
+const V = '5';
 const { createWorld } = await import(`./world.js?v=${V}`);
 const { loadManifest, fetchState, toModel } = await import(`./feed.js?v=${V}`);
 const { counts } = await import(`./core.js?v=${V}`);

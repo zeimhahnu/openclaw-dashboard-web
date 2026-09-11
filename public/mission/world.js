@@ -14,7 +14,7 @@
 import {
   GEOMETRY, layoutAgents, project, unproject, routeBetween, alongRoute,
   sortDrawables, counts, packageSlots, avoidLabelCollisions,
-} from './core.js?v=4';
+} from './core.js?v=5';
 
 function createArt(ctx,projector){
 const ink='#1a242a',cream='#e7d4a5';let t=0;
@@ -53,25 +53,191 @@ function p(x,y,z=0){const q=projector(x,y,z);return [q.x,q.y]}
     }
     function wallArt(a,type){const q=p(a.x+46,a.y+3,47);ctx.save();ctx.transform(.86,.43,0,1,q[0],q[1]);rect(-22,-19,44,29,'#3b4848');rect(-20,-17,40,25,type==='map'?'#b8b08b':'#597879');if(type==='map'){line([[-18,-7],[-6,-12],[3,-4],[15,-11]],'#798c78',2);line([[-9,5],[-3,-5],[9,0]],'#7d977a',3)}else{for(let i=0;i<3;i++){line([[-15,-11+i*7],[12,-11+i*7]],'#9bbaa9');rect(-13+i*11,-14,3,3,'#c5cba9')}}ctx.restore()}
     function charStart(x,y,z=0){shadow(x,y,17);const q=p(x,y,z);ctx.save();ctx.translate(Math.round(q[0]),Math.round(q[1]));return q}
-    function eye(x,y){rect(x,y,3,4,'#192c2d');rect(x,y,1,1,'#ede6c3')}
+    // Eyes carry most of the character at this size: a dark oval plus one bright
+    // pixel of catchlight. Without the catchlight every face reads as dead.
+    function eye(x,y,w=3,h=4,c='#16242b'){rect(x,y,w,h,c);rect(x,y,1,1,'#f2ead0')}
+    function blush(x,y,c='#d98a7e'){rect(x,y,4,2,c)}
+
+    /* Goop - moss-green slime, brass goggles pushed up on the brow, leather
+       apron, hammer. Reference: GOOP / BUILD sheet. */
     function goop(a,active){
-      const tt=active?t:0,bob=active?Math.floor(Math.sin(tt*5)*1):0;charStart(a.x+91,a.y+118);ctx.translate(0,bob);
-      poly([[-18,-2],[-20,-12],[-17,-22],[-14,-30],[-8,-34],[8,-34],[13,-29],[16,-20],[20,-11],[18,-3],[10,1],[-10,1]],'#263c33');
-      poly([[-16,-3],[-17,-14],[-12,-29],[-6,-32],[7,-32],[12,-27],[14,-17],[17,-10],[15,-3]],'#8dae65');
-      rect(-10,-28,17,5,'#aecb7c');rect(-13,-21,27,7,'#465b48');rect(-11,-21,10,7,'#d1cb96');rect(2,-21,10,7,'#d1cb96');eye(-8,-20);eye(5,-20);rect(-4,-11,8,2,'#40513a');rect(-12,-7,23,7,'#657448');rect(-16,-2,10,4,'#7f9d5a');rect(6,-2,10,4,'#7f9d5a');
-      const cycle=(tt%1.2)/1.2;const angle=active?(cycle<.7?-1.5+cycle*2:.8-(cycle-.7)*4):.8;
-      ctx.save();ctx.translate(15,-14);ctx.rotate(angle);rect(0,-2,21,4,'#a78a5b');rect(17,-9,11,16,ink);rect(18,-8,10,6,'#99a9a4');rect(18,-1,10,7,'#697e7b');rect(-3,-4,7,7,'#a4c57b');ctx.restore();ctx.restore();
-      if(active&&cycle>.65&&cycle<.84){const q=p(a.x+125,a.y+105,28);for(let k=0;k<5;k++){const ang=k*1.2,dist=6+(cycle-.65)*70;rect(q[0]+Math.cos(ang)*dist,q[1]+Math.sin(ang)*dist-4,2,2,k%2?'#f1d691':'#dfa16a')}}
+      const tt=active?t:0,bob=active?Math.sin(tt*5)*1.2:0;
+      charStart(a.x+91,a.y+118);ctx.translate(0,bob);
+      const dark='#22301f',mid='#7fa254',lit='#a3c473',hi='#c2dd92';
+      // Blob body: wide base, soft shoulders, a crown that leans into the swing.
+      poly([[-19,1],[-21,-9],[-19,-19],[-15,-28],[-8,-34],[3,-36],[12,-31],[16,-22],[19,-12],[18,1]],dark);
+      poly([[-16,0],[-18,-9],[-16,-19],[-12,-27],[-6,-32],[2,-33],[10,-28],[13,-20],[16,-11],[15,0]],mid);
+      poly([[-12,-6],[-14,-18],[-9,-28],[-1,-31],[5,-28],[6,-20],[2,-12]],lit);
+      poly([[-8,-22],[-9,-27],[-4,-30],[0,-28],[-2,-23]],hi);
+      // Leather apron, sitting LOW so the body still reads green.
+      poly([[-12,1],[-11,-11],[10,-11],[11,1]],'#6d4a33');
+      poly([[-10,0],[-9,-9],[8,-9],[9,0]],'#89603f');
+      line([[-6,-11],[-2,-19]],'#6d4a33',2);line([[5,-11],[2,-19]],'#6d4a33',2);
+      rect(-2,-15,4,3,'#c9a35f');
+      // Brass goggles PUSHED UP on the brow - the sheet keeps the eyes and the
+      // smile clear beneath them. Goggles over the eyes read as sunglasses, and
+      // the whole character turns grumpy.
+      rect(-12,-32,24,3,'#7a5a33');
+      for(const gx of [-11,3]){
+        rect(gx,-36,8,8,'#c9a35f');rect(gx+1,-35,6,6,'#5f4526');
+        rect(gx+2,-34,4,4,'#3d6068');rect(gx+2,-34,2,2,'#9ccdd1');
+      }
+      eye(-7,-26,4,5);eye(4,-26,4,5);
+      poly([[-4,-18],[4,-18],[0,-14]],'#3d5133');
+      rect(-9,-20,3,2,'#6f9350');rect(7,-20,3,2,'#6f9350');
+      // Hammer arm: wind up, strike, recover - the sheet's own sequence.
+      const cycle=(tt%1.2)/1.2,angle=active?(cycle<.7?-1.5+cycle*2:.8-(cycle-.7)*4):.8;
+      ctx.save();ctx.translate(15,-16);ctx.rotate(angle);
+      rect(0,-3,7,6,mid);
+      rect(4,-2,18,4,lit);
+      rect(20,-3,4,6,'#8a6a3d');rect(23,-10,12,18,'#3a4347');
+      rect(24,-9,10,7,'#9fb0aa');rect(24,-1,10,8,'#6d817d');
+      ctx.restore();ctx.restore();
+      if(active&&cycle>.65&&cycle<.84){
+        const q=p(a.x+125,a.y+105,28);
+        for(let k=0;k<6;k++){const ang=k*1.05,d=6+(cycle-.65)*72;
+          rect(q[0]+Math.cos(ang)*d,q[1]+Math.sin(ang)*d-4,2,2,k%2?'#ffe9a8':'#e8944f')}
+      }
     }
-    function iris(a,active){const b=active?Math.sin(t*1.8)*2:0;charStart(a.x+96,a.y+111);
-      poly([[-15,0],[-13,-18],[-8,-29],[8,-29],[14,-18],[16,0]],'#453e52');poly([[-12,-1],[-10,-18],[10,-18],[13,-1]],'#9d8fb0');rect(-3,-18,6,17,'#c3b5d1');
-      poly([[-11,-24],[-13,-35],[-6,-32],[0,-35],[7,-32],[13,-35],[10,-22],[4,-17],[-5,-17]],'#e3dece',ink);eye(-6,-28);eye(4,-28);poly([[-2,-23],[2,-23],[0,-19]],'#b58e68');
-      line([[10,-17],[20,-22-b],[24,-34-b]],'#b5a5c5',5);rect(20,-37-b,6,5,'#e1d7c7');if(active){poly([[24,-48-b],[30,-41-b],[25,-32-b],[19,-40-b]],'#dfdfa9','#fff0c3');line([[24,-47-b],[24,-33-b]],'#f9edc0');const g=ctx.createRadialGradient(24,-40-b,0,24,-40-b,24);g.addColorStop(0,'#ebda992d');g.addColorStop(1,'#ebda9900');ellipse(24,-40-b,24,24,g)}ctx.restore()}
-    function rook(a,active){charStart(a.x+90,a.y+116);const b=active?Math.sin(t*2)*1.2:0;ctx.translate(0,b);poly([[-14,1],[-13,-22],[-6,-32],[10,-28],[13,-10],[17,1]],'#202d38');poly([[-10,-2],[-10,-24],[-3,-26],[8,-23],[12,-2]],'#536c82');poly([[-8,-23],[-12,-30],[-4,-35],[7,-34],[12,-29],[11,-22],[2,-19]],'#344756',ink);rect(1,-31,3,3,'#e9d9a5');poly([[10,-29],[21,-25],[11,-21]],'#bea16b');line([[-4,-16],[4,-7],[10,-12]],'#7592a6',3);rect(-10,1,8,3,'#b89d68');rect(6,1,9,3,'#b89d68');ctx.restore()}
-    function vera(a,active){charStart(a.x+102,a.y+127);poly([[-18,-2],[-23,-10],[-26,-8],[-25,-2],[-18,3],[-7,2]],'#c48b5c',ink);poly([[-11,1],[-13,-18],[-8,-27],[8,-27],[13,-15],[12,1]],'#395e5b',ink);rect(-6,-19,12,18,'#6e9380');poly([[-10,-21],[-13,-38],[-4,-31],[4,-31],[12,-37],[11,-22],[2,-16]],'#d4ac73',ink);poly([[-10,-23],[0,-20],[10,-24],[3,-16],[-3,-17]],'#e6d2a6');eye(-6,-28);eye(4,-28);rect(-1,-22,3,2,'#514838');line([[8,-16],[19,-24]],'#b68e61',5);const end=active?Math.sin(t*1.5)*9:0;line([[18,-25],[30+end,-44]],'#cbb590',2);ctx.restore()}
-    function claw(a,active){charStart(a.x+98,a.y+115);const b=active?Math.sin(t*3):0;ctx.translate(0,b);for(let side of [-1,1]){for(let i=0;i<3;i++)line([[side*9,-7+i*3],[side*(18+i*2),-8+i*5],[side*(18+i*2),-4+i*5]],'#bd8171',3)}poly([[-12,-1],[-16,-10],[-11,-21],[10,-21],[16,-10],[12,-1]],'#4c3634');poly([[-10,-2],[-13,-10],[-9,-19],[9,-19],[13,-10],[10,-2]],'#d9947d');rect(-9,-22,5,7,'#d9947d');rect(5,-22,5,7,'#d9947d');eye(-8,-23);eye(6,-23);rect(-4,-8,8,2,'#83554e');poly([[-12,-27],[8,-29],[14,-24],[-10,-23]],'#647d79',ink);rect(2,-27,4,2,'#d6bf8f');
-      const move=active?Math.sin(t*4)*7:0;line([[-12,-12],[-23,-20-move]],'#c88877',5);poly([[-25,-18-move],[-31,-25-move],[-25,-31-move],[-25,-25-move],[-20,-29-move],[-18,-24-move]],'#deaa8c',ink);line([[12,-12],[23,-20+move]],'#c88877',5);poly([[20,-22+move],[22,-29+move],[26,-26+move],[31,-30+move],[31,-22+move],[25,-18+move]],'#deaa8c',ink);if(active){rect(23,-28+move,12,9,'#ded5b0');line([[25,-25+move],[31,-25+move]],'#899084')}ctx.restore()}
-    function pip(a){charStart(a.x+111,a.y+119);const breath=Math.sin(t*1.2)*.6;ctx.translate(0,breath);poly([[-13,1],[-16,-9],[-14,-23],[-8,-29],[6,-29],[12,-23],[15,-9],[12,1]],'#55493b');poly([[-11,0],[-14,-9],[-12,-22],[-7,-27],[5,-27],[10,-22],[13,-9],[10,0]],'#dfce99');rect(-9,-21,16,5,'#f0deb3');line([[-8,-17],[-4,-17]],'#63543d',2);line([[3,-17],[7,-17]],'#63543d',2);rect(-13,-10,26,5,'#b67e68');rect(4,-8,5,8,'#b67e68');rect(-14,-4,8,6,'#c8b37d');rect(7,-4,8,6,'#c8b37d');rect(-16,-9,32,7,'#eee0b5');rect(-11,-6,22,1,'#8d8468');ctx.restore()}
+
+    /* Iris - ivory owl in a lilac cloak, raising a crystal to the lamp.
+       Reference: IRIS / CRITIQUE sheet. */
+    function iris(a,active){
+      const lift=active?Math.sin(t*1.8)*2.4:0;
+      charStart(a.x+96,a.y+111);
+      const cloak='#8b7fa6',cloakLit='#a99cc2',down='#efe9dc',downShade='#cfc6bd';
+      poly([[-16,1],[-14,-17],[-9,-27],[8,-27],[14,-16],[17,1]],'#4a4257');
+      poly([[-13,0],[-12,-16],[-7,-24],[7,-24],[12,-15],[14,0]],cloak);
+      poly([[-9,0],[-8,-15],[0,-20],[6,-15],[7,0]],down);
+      poly([[-6,-4],[-5,-13],[1,-16],[4,-12],[4,-4]],'#fffaf0');
+      for(let i=0;i<3;i++)line([[-6+i*4,-6],[-4+i*4,-2]],downShade,1);
+      poly([[-13,-16],[-15,-8],[-11,-6]],cloakLit);
+      rect(-2,-22,5,4,'#c9a35f');rect(-1,-21,3,2,'#8e6f3d');
+      // Head: round skull, ear tufts, big eyes, small ochre beak.
+      poly([[-11,-23],[-13,-33],[-8,-38],[-4,-34],[3,-34],[7,-38],[12,-33],[10,-23]],down,'#b9b0a6');
+      poly([[-10,-31],[-6,-35],[0,-33],[-2,-26]],'#fffaf0');
+      eye(-7,-32,4,5);eye(3,-32,4,5);
+      poly([[-2,-27],[2,-27],[0,-23]],'#c98f4a');
+      poly([[-13,-34],[-10,-39],[-8,-34]],down);poly([[7,-34],[10,-39],[12,-34]],down);
+      // The crystal only glows while a critique is actually running.
+      line([[10,-18],[20,-24-lift],[25,-36-lift]],cloakLit,5);
+      rect(21,-40-lift,7,6,down);
+      if(active){
+        poly([[25,-52-lift],[31,-45-lift],[26,-35-lift],[20,-43-lift]],'#dcd9f2','#fff6d0');
+        line([[25,-51-lift],[25,-36-lift]],'#fbf3c8');
+        const g=ctx.createRadialGradient(25,-43-lift,0,25,-43-lift,26);
+        g.addColorStop(0,'#e6dfff40');g.addColorStop(1,'#e6dfff00');
+        ellipse(25,-43-lift,26,26,g);
+      } else {
+        poly([[24,-45-lift],[28,-41-lift],[25,-36-lift],[21,-40-lift]],'#b9b5cc','#d8d3e8');
+      }
+      ctx.restore();
+    }
+
+    /* Rook - slate raven in a waistcoat over a white shirt, ochre beak, satchel.
+       Reference: ROOK / RANK sheet. */
+    function rook(a,active){
+      charStart(a.x+90,a.y+116);
+      const b=active?Math.sin(t*2)*1.2:0;ctx.translate(0,b);
+      const feather='#1d2833',sheen='#2f4154',vest='#4d6480',vestLit='#63809e',shirt='#e3e6e4';
+      rect(-9,0,6,3,'#c9a35f');rect(4,0,6,3,'#c9a35f');
+      poly([[-14,1],[-13,-22],[-7,-31],[9,-29],[13,-12],[16,1]],feather);
+      poly([[13,-10],[20,-4],[16,2]],sheen);
+      poly([[-9,0],[-9,-23],[-2,-26],[7,-23],[11,0]],vest);
+      poly([[-6,-1],[-6,-21],[0,-24],[2,-21],[1,-1]],shirt);
+      poly([[-9,-14],[-6,-22],[-4,-14]],vestLit);
+      for(let i=0;i<3;i++)rect(2,-19+i*5,2,2,'#d9c489');
+      poly([[-8,-22],[-12,-30],[-4,-35],[7,-34],[12,-28],[10,-21],[1,-18]],feather,'#0f171d');
+      poly([[-6,-29],[-1,-33],[3,-30],[0,-25]],sheen);
+      eye(0,-31,4,4);
+      poly([[9,-30],[22,-26],[10,-21]],'#d6a94e');poly([[9,-28],[19,-26],[10,-24]],'#b88a34');
+      rect(-14,-13,7,9,'#7b5a37');rect(-13,-12,5,3,'#a5813f');
+      const reach=active?Math.sin(t*2.2)*4:0;
+      line([[-4,-17],[5,-9+reach],[12,-13+reach]],sheen,4);
+      ctx.restore();
+    }
+
+    /* Vera - ginger fox in a teal coat, white muzzle and chest, brush tail.
+       Reference: VERA / ANALYSE sheet. */
+    function vera(a,active){
+      charStart(a.x+102,a.y+127);
+      const fur='#d98c4a',furLit='#eda862',cream='#f2e3c8',coat='#2f5f5c',coatLit='#41807a';
+      const sway=active?Math.sin(t*1.5)*4:0;
+      poly([[-16,-2],[-24,-8-sway*.4],[-30,-4-sway*.5],[-27,3],[-19,4]],fur,'#8d5a2e');
+      poly([[-26,-4-sway*.5],[-31,-3-sway*.5],[-28,3],[-24,2]],cream);
+      poly([[-12,2],[-13,-19],[-7,-27],[8,-27],[13,-17],[13,2]],coat,'#1c3d3b');
+      poly([[-9,1],[-10,-17],[-5,-24],[-2,-17],[-3,1]],coatLit);
+      poly([[-5,-19],[0,-23],[5,-19],[4,-6],[-4,-6]],cream);
+      rect(-8,-24,16,3,cream);
+      for(let i=0;i<2;i++)rect(-1,-15+i*5,2,2,'#c9a35f');
+      // Head: ginger skull, cream inner ears, white muzzle, green eyes.
+      poly([[-10,-22],[-12,-31],[-8,-40],[-3,-32],[4,-32],[9,-40],[12,-31],[10,-22]],fur,'#8d5a2e');
+      poly([[-9,-32],[-7,-38],[-4,-33]],cream);poly([[6,-33],[9,-38],[10,-32]],cream);
+      poly([[-8,-30],[-2,-33],[2,-30],[-1,-24]],furLit);
+      poly([[-6,-27],[6,-27],[4,-21],[-4,-21]],cream);
+      eye(-7,-31,3,4,'#20463a');eye(4,-31,3,4,'#20463a');
+      rect(-1,-25,3,2,'#3b3128');
+      const trace=active?Math.sin(t*2)*6:0;
+      line([[9,-16],[19,-22]],coatLit,5);
+      line([[18,-22],[30+trace,-34-trace*.4]],'#d9c39a',2);
+      ctx.restore();
+    }
+
+    /* Lil Claw - coral crab in a teal dispatch cap with a gold anchor.
+       Reference: LIL CLAW / ROUTE sheet. */
+    function claw(a,active){
+      charStart(a.x+98,a.y+115);
+      const b=active?Math.sin(t*3)*1:0;ctx.translate(0,b);
+      const shell='#d9634f',shellLit='#ef8a6d',shellDark='#8e3a2f',cap='#2f6f83',capLit='#3f8ca3';
+      for(const side of [-1,1])for(let i=0;i<3;i++)
+        line([[side*9,-6+i*3],[side*(17+i*2),-7+i*5],[side*(17+i*2),-3+i*5]],shellDark,3);
+      poly([[-13,0],[-16,-9],[-11,-20],[10,-20],[15,-9],[13,0]],shellDark);
+      poly([[-11,-1],[-13,-9],[-9,-18],[8,-18],[12,-9],[10,-1]],shell);
+      poly([[-7,-4],[-9,-11],[-5,-16],[1,-16],[2,-9],[-1,-4]],shellLit);
+      rect(-8,-23,4,6,shell);rect(5,-23,4,6,shell);
+      eye(-8,-25,4,4);eye(5,-25,4,4);
+      poly([[-8,-1],[-7,-12],[7,-12],[8,-1]],'#e8dcc0');
+      rect(-2,-9,4,5,'#3f5a63');rect(-3,-8,6,2,'#3f5a63');
+      // Dispatch cap: brim, crown, gold anchor badge.
+      poly([[-13,-27],[9,-29],[14,-25],[-11,-23]],cap,'#1d4a58');
+      poly([[-10,-29],[-8,-34],[4,-35],[8,-30]],capLit,'#1d4a58');
+      rect(-2,-33,4,4,'#d9b559');rect(-1,-30,2,2,'#d9b559');
+      const move=active?Math.sin(t*4)*7:0;
+      line([[-12,-11],[-23,-19-move]],shell,5);
+      poly([[-25,-17-move],[-32,-24-move],[-25,-31-move],[-25,-24-move],[-19,-28-move],[-17,-23-move]],shellLit,shellDark);
+      line([[12,-11],[23,-19+move]],shell,5);
+      poly([[20,-21+move],[22,-29+move],[27,-26+move],[32,-30+move],[32,-21+move],[25,-17+move]],shellLit,shellDark);
+      if(active){rect(24,-28+move,13,10,'#efe7cc');line([[26,-25+move],[33,-25+move]],'#8e9a90');line([[26,-22+move],[31,-22+move]],'#8e9a90')}
+      ctx.restore();
+    }
+
+    /* Pip - cream spirit in a red scarf, holding one page by the hearth.
+       Reference: PIP / QUIET sheet. Pip's lane is QUIET: she only ever breathes. */
+    function pip(a,active){
+      charStart(a.x+111,a.y+119);
+      const breath=Math.sin(t*1.2)*.7;ctx.translate(0,breath);
+      const body='#f0e6c9',bodyLit='#fdf6e0',bodyDark='#b9ad8c',scarf='#b3473a',scarfLit='#cf6050';
+      poly([[-14,1],[-17,-9],[-15,-24],[-9,-31],[6,-31],[13,-24],[16,-9],[13,1]],bodyDark);
+      poly([[-12,0],[-15,-9],[-13,-23],[-7,-29],[4,-29],[10,-23],[13,-9],[11,0]],body);
+      poly([[-9,-6],[-11,-19],[-6,-26],[0,-27],[0,-16],[-3,-7]],bodyLit);
+      // The woven cushion she sits in.
+      poly([[-16,2],[16,2],[13,6],[-13,6]],'#8d7c52');
+      for(let i=-14;i<14;i+=5)rect(i,2,3,3,'#a8945f');
+      // Face is the biggest thing on her: big eyes high, blush under them.
+      // The eyes close on the slow idle beat - she is the QUIET lane.
+      const shut=!active&&Math.sin(t*.9)>.93;
+      if(shut){line([[-9,-22],[-4,-22]],'#5d5238',2);line([[3,-22],[8,-22]],'#5d5238',2)}
+      else{eye(-9,-25,4,5);eye(4,-25,4,5)}
+      blush(-11,-19,'#e09a8c');blush(8,-19,'#e09a8c');
+      poly([[-3,-19],[3,-19],[0,-16]],'#a08a6a');
+      // Scarf: a thin band under the chin with one tail, not a bandage.
+      poly([[-12,-14],[11,-14],[11,-10],[-12,-10]],scarf);
+      rect(-12,-13,23,1,scarfLit);
+      poly([[5,-11],[10,-11],[9,-2],[5,-3]],scarf);rect(5,-7,5,1,scarfLit);
+      // One page, held small and low.
+      rect(-7,-8,13,6,'#fbf5e4');rect(-6,-7,11,1,'#c3bda6');rect(-6,-5,8,1,'#c3bda6');
+      ctx.restore();
+    }
     function scales(x,y,z,active){const q=p(x,y,z);const swing=active?Math.sin(t*2)*.13:0;line([[q[0],q[1]],[q[0],q[1]-38]],'#cfb982',3);rect(q[0]-12,q[1]-1,24,3,'#bba46e');ellipse(q[0],q[1]-39,3,3,'#ddd09a');const left=[q[0]-27*Math.cos(swing),q[1]-32-27*Math.sin(swing)],right=[q[0]+27*Math.cos(swing),q[1]-32+27*Math.sin(swing)];line([left,right],'#dcc58e',3);for(let q1 of [left,right]){line([q1,[q1[0]-9,q1[1]+20]],'#b49d6b');line([q1,[q1[0]+9,q1[1]+20]],'#b49d6b');poly([[q1[0]-13,q1[1]+20],[q1[0]+13,q1[1]+20],[q1[0]+8,q1[1]+25],[q1[0]-8,q1[1]+25]],'#b19c73',ink);rect(q1[0]-5,q1[1]+12,10,8,'#9bb3b6');rect(q1[0]-3,q1[1]+10,6,2,'#d0d5bd')}}
     function fireplace(a){const x=a.x+32,y=a.y+13;box(x,y,0,53,20,54,'#7b7970');box(x-5,y-4,54,63,29,6,'#9a9580');box(x+8,y+20,0,37,2,38,'#323935');box(x-3,y+18,0,60,14,5,'#8c8069');const q=p(x+28,y+23,5);const g=ctx.createRadialGradient(q[0],q[1],0,q[0],q[1],65);g.addColorStop(0,'#f5b76d3f');g.addColorStop(1,'#f5b76d00');ellipse(q[0],q[1]+10,65,42,g);line([[q[0]-14,q[1]],[q[0]+12,q[1]+6]],'#614e3b',5);line([[q[0]-10,q[1]+6],[q[0]+12,q[1]-1]],'#9c6944',4);for(let i=0;i<3;i++){const f=3+Math.sin(t*6+i*1.8)*3,xx=q[0]+(i-1)*9;poly([[xx-6,q[1]],[xx-5,q[1]-9],[xx,q[1]-22-f],[xx+3,q[1]-12],[xx+7,q[1]-4],[xx+4,q[1]+2]],'#df9561');poly([[xx-3,q[1]],[xx,q[1]-12-f],[xx+4,q[1]-2]],'#f1ce88')}
       jar(x+4,y+7,60,'#a6a58b');const clock=p(x+35,y+5,69);ellipse(clock[0],clock[1],8,8,'#cabb91');line([[clock[0],clock[1]-5],[clock[0],clock[1]],[clock[0]+4,clock[1]+2]],'#596561');
