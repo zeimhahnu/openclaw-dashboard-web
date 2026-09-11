@@ -169,11 +169,11 @@ nav{display:grid;gap:3px}
 <div id="mc">
   <aside class="sidebar" aria-label="Workspace navigation">
     <div class="wordmark"><span class="monogram">a.</span><span class="wordmark-text">OpenClaw</span></div>
-    <nav id="nav" aria-label="Views">
-      <button class="nav-item active" data-view="floor">Overview<span class="nav-count" id="nc-floor"></span></button>
-      <button class="nav-item" data-view="triage">Triage<span class="nav-count" id="nc-triage"></span></button>
-      <button class="nav-item" data-view="usage">Usage<span class="nav-count" id="nc-usage"></span></button>
-      <button class="nav-item" data-view="activity">Activity<span class="nav-count" id="nc-activity"></span></button>
+    <nav id="nav" aria-label="Views" role="tablist">
+      <button class="nav-item active" role="tab" type="button" aria-selected="true" aria-controls="view-floor" data-view="floor">Overview<span class="nav-count" id="nc-floor"></span></button>
+      <button class="nav-item" role="tab" type="button" aria-selected="false" aria-controls="view-triage" data-view="triage">Triage<span class="nav-count" id="nc-triage"></span></button>
+      <button class="nav-item" role="tab" type="button" aria-selected="false" aria-controls="view-usage" data-view="usage">Usage<span class="nav-count" id="nc-usage"></span></button>
+      <button class="nav-item" role="tab" type="button" aria-selected="false" aria-controls="view-activity" data-view="activity">Activity<span class="nav-count" id="nc-activity"></span></button>
     </nav>
     <div class="sidebar-foot">
       <span class="presence-dot" id="mason-dot"></span>
@@ -211,7 +211,7 @@ nav{display:grid;gap:3px}
       <div><strong id="attention-who"></strong><span id="attention-why"></span></div>
     </section>
 
-    <div class="view" data-view="floor">
+    <div class="view" id="view-floor" role="tabpanel" tabindex="0" data-view="floor">
     <section>
       <div class="section-toolbar">
         <div class="section-title">The floor <span id="room-count"></span></div>
@@ -259,14 +259,14 @@ nav{display:grid;gap:3px}
 
     </div><!-- /floor view -->
 
-    <div class="view" data-view="triage" hidden>
+    <div class="view" id="view-triage" role="tabpanel" tabindex="0" data-view="triage" hidden>
       <div class="panel-head"><h2>Triage</h2><span class="panel-note" id="triage-scope"></span></div>
       <p class="panel-note">Ordered by what needs a person, not by recency. Dead-lettered work fails
       quietly and nobody audits red, so it sits at the top.</p>
       <div id="triage-body"></div>
     </div>
 
-    <div class="view" data-view="usage" hidden>
+    <div class="view" id="view-usage" role="tabpanel" tabindex="0" data-view="usage" hidden>
       <div class="panel-head"><h2>Token usage</h2><span class="panel-note" id="usage-since"></span></div>
       <p class="panel-note">Counted at the call site from each agent's own transcript store. Dollar
       figures appear only where a provider actually bills per token — the flat-rate
@@ -285,7 +285,7 @@ nav{display:grid;gap:3px}
       <div id="usage-quota"></div>
     </div>
 
-    <div class="view" data-view="activity" hidden>
+    <div class="view" id="view-activity" role="tabpanel" tabindex="0" data-view="activity" hidden>
       <div class="panel-head"><h2>Activity</h2><span class="panel-note" id="activity-count"></span></div>
       <p class="panel-note">Commits and write-ahead log entries from the fleet, newest first.</p>
       <ol class="feed" id="activity-body"></ol>
@@ -304,7 +304,7 @@ nav{display:grid;gap:3px}
 // content-hashed bundles and fatal for these stable filenames: without a new
 // URL, a redeploy can never invalidate them and the browser will not even
 // revalidate. BUMP THIS ON EVERY CHANGE to these modules. Do not "tidy" it away.
-const V = '8';
+const V = '9';
 const { createWorld } = await import(`./world.js?v=${V}`);
 const { loadManifest, fetchAll, toModel, toUsage, toTriage, toActivity, toSystem } = await import(`./feed.js?v=${V}`);
 const { counts } = await import(`./core.js?v=${V}`);
@@ -389,6 +389,10 @@ function select(id) {
 
 const fmt = n => n >= 1e9 ? (n/1e9).toFixed(1)+'B' : n >= 1e6 ? (n/1e6).toFixed(1)+'M'
   : n >= 1e3 ? (n/1e3).toFixed(1)+'k' : String(n ?? 0);
+// Intl, not string slicing: the feed's timestamps are "YYYY-MM-DD HH:MM:SS +0000",
+// and slicing them hardcodes both the format and the UTC offset.
+const TIME_FMT = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const fmtTime = ts => { const d = new Date((ts ?? '').replace(' ', 'T').replace(/ \+0000$/, 'Z')); return isNaN(d) ? (ts ?? '') : TIME_FMT.format(d); };
 const ageLabel = h => h == null ? '—' : h < 1 ? `${Math.round(h*60)}m` : h < 48 ? `${h.toFixed(1)}h` : `${Math.round(h/24)}d`;
 
 function renderUsage(u) {
@@ -483,7 +487,7 @@ function renderTriage(tr) {
 function renderActivity(ev) {
   $('activity-count').textContent = `${ev.length} recent`;
   $('activity-body').innerHTML = ev.map(e => `<li>
-    <time>${(e.ts ?? '').slice(5, 16)}</time>
+    <time>${fmtTime(e.ts)}</time>
     <span class="src">${e.source ?? ''}</span>
     <p>${e.text ?? ''}</p></li>`).join('') || '<li><p class="empty">No events.</p></li>';
 }
@@ -497,9 +501,17 @@ function renderSystem(sys, tr, usage) {
   $('h-cost').textContent = usage.connected ? `${usage.turns.toLocaleString()} turns / 7d` : 'not connected';
 }
 
-function setView(name) {
+const VIEWS = ['floor', 'triage', 'usage', 'activity'];
+/** The view lives in the URL, so a link to Triage opens Triage and a refresh keeps it. */
+function setView(name, push = true) {
+  if (!VIEWS.includes(name)) name = 'floor';
   for (const v of document.querySelectorAll('.view')) v.hidden = v.dataset.view !== name;
-  for (const b of document.querySelectorAll('.nav-item')) b.classList.toggle('active', b.dataset.view === name);
+  for (const b of document.querySelectorAll('.nav-item')) {
+    const on = b.dataset.view === name;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', String(on));
+  }
+  if (push && location.hash.slice(1) !== name) history.replaceState(null, '', '#' + name);
 }
 
 async function poll() {
@@ -545,6 +557,8 @@ async function poll() {
   applyMotion();
 
   for (const b of document.querySelectorAll('.nav-item')) b.onclick = () => setView(b.dataset.view);
+  addEventListener('hashchange', () => setView(location.hash.slice(1), false));
+  setView(location.hash.slice(1) || 'floor', false);
   $('refresh').onclick = poll;
   $('c-blocked-btn').onclick = () => $('attention').scrollIntoView({ block: 'center' });
 
