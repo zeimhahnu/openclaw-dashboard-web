@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "note": "Roster is data. Adding an agent is an edit HERE, never in the page markup. An entry with no sheet renders a labelled placeholder — degraded, not broken.",
+
+  "background": "#16292e",
+  "_background": "Must match the flat backdrop baked into the sheets, so the dark padding around each room cell disappears. Resample if the art is regenerated.",
+
+  "sheetDefaults": {
+    "cols": 3,
+    "rows": 2,
+    "top": 48,
+    "_top": "px of title banner at the top of each sheet, excluded from the frame grid",
+    "frameMs": 420,
+    "restFrame": 0,
+    "workLoop": [0, 1, 2, 3, 4, 5],
+    "_workLoop": "Frame ORDER for the working loop. The renders are variations, not curated keyframes — reorder here until the loop reads smoothly. Code never hardcodes a frame count."
+  },
+
+  "agents": [
+    {
+      "id": "goop",
+      "feedKey": "goop",
+      "name": "Goop",
+      "room": "Workshop",
+      "lane": "BUILD",
+      "sheet": "goop.png"
+    },
+    {
+      "id": "iris",
+      "feedKey": "iris",
+      "name": "Iris",
+      "room": "Reading room",
+      "lane": "CRITIQUE",
+      "sheet": "iris.png"
+    },
+    {
+      "id": "rook",
+      "feedKey": "vortex-reviewer",
+      "name": "Rook",
+      "room": "Weighing room",
+      "lane": "RANK",
+      "sheet": "rook.png"
+    },
+    {
+      "id": "vera",
+      "feedKey": "vortex-analyst",
+      "name": "Vera",
+      "room": "Map room",
+      "lane": "ANALYSE",
+      "sheet": "vera.png"
+    },
+    {
+      "id": "lil-claw",
+      "feedKey": "lil-claw",
+      "name": "Lil Claw",
+      "room": "Dispatch",
+      "lane": "ROUTE",
+      "sheet": "lil-claw.png"
+    },
+    {
+      "id": "pip",
+      "feedKey": "pip",
+      "name": "Pip",
+      "room": "Hearth",
+      "lane": "QUIET",
+      "sheet": "pip.png"
+    },
+    {
+      "id": "mason",
+      "feedKey": "mason",
+      "name": "Mason",
+      "room": "Visitor",
+      "lane": "ADVISE",
+      "resident": false,
+      "sheet": null
+    }
+  ]
+}
