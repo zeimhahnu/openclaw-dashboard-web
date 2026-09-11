@@ -150,15 +150,15 @@ canvas{display:block;width:100%;image-rendering:pixelated;touch-action:manipulat
         <div class="toolbar-actions"><button class="small-button" id="refresh">Refresh</button></div>
       </div>
       <div class="world-shell">
-        <div class="world-topline"><span>GROUND FLOOR <b>/</b> 01</span><span>Resident agents</span></div>
+        <div class="world-topline"><span>GROUND FLOOR <b>/</b> 01</span><span>Shared aisle · individual doors</span></div>
         <div class="world-stage">
-          <canvas id="floor" role="img" aria-label="Isometric floor, one room per resident agent. Use the roster buttons below to select an agent."></canvas>
+          <canvas id="floor" role="img" aria-label="Isometric floor with six rooms around a shared aisle, individual doors and package bays. Select agents using the room name buttons or the roster below."></canvas>
           <div class="world-labels" id="labels"></div>
         </div>
         <div class="world-legend">
           <span><i class="parcel-key ready"></i>Ready for handoff</span>
           <span><i class="parcel-key sent"></i>Handed off</span>
-          <span id="pkg-note">Handoff feed not connected</span>
+          <span id="pkg-note">1 package = 1 completed stage</span>
         </div>
       </div>
       <div class="agent-roster" id="roster" role="group" aria-label="Select agent"></div>
@@ -201,105 +201,89 @@ import { counts } from './core.js';
 
 const $ = id => document.getElementById(id);
 const POLL_MS = 7000;
-
 const STATE_LABEL = { working: 'Working', idle: 'Idle', blocked: 'Stuck', asleep: 'Asleep', offline: 'Feed lost' };
 
-let manifest, world, model = { agents: [], visitors: [] }, paused = false;
+let manifest, world, model = { agents: [], presence: {} }, selected = null, paused = false;
 
-function badge(text, cls) {
+const badge = (text, cls) => {
   const b = $('feed-badge');
   b.textContent = text;
   b.className = `badge ${cls || ''}`.trim();
-}
+};
 
 function render() {
-  const all = [...model.agents, ...model.visitors];
-  const working = model.agents.filter(a => a.state === 'working').length;
-  const blocked = model.agents.filter(a => a.state === 'blocked').length;
-  const connected = model.agents.filter(a => a.connected);
+  const a = model.agents;
+  const connected = a.filter(x => x.connected);
+  const partial = connected.length < a.length ? ` (${connected.length}/${a.length} reporting)` : '';
 
-  $('c-working').textContent = working;
-  $('c-blocked').textContent = blocked;
-  // Sums over a partial roster are partial. Say so rather than printing a total
-  // that reads as a fleet figure — an unlabelled number is taken as a fact.
-  const label = connected.length < model.agents.length
-    ? ` (${connected.length}/${model.agents.length} reporting)` : '';
-  $('c-completed').textContent = connected.reduce((n, a) => n + a.completedToday, 0) + label;
-  $('c-queued').textContent = connected.reduce((n, a) => n + a.queue, 0) + label;
-  $('room-count').textContent = `${model.agents.length} rooms`;
+  $('c-working').textContent = a.filter(x => x.state === 'working').length;
+  $('c-blocked').textContent = a.filter(x => x.state === 'blocked').length;
+  // A sum over a partial roster is partial. Label it, or the number reads as a
+  // fleet figure and becomes a quiet lie.
+  $('c-completed').textContent = connected.reduce((n, x) => n + x.completedToday, 0) + partial;
+  $('c-queued').textContent = connected.reduce((n, x) => n + x.queue, 0) + partial;
+  $('room-count').textContent = `${a.length} rooms`;
   $('observed').textContent = model.ts ? new Date(model.ts).toLocaleTimeString() : '—';
 
-  const stuck = model.agents.find(a => a.state === 'blocked');
+  const stuck = a.find(x => x.state === 'blocked');
   $('attention').hidden = !stuck;
   if (stuck) {
     $('attention-who').textContent = `${stuck.name} is stuck`;
-    $('attention-why').textContent = stuck.task ?? 'No reason reported';
+    $('attention-why').textContent = `${stuck.blockReason ?? 'No reason reported'} · ${stuck.elapsed}`;
   }
 
-  const mason = model.visitors.find(a => a.id === 'mason');
-  if (mason) {
-    const s = mason.state === 'working' ? 'active' : mason.state === 'offline' ? 'offline' : 'listening';
-    $('mason-dot').dataset.state = s;
-    $('mason-state').textContent = `${s} · visitor`;
-  }
+  const p = model.presence ?? {};
+  $('mason-dot').dataset.state = p.state ?? 'offline';
+  $('mason-state').textContent = `${p.state ?? 'offline'} · visitor`;
 
-  // Roster — built from the model, never from markup.
-  $('roster').innerHTML = '';
-  for (const a of model.agents) {
+  $('roster').replaceChildren(...a.map(x => {
     const b = document.createElement('button');
     b.className = 'agent-choice';
-    b.setAttribute('aria-pressed', String(a.id === world.selected));
-    b.innerHTML = `<i class="agent-pip" data-state="${a.state}"></i><span>${a.name}</span>`;
-    b.onclick = () => { world.select(a.id); render(); };
-    $('roster').append(b);
-  }
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(x.id === selected));
+    b.innerHTML = `<i class="agent-pip" data-state="${x.state}"></i><span>${x.name}</span>`;
+    b.onclick = () => select(x.id);
+    return b;
+  }));
 
-  const sel = model.agents.find(a => a.id === world.selected) ?? model.agents[0];
+  const sel = a.find(x => x.id === selected) ?? a[0];
   if (sel) {
     $('i-name').textContent = sel.name;
     $('i-room').textContent = `${sel.room} · ${sel.lane}`;
     $('i-task').textContent = sel.connected
-      ? (sel.task ?? `${STATE_LABEL[sel.state]} — no current task`)
+      ? (sel.publicTitle ?? `${STATE_LABEL[sel.state]} — no current task`)
       : 'Feed not connected — this agent is not reported by the gateway yet.';
     const c = counts(model.packages, sel.id);
     $('i-nums').textContent = model.packagesConnected
       ? `${c.completed} completed · ${c.ready} ready · ${c.sent} handed off`
-      : `queue ${sel.queue} · completed today ${sel.completedToday}`;
+      : `queue ${sel.queue} · completed today ${sel.completedToday} · observed ${sel.elapsed} ago`;
   }
 
-  // Nameplates, positioned over their own room.
-  $('labels').innerHTML = '';
-  for (const r of world.rooms) {
-    const el = document.createElement('button');
-    el.className = `room-name${r.state === 'blocked' ? ' is-stuck' : ''}`;
-    el.setAttribute('aria-pressed', String(r.id === world.selected));
-    el.style.left = `${r.x + r.w / 2}px`;
-    el.style.top = `${r.y + r.h - 26}px`;
-    el.innerHTML = r.state === 'blocked' ? `${r.name}<small>STUCK</small>` : r.name;
-    el.onclick = () => { world.select(r.id); render(); };
-    $('labels').append(el);
-  }
-
-  // Now table.
-  $('now-body').innerHTML = '';
-  for (const a of all) {
+  $('now-body').replaceChildren(...a.map(x => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><button class="row-agent">${a.name}</button></td>
-      <td class="task-cell">${a.connected ? (a.task ?? '—') : 'not reported'}</td>
-      <td class="stage-cell">${a.stage ?? '—'}</td>
-      <td class="state-cell is-${a.state}">${STATE_LABEL[a.state]}</td>
-      <td class="numeric">${a.connected ? a.queue : '—'}</td>`;
-    tr.querySelector('.row-agent').onclick = () => { world.select(a.id); render(); };
-    $('now-body').append(tr);
-  }
+    tr.innerHTML = `<td><button class="row-agent" type="button">${x.name}</button></td>
+      <td class="task-cell">${x.connected ? (x.publicTitle ?? '—') : 'not reported'}</td>
+      <td class="stage-cell">${x.stage ?? '—'}</td>
+      <td class="state-cell is-${x.state}">${STATE_LABEL[x.state]}</td>
+      <td class="numeric">${x.connected ? x.queue : '—'}</td>`;
+    tr.querySelector('.row-agent').onclick = () => select(x.id);
+    return tr;
+  }));
+}
+
+function select(id) {
+  selected = id;
+  world.update(model, selected);
+  render();
 }
 
 async function poll() {
   try {
     const state = await fetchState();
     model = toModel(state, manifest);
-    world.setModel(model);
-    const missing = model.agents.filter(a => !a.connected).length;
+    selected ??= model.agents[0]?.id;
+    world.update(model, selected);
+    const missing = model.agents.filter(x => !x.connected).length;
     badge(missing ? `live · ${missing} agent(s) unreported` : 'live', missing ? '' : 'live');
     render();
   } catch (err) {
@@ -309,17 +293,25 @@ async function poll() {
 
 (async function boot() {
   manifest = await loadManifest();
-  world = createWorld($('floor'), manifest, () => render());
-  await world.init();
-  $('motion').onclick = e => {
-    paused = !paused;
-    world.setPaused(paused);
-    e.target.setAttribute('aria-pressed', String(paused));
-    e.target.textContent = world.reduced ? 'Reduced motion' : paused ? 'Play motion' : 'Pause motion';
+  world = createWorld($('floor'), $('labels'), select);
+  world.setPresentation({ assembly: 1 });
+
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const applyMotion = () => {
+    const on = !paused && !reduced.matches;
+    world.setMotion(on);
+    $('motion').textContent = reduced.matches ? 'Reduced motion' : paused ? 'Play motion' : 'Pause motion';
+    $('motion').setAttribute('aria-pressed', String(!on));
   };
-  if (world.reduced) $('motion').textContent = 'Reduced motion';
+  reduced.addEventListener('change', applyMotion);
+  // Pausing motion is a PRESENTATION preference. It does not pause an agent,
+  // and data still redraws underneath it.
+  $('motion').onclick = () => { paused = !paused; applyMotion(); };
+  applyMotion();
+
   $('refresh').onclick = poll;
   $('c-blocked-btn').onclick = () => $('attention').scrollIntoView({ block: 'center' });
+
   await poll();
   setInterval(poll, POLL_MS);
 })();

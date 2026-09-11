@@ -1,134 +1,39 @@
 {
-  "version": 2,
-  "note": "Roster is data. Adding an agent is an edit HERE, never in the page markup. An entry with no sheet renders a labelled placeholder - degraded, not broken.",
+  "version": 3,
+  "note": "Roster is DATA. Adding an agent is an edit HERE, never in the page markup. An agent with no sprite gets a neutral placeholder at a standard station - degraded, not broken.",
 
-  "background": "#172629",
-  "_background": "Sampled from the sheets, so the padding around each room cell disappears against the stage. Resample if the art is regenerated.",
-
-  "_states": [
-    "CADENCE CARRIES THE STATE. Across six rooms you read rate-of-motion before you read what a character is doing, so the tempo difference between working and idle IS the signal - not the poses.",
-    "working: the full action loop, brisk. idle: calm frames, ~5x slower - present and breathing, visibly not working.",
-    "blocked / asleep / offline: ONE frame, no motion. A stuck agent that keeps hammering tells the viewer it is working, and the floor is a bigger visual surface than the table - it would win. A frozen frame is the only honest render of stopped work.",
-    "A one-entry `frames` array IS the frozen case - it needs no special handling, and `ms` is ignored for it.",
-    "Repeating a frame in an array weights it: pip's idle sits on the open-eyed frame three beats, then blinks.",
-    "asleep and offline must never look alike. asleep is a warm dim (deliberately off); offline is desaturated (we cannot see). offline is a FEED condition layered over a state, not evidence the agent is sleeping."
+  "_art": [
+    "There are NO image assets on this page. The floor is drawn procedurally so the six rooms form ONE building with shared walls, a paved aisle and real doors. Pre-rendered per-room dioramas cannot do that: each carries its own ground plane, lighting and perspective, so they never compose into a floor.",
+    "The Higgsfield concept sheets are REFERENCE for appearance and motion intent, not runtime atlases. DESIGN.md is explicit - they are not registered transparent atlases and must not be cropped and shipped as supposedly smooth animation. They live outside the served page.",
+    "`sprite` names the character draw function in world.js. `station` selects the furniture cluster. color/floor/wall/trim are that room's palette - rooms differ in hue but share one lighting model, which is what makes them read as one floor."
   ],
 
-  "_geometry": "Each sheet is 1536x1024: a 3x2 grid of exact 512px cells. The title banner overlaps the TOP row only, which pushes its rooms 24-36px lower than the bottom row's. rowTop/frameH crop both rows to a common content bottom so the floor does not jump when the loop crosses from frame 2 to frame 3. Measured, not guessed - see _geometry.json.",
-
-  "sheetDefaults": { "cols": 3, "rows": 2 },
-
   "agents": [
-    {
-      "id": "goop",
-      "feedKey": "goop",
-      "name": "Goop",
-      "room": "Workshop",
-      "lane": "BUILD",
-      "sheet": "goop.webp",
-      "frameH": 433,
-      "rowTop": [52, 28],
-      "states": {
-        "working": { "frames": [0, 1, 2, 3, 5], "ms": 360, "_": "hold, raise, top of swing, STRIKE (sparks), recover" },
-        "idle":    { "frames": [0, 5], "ms": 2000, "_": "hammer resting on the piece" },
-        "blocked": { "frames": [2], "_": "hammer frozen at the top of the swing - work arrested mid-motion" },
-        "asleep":  { "frames": [0] },
-        "offline": { "frames": [0] }
-      }
-    },
-    {
-      "id": "iris",
-      "feedKey": "iris",
-      "name": "Iris",
-      "room": "Reading room",
-      "lane": "CRITIQUE",
-      "sheet": "iris.webp",
-      "frameH": 437,
-      "rowTop": [52, 20],
-      "states": {
-        "working": { "frames": [0, 1, 2, 3], "ms": 420, "_": "lift the piece, raise to the lamp, inspect, bring down" },
-        "idle":    { "frames": [4, 5], "ms": 2000 },
-        "blocked": { "frames": [3], "_": "still holding it up, still not satisfied" },
-        "asleep":  { "frames": [5] },
-        "offline": { "frames": [5] }
-      }
-    },
-    {
-      "id": "rook",
-      "feedKey": "vortex-reviewer",
-      "name": "Rook",
-      "room": "Weighing room",
-      "lane": "RANK",
-      "sheet": "rook.webp",
-      "frameH": 459,
-      "rowTop": [52, 17],
-      "states": {
-        "working": { "frames": [0, 4, 1, 2, 3], "ms": 400, "_": "read the brief, reach, place the weight, watch it tilt, consider" },
-        "idle":    { "frames": [5, 0], "ms": 2100, "_": "scales empty and level" },
-        "blocked": { "frames": [3], "_": "wing to beak - cannot call it" },
-        "asleep":  { "frames": [5] },
-        "offline": { "frames": [5] }
-      }
-    },
-    {
-      "id": "vera",
-      "feedKey": "vortex-analyst",
-      "name": "Vera",
-      "room": "Map room",
-      "lane": "ANALYSE",
-      "sheet": "vera.webp",
-      "frameH": 451,
-      "rowTop": [52, 20],
-      "states": {
-        "working": { "frames": [0, 1, 2, 4, 5], "ms": 420, "_": "consult, point, trace the route, write it down, read back" },
-        "idle":    { "frames": [3, 5], "ms": 2000 },
-        "blocked": { "frames": [3], "_": "hands off the map, standing over it" },
-        "asleep":  { "frames": [5] },
-        "offline": { "frames": [5] }
-      }
-    },
-    {
-      "id": "lil-claw",
-      "feedKey": "lil-claw",
-      "name": "Lil Claw",
-      "room": "Dispatch",
-      "lane": "ROUTE",
-      "sheet": "lil-claw.webp",
-      "frameH": 440,
-      "rowTop": [52, 16],
-      "states": {
-        "working": { "frames": [3, 1, 2, 4, 5], "ms": 380, "_": "reach, take the slip, read it, file it into the tray, release" },
-        "idle":    { "frames": [5, 0], "ms": 1900 },
-        "blocked": { "frames": [2], "_": "holding a slip with nowhere to route it" },
-        "asleep":  { "frames": [5] },
-        "offline": { "frames": [5] }
-      }
-    },
-    {
-      "id": "pip",
-      "feedKey": "pip",
-      "name": "Pip",
-      "room": "Hearth",
-      "lane": "QUIET",
-      "sheet": "pip.webp",
-      "frameH": 437,
-      "rowTop": [52, 19],
-      "states": {
-        "working": { "frames": [0, 3, 1, 5], "ms": 520, "_": "reading. Pip's lane is QUIET - still the slowest working tempo on the floor, but it must stay clearly faster than her own idle" },
-        "idle":    { "frames": [5, 5, 5, 2], "ms": 1700, "_": "three beats still, then a blink - about one every 7s, which is roughly a real blink rate" },
-        "blocked": { "frames": [0], "_": "eyes wide, not reading" },
-        "asleep":  { "frames": [4], "_": "the ONLY genuine asleep pose in the set - eyes closed, content. Everyone else's asleep is a dimmed rest frame." },
-        "offline": { "frames": [0] }
-      }
-    },
-    {
-      "id": "mason",
-      "feedKey": "mason",
-      "name": "Mason",
-      "room": "Visitor",
-      "lane": "ADVISE",
-      "resident": false,
-      "sheet": null
-    }
+    { "id": "goop", "feedKey": "goop", "name": "Goop",
+      "room": "Workshop", "lane": "BUILD", "station": "build", "sprite": "slime",
+      "color": "#a9c887", "floor": "#675b49", "wall": "#4b6767", "trim": "#819791" },
+
+    { "id": "iris", "feedKey": "iris", "name": "Iris",
+      "room": "Critique room", "lane": "CRITIQUE", "station": "critique", "sprite": "owl",
+      "color": "#c5afd8", "floor": "#62596a", "wall": "#646374", "trim": "#a299ad" },
+
+    { "id": "rook", "feedKey": "vortex-reviewer", "name": "Rook",
+      "room": "Weighing room", "lane": "RANK", "station": "rank", "sprite": "raven",
+      "color": "#9abbd2", "floor": "#53616c", "wall": "#4d6472", "trim": "#8ea3ae" },
+
+    { "id": "vera", "feedKey": "vortex-analyst", "name": "Vera",
+      "room": "Map room", "lane": "ANALYSE", "station": "analyse", "sprite": "fox",
+      "color": "#e3c087", "floor": "#626751", "wall": "#536c65", "trim": "#91a48b" },
+
+    { "id": "lil-claw", "feedKey": "lil-claw", "name": "Lil Claw",
+      "room": "Dispatch room", "lane": "ROUTE", "station": "route", "sprite": "crab",
+      "color": "#dca698", "floor": "#725b4e", "wall": "#725d59", "trim": "#b09279" },
+
+    { "id": "pip", "feedKey": "pip", "name": "Pip",
+      "room": "Hearth room", "lane": "QUIET", "station": "quiet", "sprite": "spirit",
+      "color": "#decc98", "floor": "#765f4a", "wall": "#75655b", "trim": "#b29a79" },
+
+    { "id": "mason", "feedKey": "mason", "name": "Mason",
+      "room": "Visitor", "lane": "ADVISE", "resident": false, "sprite": null }
   ]
 }

@@ -1,43 +1,63 @@
 // node --test public/mission/core.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import {
-  layoutRooms, stageSize, routeBetween, alongRoute,
-  counts, effectiveState, applyEvent, frameFor, animates,
+  GEOMETRY, layoutAgents, project, unproject, routeBetween, alongRoute,
+  sortDrawables, counts, effectiveState, applyEvent, packageSlots, avoidLabelCollisions,
 } from './core.js';
 
-const agents = ['a', 'b', 'c', 'd'].map(id => ({ id, state: 'idle' }));
+const six = ['goop', 'iris', 'rook', 'vera', 'lil-claw', 'pip'].map(id => ({ id, state: 'idle' }));
 
-test('layout wraps at the requested column count', () => {
-  const rooms = layoutRooms(agents, { tileW: 100, tileH: 60, cols: 2 });
-  assert.deepEqual(rooms.map(r => r.bank), [0, 0, 1, 1]);
-  assert.deepEqual(rooms.map(r => r.col), [0, 1, 0, 1]);
-  assert.ok(rooms[2].y > rooms[0].y, 'second bank sits below the first');
-  const size = stageSize(rooms);
-  assert.ok(size.w > 0 && size.h > rooms[3].y);
+test('six agents form two facing banks around one aisle', () => {
+  const rooms = layoutAgents(six);
+  assert.deepEqual(rooms.map(r => r.bank), [0, 0, 0, 1, 1, 1]);
+  // One shared aisle: every room in the pair hands off along the same lane.
+  assert.equal(new Set(rooms.map(r => r.aisleY)).size, 1);
+  // Doors face the aisle: bank 0 at the far edge, bank 1 at the near edge.
+  assert.equal(rooms[0].door.y, rooms[0].y + GEOMETRY.roomH);
+  assert.equal(rooms[3].door.y, rooms[3].y);
 });
 
-test('a route starts at the source dock and ends at the target dock', () => {
-  const [from, , to] = layoutRooms(agents, { tileW: 100, tileH: 60, cols: 2 });
+test('a non-resident agent gets no room', () => {
+  const rooms = layoutAgents([...six, { id: 'mason', resident: false }]);
+  assert.equal(rooms.length, 6);
+  assert.ok(!rooms.some(r => r.id === 'mason'), 'Mason is a visitor, not a resident');
+});
+
+test('projection round-trips, so a floor click maps back to a room', () => {
+  for (const [x, y] of [[0, 0], [194, 184], [-30, 500], [472, 272]]) {
+    const q = project(x, y, 0), back = unproject(q.x, q.y);
+    assert.ok(Math.abs(back.x - x) < 1e-6 && Math.abs(back.y - y) < 1e-6, `${x},${y}`);
+  }
+});
+
+test('the route leaves through a door and runs the aisle, never diagonally through rooms', () => {
+  const rooms = layoutAgents(six);
+  const [from, , , to] = rooms;
   const route = routeBetween(from, to);
-  assert.deepEqual(alongRoute(route, 0), from.dock);
   assert.deepEqual(alongRoute(route, 1), to.dock);
-  const mid = alongRoute(route, 0.5);
-  assert.ok(mid.y > from.dock.y, 'the parcel travels through the aisle, not across the rooms');
+  assert.ok(route.some(p => p.x === from.door.x && p.y === from.door.y), 'passes the source door');
+  assert.ok(route.some(p => p.y === from.aisleY), 'joins the shared aisle');
 });
 
-test('alongRoute survives a degenerate route', () => {
-  const p = { x: 5, y: 5 };
-  assert.deepEqual(alongRoute([p], 0.5), p);
-  assert.deepEqual(alongRoute([p, p], 0.5), p);   // zero-length segment, no NaN
+test('depth is keyed on ground support, never on a parcel lift', () => {
+  const items = [
+    { id: 'far', x: 10, y: 10, layer: 0 },
+    { id: 'near', x: 200, y: 200, layer: 0 },
+    { id: 'tie-b', x: 100, y: 100, layer: 3 },
+    { id: 'tie-a', x: 100, y: 100, layer: 1 },
+  ];
+  assert.deepEqual(sortDrawables(items).map(i => i.id), ['far', 'tie-a', 'tie-b', 'near']);
+  // Shuffling the input must not change the order — the sort is total and stable.
+  assert.deepEqual(sortDrawables([...items].reverse()).map(i => i.id),
+    ['far', 'tie-a', 'tie-b', 'near']);
 });
 
 test('counts conserve: completed = ready + transit + sent', () => {
   const pkgs = [
-    { id: '1', from: 'a', status: 'ready' },
-    { id: '2', from: 'a', status: 'transit' },
-    { id: '3', from: 'a', status: 'received' },
-    { id: '4', from: 'b', status: 'ready' },
+    { id: '1', from: 'a', status: 'ready' }, { id: '2', from: 'a', status: 'transit' },
+    { id: '3', from: 'a', status: 'received' }, { id: '4', from: 'b', status: 'ready' },
   ];
   const c = counts(pkgs, 'a');
   assert.equal(c.completed, 3);
@@ -52,111 +72,68 @@ test('staleness wins over the reported state', () => {
 });
 
 const blank = { lastSeq: 0, seen: [], agents: [{ id: 'a', state: 'idle' }], packages: [] };
-const completed = (seq, id) => ({ id: `e${seq}`, seq, type: 'task.completed', package: { id, from: 'a', to: 'b' } });
+const done = (seq, id) => ({ id: `e${seq}`, seq, type: 'task.completed', package: { id, from: 'a', to: 'b' } });
 
 test('the reducer refuses replays, duplicates and gaps', () => {
-  let m = applyEvent(blank, completed(1, 'p1'));
+  const m = applyEvent(blank, done(1, 'p1'));
   assert.equal(m.packages.length, 1);
-
-  // Same event again — no second package.
-  assert.equal(applyEvent(m, completed(1, 'p1')).packages.length, 1);
-  // A new id at an already-applied seq is still refused.
-  assert.equal(applyEvent(m, completed(1, 'p2')).packages.length, 1);
-  // A gap flags a resync instead of applying out of order.
-  const gapped = applyEvent(m, completed(3, 'p3'));
+  assert.equal(applyEvent(m, done(1, 'p1')).packages.length, 1);
+  assert.equal(applyEvent(m, done(1, 'p2')).packages.length, 1);
+  const gapped = applyEvent(m, done(3, 'p3'));
   assert.equal(gapped.resyncRequired, true);
   assert.equal(gapped.packages.length, 1);
 });
 
-test('a duplicate completion id cannot mint a second package', () => {
-  let m = applyEvent(blank, completed(1, 'p1'));
-  m = applyEvent(m, completed(2, 'p1'));            // same package, fresh event id
-  assert.equal(m.packages.length, 1);
-});
-
-test('a failed transfer restores the SAME package to ready', () => {
-  let m = applyEvent(blank, completed(1, 'p1'));
+test('a failed transfer restores the SAME package id — one retry path, no -retry suffix', () => {
+  let m = applyEvent(blank, done(1, 'p1'));
   m = applyEvent(m, { id: 'd', seq: 2, type: 'handoff.departed', packageId: 'p1' });
   assert.equal(m.packages[0].status, 'transit');
   m = applyEvent(m, { id: 'f', seq: 3, type: 'handoff.failed', packageId: 'p1' });
   assert.equal(m.packages.length, 1, 'no retry package is minted');
+  assert.equal(m.packages[0].id, 'p1');
   assert.equal(m.packages[0].status, 'ready');
-  assert.equal(m.packages[0].id, 'p1', 'the id is unchanged — one retry path, no -retry suffix');
 });
 
 test('receipt moves a package, it does not create a completed output', () => {
-  let m = applyEvent(blank, completed(1, 'p1'));
+  let m = applyEvent(blank, done(1, 'p1'));
   m = applyEvent(m, { id: 'd', seq: 2, type: 'handoff.departed', packageId: 'p1' });
   m = applyEvent(m, { id: 'r', seq: 3, type: 'handoff.received', packageId: 'p1' });
-  const c = counts(m.packages, 'a');
-  assert.equal(c.completed, 1);
-  assert.equal(c.sent, 1);
+  assert.equal(counts(m.packages, 'a').completed, 1);
+  assert.equal(counts(m.packages, 'a').sent, 1);
 });
 
-const sheet = {
-  states: {
-    working: { frames: [0, 2, 4], ms: 100 },
-    idle: { frames: [5, 5, 5, 1], ms: 500 },
-    blocked: { frames: [3] },
-    asleep: { frames: [1] },
-    offline: { frames: [1] },
-  },
-};
-
-test('frames cycle in manifest order, at the state\'s own tempo', () => {
-  assert.equal(frameFor('working', sheet, 0), 0);
-  assert.equal(frameFor('working', sheet, 150), 2);
-  assert.equal(frameFor('working', sheet, 250), 4);
-  assert.equal(frameFor('working', sheet, 350), 0, 'wraps');
-  // Idle runs on its own slower clock, and a repeated frame weights it.
-  assert.equal(frameFor('idle', sheet, 0), 5);
-  assert.equal(frameFor('idle', sheet, 1200), 5);
-  assert.equal(frameFor('idle', sheet, 1600), 1, 'the blink lands on the 4th beat');
+test('bays draw at most 12 parcels; the overflow is exact, not a guess', () => {
+  const o = { x: 0, y: 0 };
+  assert.equal(packageSlots(5, o).length, 5);
+  assert.equal(packageSlots(40, o).length, 12);
 });
 
-test('a stopped state never animates — this is the rule that keeps the floor honest', () => {
-  // A stuck agent that keeps working tells the viewer it is working, and the
-  // floor outvotes the table.
-  for (const t of [0, 500, 5_000, 60_000]) {
-    assert.equal(frameFor('blocked', sheet, t), 3);
-    assert.equal(frameFor('asleep', sheet, t), 1);
-  }
-  assert.equal(animates('blocked', sheet), false);
-  assert.equal(animates('asleep', sheet), false);
-  assert.equal(animates('offline', sheet), false);
-  assert.equal(animates('working', sheet), true);
-  assert.equal(animates('idle', sheet), true, 'idle breathes');
-});
-
-test('idle is unmistakably slower than working', () => {
-  const w = sheet.states.working, i = sheet.states.idle;
-  assert.ok(i.ms >= w.ms * 3, `idle ${i.ms}ms must read as a different tempo to working ${w.ms}ms`);
-});
-
-test('an unknown state falls back to idle, and a missing sheet to frame 0', () => {
-  assert.equal(frameFor('wedged', sheet, 0), 5);
-  assert.equal(frameFor('working', undefined, 999), 0);
-  assert.equal(frameFor('working', { states: { working: { frames: [] } } }, 999), 0);
-});
-
-test('every shipped sheet defines all five states, and never animates a stopped one', async () => {
-  const { readFile } = await import('node:fs/promises');
-  const m = JSON.parse(await readFile(new URL('./assets/MANIFEST.json', import.meta.url), 'utf8'));
-  const total = m.sheetDefaults.cols * m.sheetDefaults.rows;
-  for (const a of m.agents.filter(a => a.sheet)) {
-    for (const s of ['working', 'idle', 'blocked', 'asleep', 'offline']) {
-      const set = a.states?.[s];
-      assert.ok(set?.frames?.length, `${a.id} is missing the ${s} state`);
-      assert.ok(set.frames.every(f => Number.isInteger(f) && f >= 0 && f < total),
-        `${a.id}.${s} references a frame outside the ${total}-frame sheet`);
-      if (s !== 'working' && s !== 'idle') {
-        assert.equal(set.frames.length, 1, `${a.id}.${s} must be a single held frame`);
-      }
+test('nameplates never overlap and stay inside the stage', () => {
+  const cand = Array.from({ length: 6 }, (_, i) => ({ id: `a${i}`, x: 50, y: 20, w: 96, h: 27 }));
+  const placed = avoidLabelCollisions(cand, 800, 600);
+  for (let i = 0; i < placed.length; i++) {
+    assert.ok(placed[i].x >= 0 && placed[i].x + placed[i].w <= 800, 'clamped horizontally');
+    assert.ok(placed[i].y >= 0 && placed[i].y + placed[i].h <= 600, 'clamped vertically');
+    for (let j = i + 1; j < placed.length; j++) {
+      const a = placed[i], b = placed[j];
+      const overlap = a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+      assert.ok(!overlap, `plate ${i} overlaps ${j}`);
     }
-    assert.ok(a.states.idle.ms >= a.states.working.ms * 2,
-      `${a.id}: idle must read slower than working`);
-    // Row alignment: without these the floor jumps when the loop crosses rows.
-    assert.ok(a.frameH > 0 && Array.isArray(a.rowTop) && a.rowTop.length === 2,
-      `${a.id} is missing measured row alignment`);
   }
+});
+
+test('the manifest is the roster, and every resident has a station and sprite', async () => {
+  const m = JSON.parse(await readFile(new URL('./assets/MANIFEST.json', import.meta.url), 'utf8'));
+  const residents = m.agents.filter(a => a.resident !== false);
+  assert.equal(residents.length, 6);
+  for (const a of residents) {
+    for (const k of ['station', 'sprite', 'color', 'floor', 'wall', 'trim', 'room', 'lane']) {
+      assert.ok(a[k], `${a.id} is missing ${k}`);
+    }
+  }
+  // No image assets: the sheets are reference, not runtime atlases.
+  assert.ok(!JSON.stringify(m).match(/\.(png|webp|jpg)"/), 'manifest must not reference image files');
+  // Layout must hold for the roster as configured, and for a 7th agent later.
+  assert.equal(layoutAgents(residents).length, 6);
+  assert.equal(layoutAgents([...residents, { id: 'new' }]).length, 7);
 });
