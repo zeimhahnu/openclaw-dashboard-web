@@ -279,3 +279,73 @@ export function toSystem(state) {
     gateway: s.gateway?.active, nginx: s.nginx?.active,
   };
 }
+
+/* ---------------------------------------------------------------------------
+   The Exchange: who handed what to whom.
+
+   Derived, not fetched — a task file already records `assignedBy`, and the
+   agent whose queue it sits in is the assignee. No new endpoint needed.
+
+   A handoff is only a handoff when the two ends differ: a task an agent filed
+   for itself is work, not an exchange.
+--------------------------------------------------------------------------- */
+export function toExchange(tasks, manifest, limit = 40) {
+  if (!tasks) return { connected: false, items: [] };
+  const nameOf = id => manifest.agents.find(a => (a.feedKey ?? a.id) === id || a.id === id)?.name ?? id;
+  const items = [];
+  for (const [agentKey, q] of Object.entries(tasks)) {
+    for (const queue of ['outbox', 'deadletter']) {
+      for (const t of (q?.[queue] ?? [])) {
+        const from = t.assignedBy;
+        if (!from || from === agentKey) continue;
+        // NOTIFY_COMPLETE rows are the relay's own bookkeeping, not an exchange.
+        if ((t.type || '').toUpperCase().startsWith('NOTIFY')) continue;
+        items.push({
+          id: t.id,
+          from: nameOf(from), to: nameOf(agentKey),
+          title: t.description || t.id,
+          type: t.type || '—',
+          at: t.completedAt || t.createdAt || null,
+          ageH: t.age_h ?? null,
+          failed: queue === 'deadletter' || t.status === 'failed',
+        });
+      }
+    }
+  }
+  items.sort((a, b) => (a.ageH ?? 1e9) - (b.ageH ?? 1e9));
+  return { connected: true, items: items.slice(0, limit), total: items.length };
+}
+
+/* ---------------------------------------------------------------------------
+   Packages for the floor's bays. One package = one completed stage.
+
+   Scope is DECLARED, not implied: DESIGN.md warns against silently reading
+   "current run" as today or as lifetime. We take a fixed window and say so.
+
+   Everything here lands as `received` (green). We have no acknowledgement
+   signal, so nothing can honestly be drawn as ready-but-unsent — and inventing
+   a beige pile would be exactly the decorative count the spec forbids.
+--------------------------------------------------------------------------- */
+export function toPackages(tasks, manifest, windowDays = 7) {
+  if (!tasks) return { packages: [], connected: false, windowDays };
+  const idOf = key => manifest.agents.find(a => (a.feedKey ?? a.id) === key)?.id ?? key;
+  const maxAge = windowDays * 24;
+  const seen = new Set();
+  const packages = [];
+  for (const [agentKey, q] of Object.entries(tasks)) {
+    for (const t of (q?.outbox ?? [])) {
+      if ((t.type || '').toUpperCase().startsWith('NOTIFY')) continue;
+      if (t.age_h != null && t.age_h > maxAge) continue;
+      if (seen.has(t.id)) continue;          // one output, represented once
+      seen.add(t.id);
+      packages.push({
+        id: t.id,
+        from: idOf(agentKey),
+        to: idOf(t.assignedBy || agentKey),
+        status: 'received',
+        publicTitle: t.description || t.id,
+      });
+    }
+  }
+  return { packages, connected: true, windowDays };
+}

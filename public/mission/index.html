@@ -166,6 +166,11 @@ nav{display:grid;gap:3px}
 .feed time{color:#6f7767;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:11px}
 .feed .src{font-size:10px;color:#6b7967;text-transform:uppercase;letter-spacing:.05em;min-width:38px}
 .feed p{margin:0;overflow-wrap:anywhere}
+.feed .hop{display:flex;align-items:center;gap:7px;white-space:nowrap;font-size:11px;color:#4d5a52}
+.feed .hop b{font-weight:500}
+.feed .hop i{font-style:normal;color:#8a968f}
+.feed .hop-state{margin-left:auto;font-size:10px;color:#5f7a68;white-space:nowrap}
+.feed .hop-state.bad{color:#a8582a}
 .spark{display:flex;align-items:flex-end;gap:6px;height:110px;padding:8px 0 0;margin-bottom:8px}
 .spark-col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;min-width:28px}
 .spark-bar{width:100%;background:#6f9a80;border-radius:2px 2px 0 0;min-height:2px}
@@ -249,6 +254,13 @@ nav{display:grid;gap:3px}
       </section>
     </section>
 
+    <section class="panel" id="exchange-panel">
+      <div class="panel-head"><h2>The exchange</h2><span class="panel-note" id="exchange-scope"></span></div>
+      <p class="panel-note">Work handed from one agent to another. Derived from each task's
+      own <code>assignedBy</code>, so it is the real chain of custody, not a log.</p>
+      <ol class="feed" id="exchange-body"></ol>
+    </section>
+
     <section class="now-panel">
       <div class="section-toolbar"><h2>Now</h2><span class="muted">Current task, by agent</span></div>
       <div class="now-table-wrap">
@@ -314,9 +326,9 @@ nav{display:grid;gap:3px}
 // content-hashed bundles and fatal for these stable filenames: without a new
 // URL, a redeploy can never invalidate them and the browser will not even
 // revalidate. BUMP THIS ON EVERY CHANGE to these modules. Do not "tidy" it away.
-const V = '13';
+const V = '14';
 const { createWorld } = await import(`./world.js?v=${V}`);
-const { loadManifest, fetchAll, toModel, toUsage, toTriage, toActivity, toSystem } = await import(`./feed.js?v=${V}`);
+const { loadManifest, fetchAll, toModel, toUsage, toTriage, toActivity, toSystem, toExchange, toPackages } = await import(`./feed.js?v=${V}`);
 const { counts } = await import(`./core.js?v=${V}`);
 
 const $ = id => document.getElementById(id);
@@ -494,6 +506,17 @@ function renderTriage(tr) {
   }).join('');
 }
 
+function renderExchange(ex) {
+  $('exchange-scope').textContent = ex.connected
+    ? `${ex.total} handoff${ex.total === 1 ? '' : 's'}` : 'task feed not connected';
+  $('exchange-body').innerHTML = ex.items.length ? ex.items.map(e => `<li>
+      <span class="hop"><b>${e.from}</b><i aria-hidden="true">→</i><b>${e.to}</b></span>
+      <p>${e.title}</p>
+      <span class="hop-state ${e.failed ? 'bad' : ''}">${e.failed ? 'failed' : 'delivered'}</span>
+    </li>`).join('')
+    : '<li><p class="empty">No handoffs in the listed window.</p></li>';
+}
+
 function renderActivity(ev) {
   $('activity-count').textContent = `${ev.length} recent`;
   $('activity-body').innerHTML = ev.map(e => `<li>
@@ -532,7 +555,15 @@ async function poll() {
     world.update(model, selected);
 
     const u = toUsage(usage), tr = toTriage(tasks, active, manifest), sys = toSystem(state);
-    renderUsage(u); renderTriage(tr); renderActivity(toActivity(state)); renderSystem(sys, tr, u);
+    const ex = toExchange(tasks, manifest);
+    const pk = toPackages(tasks, manifest);
+    model.packages = pk.packages;
+    model.packagesConnected = pk.connected;
+    world.update(model, selected);
+    $('pkg-note').textContent = pk.connected
+      ? `1 package = 1 completed stage · last ${pk.windowDays} days`
+      : 'Handoff feed not connected';
+    renderUsage(u); renderTriage(tr); renderExchange(ex); renderActivity(toActivity(state)); renderSystem(sys, tr, u);
 
     const dead = tr.connected ? tr.queues.find(q => q.key === 'deadletter').count : 0;
     const queued = tr.connected ? tr.queues.find(q => q.key === 'inbox').count : 0;
