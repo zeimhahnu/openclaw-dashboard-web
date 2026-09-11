@@ -195,9 +195,15 @@ canvas{display:block;width:100%;image-rendering:pixelated;touch-action:manipulat
 </div>
 
 <script type="module">
-import { createWorld } from './world.js';
-import { loadManifest, fetchState, toModel } from './feed.js';
-import { counts } from './core.js';
+// Module URLs carry ?v= because nginx serves every .js with
+// `expires 1y; Cache-Control: public, immutable`. That is right for Next's
+// content-hashed bundles and fatal for these stable filenames: without a new
+// URL, a redeploy can never invalidate them and the browser will not even
+// revalidate. BUMP THIS ON EVERY CHANGE to these modules. Do not "tidy" it away.
+const V = '4';
+const { createWorld } = await import(`./world.js?v=${V}`);
+const { loadManifest, fetchState, toModel } = await import(`./feed.js?v=${V}`);
+const { counts } = await import(`./core.js?v=${V}`);
 
 const $ = id => document.getElementById(id);
 const POLL_MS = 7000;
