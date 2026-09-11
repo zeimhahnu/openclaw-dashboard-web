@@ -33,9 +33,15 @@ function parseTs(v) {
 /**
  * Derive a display state from what the gateway actually reports.
  *
- * Deliberately does NOT use the feed's `health` field: that is computed from
- * process liveness, so a daemon that is up but has observed nothing for seven
- * days still says "green". We read `last_seen` and let staleness win.
+ * Freshness is the SERVER's call as of 2026-09-11: the gateway now emits
+ * `stale` and `observed_at` per agent, with a per-agent threshold it knows and
+ * we do not (mason is intermittent by design; a daemon is not). We only compute
+ * it ourselves when the field is absent — an old gateway — because two
+ * independent freshness rules disagreeing is worse than either one.
+ *
+ * `health` still is not trusted on its own: it is derived from process liveness,
+ * so before this fix a daemon that was up but had observed nothing for seven
+ * days reported green. Staleness wins over it either way.
  */
 export function deriveAgent(id, row, manifestEntry, now = Date.now()) {
   const base = {
@@ -51,8 +57,8 @@ export function deriveAgent(id, row, manifestEntry, now = Date.now()) {
     return { ...base, state: 'offline', connected: false, task: null, stage: null, observedAt: null, queue: 0, completedToday: 0 };
   }
 
-  const observedAt = parseTs(row.last_seen);
-  const stale = observedAt == null || now - observedAt > STALE_MS;
+  const observedAt = parseTs(row.observed_at ?? row.last_seen);
+  const stale = row.stale ?? (observedAt == null || now - observedAt > STALE_MS);
 
   let state;
   if (stale) state = 'offline';
