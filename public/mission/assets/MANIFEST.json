@@ -25,7 +25,7 @@
       "name": "Goop",
       "room": "Workshop",
       "lane": "BUILD",
-      "sheet": "goop.png",
+      "sheet": "goop.webp",
       "frameH": 433,
       "rowTop": [52, 28],
       "states": {
@@ -42,7 +42,7 @@
       "name": "Iris",
       "room": "Reading room",
       "lane": "CRITIQUE",
-      "sheet": "iris.png",
+      "sheet": "iris.webp",
       "frameH": 437,
       "rowTop": [52, 20],
       "states": {
@@ -59,7 +59,7 @@
       "name": "Rook",
       "room": "Weighing room",
       "lane": "RANK",
-      "sheet": "rook.png",
+      "sheet": "rook.webp",
       "frameH": 459,
       "rowTop": [52, 17],
       "states": {
@@ -76,7 +76,7 @@
       "name": "Vera",
       "room": "Map room",
       "lane": "ANALYSE",
-      "sheet": "vera.png",
+      "sheet": "vera.webp",
       "frameH": 451,
       "rowTop": [52, 20],
       "states": {
@@ -93,7 +93,7 @@
       "name": "Lil Claw",
       "room": "Dispatch",
       "lane": "ROUTE",
-      "sheet": "lil-claw.png",
+      "sheet": "lil-claw.webp",
       "frameH": 440,
       "rowTop": [52, 16],
       "states": {
@@ -110,7 +110,7 @@
       "name": "Pip",
       "room": "Hearth",
       "lane": "QUIET",
-      "sheet": "pip.png",
+      "sheet": "pip.webp",
       "frameH": 437,
       "rowTop": [52, 19],
       "states": {
