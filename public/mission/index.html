@@ -195,9 +195,9 @@ canvas{display:block;width:100%;image-rendering:pixelated;touch-action:manipulat
 </div>
 
 <script type="module">
-import { createWorld } from './world.mjs';
-import { loadManifest, fetchState, toModel } from './feed.mjs';
-import { counts } from './core.mjs';
+import { createWorld } from './world.js';
+import { loadManifest, fetchState, toModel } from './feed.js';
+import { counts } from './core.js';
 
 const $ = id => document.getElementById(id);
 const POLL_MS = 7000;

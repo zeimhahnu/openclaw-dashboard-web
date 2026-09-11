@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   layoutRooms, stageSize, routeBetween, alongRoute,
   counts, effectiveState, applyEvent, frameFor, animates,
-} from './core.mjs';
+} from './core.js';
 
 const agents = ['a', 'b', 'c', 'd'].map(id => ({ id, state: 'idle' }));
 

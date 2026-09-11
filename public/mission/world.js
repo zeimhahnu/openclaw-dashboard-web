@@ -6,7 +6,7 @@
 // The travelling parcel stays in the aisle BETWEEN tiles, so nothing ever needs
 // to be sorted against anything.
 
-import { layoutRooms, stageSize, routeBetween, alongRoute, frameFor, animates, STATE_STYLE } from './core.mjs';
+import { layoutRooms, stageSize, routeBetween, alongRoute, frameFor, animates, STATE_STYLE } from './core.js';
 
 const MAX_FPS = 30;
 
