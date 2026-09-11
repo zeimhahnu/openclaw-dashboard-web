@@ -1,7 +1,7 @@
 // Adapter: the live gateway's /state payload -> the model the world renderer wants.
 // Nothing here writes. The runner owns every task transition.
 
-const API = location.origin;          // same-origin; nginx proxies /state to :8443
+const API = () => (typeof location === 'undefined' ? '' : location.origin);  // same-origin; nginx proxies to :8443
 const STALE_MS = 45_000;
 
 /**
@@ -15,10 +15,30 @@ export async function loadManifest() {
   return r.json();
 }
 
-export async function fetchState() {
-  const r = await fetch(`${API}/state`, { cache: 'no-store' });
-  if (!r.ok) throw new Error(`state ${r.status}`);
-  return r.json();
+const get = async (path, fallback) => {
+  try {
+    const r = await fetch(`${API()}${path}`, { cache: 'no-store' });
+    if (!r.ok) throw new Error(String(r.status));
+    return await r.json();
+  } catch { return fallback; }   // a missing panel must not blank the page
+};
+
+/**
+ * v3, not /state. /state is a v2 compatibility shim that never carried the
+ * fields added since — `observed_at`, `observed_source`, `stale`, `system`,
+ * `events`. Reading the shim is how a field lands server-side and stays
+ * invisible for weeks.
+ *
+ * The three feeds are independent: a dead usage meter must not blank the floor.
+ */
+export async function fetchAll() {
+  const [state, usage, tasks] = await Promise.all([
+    get('/state/v3', null),
+    get('/usage/tokens?days=7', null),
+    get('/tasks/details', null),
+  ]);
+  if (!state) throw new Error('gateway unreachable');
+  return { state, usage, tasks };
 }
 
 const parseTs = v => { const ms = Date.parse(v ?? ''); return Number.isNaN(ms) ? null : ms; };
@@ -107,5 +127,123 @@ export function toModel(state, manifest, now = Date.now()) {
       : { name: 'Mason', state: 'offline' },
     health: { ingress: null, deadletters: null },
     cost: null,
+  };
+}
+
+/* ---------------------------------------------------------------------------
+   Token usage.
+
+   Two traps this encodes, because both produce confident wrong numbers:
+
+   1. v3 carries its OWN `usage` block from the old gateway-sessions meter. It
+      reports `instrumented: false` and all zeros. Rendering it gives a cost
+      panel full of zeros that reads as "we spent nothing". Ignore it entirely;
+      the real meter is /usage/tokens, read from the per-agent transcript DBs.
+
+   2. The fleet default is flat-rate OAuth (ChatGPT Plus, Claude). Those turns
+      have NO dollar figure that exists anywhere, so the meter returns
+      `cost_usd: null` with `cost_basis: "subscription"`. A $0 there is a lie in
+      the cheapest possible direction. Only `provider-billed` rows get money.
+--------------------------------------------------------------------------- */
+export function toUsage(usage) {
+  if (!usage) return { connected: false };
+  const rows = Object.entries(usage.by_model ?? {})
+    .map(([model, m]) => ({ model, ...m }))
+    .filter(m => m.turns > 0)
+    .sort((a, b) => b.turns - a.turns);
+
+  const byAgent = Object.entries(usage.by_agent ?? {})
+    .map(([id, m]) => ({ id, ...m }))
+    .filter(m => m.turns > 0)
+    .sort((a, b) => b.turns - a.turns);
+
+  const billed = rows.filter(m => m.cost_basis === 'provider-billed');
+  const metered = rows.filter(m => m.cost_basis === 'subscription');
+
+  return {
+    connected: true,
+    turns: usage.turns ?? 0,
+    tokensIn: usage.tokens_in ?? 0,
+    tokensOut: usage.tokens_out ?? 0,
+    cacheRead: usage.cache_read ?? 0,
+    since: usage.meter_since ?? null,
+    historySince: usage.history_since ?? null,
+    byModel: rows,
+    byAgent,
+    // Only money that actually exists. Never a total across subscription rows.
+    billedUsd: billed.reduce((n, m) => n + (m.cost_usd ?? 0), 0),
+    billedTurns: billed.reduce((n, m) => n + m.turns, 0),
+    subscriptionTurns: metered.reduce((n, m) => n + m.turns, 0),
+    byDay: usage.by_day ?? {},
+    quotaPressure: usage.quota_pressure ?? null,
+  };
+}
+
+/* ---------------------------------------------------------------------------
+   Task triage.
+
+   Ordered by what actually needs a human, not by recency:
+   deadletter first (these fail silently and nobody audits red), then work in
+   flight, then what is queued. A shipped item is history, not triage.
+--------------------------------------------------------------------------- */
+const QUEUES = [
+  { key: 'deadletter', label: 'Dead-lettered', tone: 'bad', note: 'Failed and parked. Nothing retries these on its own.' },
+  { key: 'processing', label: 'In flight', tone: 'busy', note: 'Claimed by a runner.' },
+  { key: 'inbox', label: 'Queued', tone: 'calm', note: 'Waiting for a runner to claim.' },
+  { key: 'outbox', label: 'Shipped', tone: 'done', note: 'Completed. History, not triage.' },
+];
+
+export function toTriage(tasks, manifest, now = Date.now()) {
+  if (!tasks) return { connected: false, queues: [] };
+  const nameOf = id => manifest.agents.find(a => (a.feedKey ?? a.id) === id || a.id === id)?.name ?? id;
+
+  const queues = QUEUES.map(q => {
+    const items = [];
+    for (const [agentKey, byQueue] of Object.entries(tasks)) {
+      for (const t of (byQueue?.[q.key] ?? [])) {
+        const created = parseTs(t.createdAt) ?? parseTs(t.completedAt);
+        items.push({
+          id: t.id, type: t.type || '—', status: t.status || '—',
+          priority: t.priority || null,
+          agent: nameOf(agentKey),
+          ageH: t.age_h ?? (created ? (now - created) / 3.6e6 : null),
+          description: t.description || '',
+          // A task file without acceptance/verify is malformed: it can be
+          // marked complete with nothing to check it against. Surface that.
+          malformed: !t.description && q.key !== 'outbox',
+        });
+      }
+    }
+    // Dead letters sort NEWEST first: a failure from this morning is
+    // actionable, one from three months ago is archaeology. Everything else
+    // sorts oldest-first, because the longest-waiting item is the problem.
+    items.sort((a, b) => q.key === 'deadletter'
+      ? (a.ageH ?? 0) - (b.ageH ?? 0)
+      : (b.ageH ?? 0) - (a.ageH ?? 0));
+    const aged = items.filter(i => (i.ageH ?? 0) > 720).length;   // > 30 days
+    return { ...q, items, count: items.length, aged, fresh: items.length - aged };
+  });
+
+  return { connected: true, queues, needsAttention: queues[0].count + queues.find(q => q.key === 'processing').items.filter(i => (i.ageH ?? 0) > 6).length };
+}
+
+/** Recent lifecycle events, newest first. */
+export function toActivity(state) {
+  return (state?.events ?? []).map(e => ({
+    ts: e.ts, source: e.source, agent: e.agent, text: e.text,
+  }));
+}
+
+/** Box health. `system` is only on v3. */
+export function toSystem(state) {
+  const s = state?.system;
+  if (!s) return { connected: false };
+  return {
+    connected: true,
+    memPct: s.mem?.pct, memUsed: s.mem?.used_mb, memTotal: s.mem?.total_mb,
+    diskPct: s.disk?.pct, diskUsed: s.disk?.used_gb, diskTotal: s.disk?.total_gb,
+    load1: s.load_1, load5: s.load_5, load15: s.load_15,
+    uptimeH: s.uptime_h,
+    gateway: s.gateway?.active, nginx: s.nginx?.active,
   };
 }

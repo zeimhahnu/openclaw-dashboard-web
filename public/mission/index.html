@@ -90,7 +90,7 @@ canvas{display:block;width:100%;image-rendering:pixelated;touch-action:manipulat
 .stage-cell{font-family:ui-monospace,monospace;font-size:10px;color:#88948a}
 .state-cell{font-size:10px;white-space:nowrap}
 .state-cell.is-blocked{color:#a86132}.state-cell.is-working{color:#4f7962}.state-cell.is-offline{color:#a5aaa6}
-.health-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin:24px 0;padding:16px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.health-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:20px;margin:24px 0;padding:16px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .health-row>div{display:grid;gap:5px;color:#a0a79f;font-size:10px}
 .health-label{color:#677970;font-size:11px}
 .health-row b{font-weight:500;font-size:13px;color:#4c5c53}
@@ -102,12 +102,79 @@ canvas{display:block;width:100%;image-rendering:pixelated;touch-action:manipulat
   .agent-choice{min-height:44px}.health-row{grid-template-columns:1fr}
   .now-table th:nth-child(3),.now-table td:nth-child(3){display:none}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+/* ---- views ---- */
+.view[hidden]{display:none!important}
+.nav-item{display:flex;align-items:center;gap:10px;border:0;background:transparent;color:#737c7a;
+  text-align:left;padding:10px 12px;border-radius:4px;min-height:40px;width:100%;font-size:12px}
+.nav-item.active{background:#eaf0ed;color:#285f51;font-weight:500}
+.nav-item:hover{background:#eef1ef}
+.nav-count{margin-left:auto;font-size:10px;color:#8b958f;font-variant-numeric:tabular-nums}
+.nav-item.active .nav-count{color:#3f7563}
+.nav-count.bad{color:#a8582a;font-weight:600}
+nav{display:grid;gap:3px}
+/* ---- generic panel ---- */
+.panel{border-top:1px solid var(--line);padding:20px 0 8px}
+.panel-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:4px}
+.panel-head h2{font-size:14px;font-weight:500;margin:0}
+.panel-note{font-size:11px;color:#8b948e;margin:0 0 14px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:18px}
+.tile{background:#fff;padding:14px 16px}
+.tile span{display:block;font-size:10px;color:#79817e;letter-spacing:.04em}
+.tile strong{display:block;font-family:Georgia,serif;font-size:26px;font-weight:400;line-height:1.05;margin-top:8px;font-variant-numeric:tabular-nums}
+.tile small{display:block;font-size:10px;color:#99a29c;margin-top:5px}
+.tile.unknown strong{font-size:13px;font-family:Inter,Arial,sans-serif;color:#9aa29c}
+/* ---- data table ---- */
+.dt{width:100%;border-collapse:collapse;font-size:12px}
+.dt th{text-align:left;color:#8c958e;font-size:10px;font-weight:400;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.dt td{padding:9px 8px;border-bottom:1px solid #edf0ec;color:#5f6b64;vertical-align:top}
+.dt th:first-child,.dt td:first-child{padding-left:0}
+.dt .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.dt .mono{font-family:ui-monospace,monospace;font-size:11px;color:#6a766e}
+.bar{height:5px;background:#eaeee9;border-radius:2px;overflow:hidden;min-width:60px;margin-top:5px}
+.bar i{display:block;height:100%;background:#5c8a72}
+.bar i.warm{background:#c98a4c}
+/* ---- triage ---- */
+.queue{margin-bottom:22px}
+.queue-head{display:flex;align-items:baseline;gap:10px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+.queue-head h3{margin:0;font-size:12px;font-weight:500}
+.queue-head .n{font-family:Georgia,serif;font-size:18px}
+.queue-head .why{margin-left:auto;font-size:10px;color:#99a29c}
+.queue.bad .queue-head{border-bottom-color:#e0b894}
+.queue.bad .n,.queue.bad h3{color:#8f4a1f}
+.task{display:grid;grid-template-columns:1fr auto;gap:4px 14px;padding:11px 0 11px 11px;border-bottom:1px solid #edf0ec;border-left:2px solid transparent}
+.queue.bad .task{border-left-color:#d39a5c;background:#fffaf4}
+.queue.busy .task{border-left-color:#8fae97}
+.task-id{font-family:ui-monospace,monospace;font-size:11px;color:#3f4b45;overflow-wrap:anywhere}
+.task-meta{font-size:10px;color:#98a19b;grid-column:1/-1}
+.task-age{font-size:11px;color:#7c857f;font-variant-numeric:tabular-nums;white-space:nowrap}
+.task-age.old{color:#a8582a;font-weight:500}
+.empty{font-size:11px;color:#a4aca6;padding:12px 0}
+/* ---- activity ---- */
+.feed{list-style:none;padding:0;margin:0}
+.feed li{display:flex;gap:16px;padding:11px 0;border-bottom:1px solid #edf0ec;font-size:12px;color:#5f6b64}
+.feed time{color:#a3aa9d;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:11px}
+.feed .src{font-size:10px;color:#93a08f;text-transform:uppercase;letter-spacing:.05em;min-width:38px}
+.feed p{margin:0;overflow-wrap:anywhere}
+.spark{display:flex;align-items:flex-end;gap:6px;height:110px;padding:8px 0 0;margin-bottom:8px}
+.spark-col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;min-width:28px}
+.spark-bar{width:100%;background:#6f9a80;border-radius:2px 2px 0 0;min-height:2px}
+.spark-bar.warm{background:#c98a4c}
+.spark-col span{font-size:9px;color:#a0a89f;margin-top:5px;font-variant-numeric:tabular-nums}
+.spark-col b{font-size:10px;font-weight:500;color:#68736c;font-variant-numeric:tabular-nums}
+@media(max-width:720px){.tiles{grid-template-columns:repeat(2,1fr)}.dt th:nth-child(4),.dt td:nth-child(4){display:none}}
+
 </style>
 </head>
 <body>
 <div id="mc">
   <aside class="sidebar" aria-label="Workspace navigation">
     <div class="wordmark"><span class="monogram">a.</span><span class="wordmark-text">OpenClaw</span></div>
+    <nav id="nav" aria-label="Views">
+      <button class="nav-item active" data-view="floor">Overview<span class="nav-count" id="nc-floor"></span></button>
+      <button class="nav-item" data-view="triage">Triage<span class="nav-count" id="nc-triage"></span></button>
+      <button class="nav-item" data-view="usage">Usage<span class="nav-count" id="nc-usage"></span></button>
+      <button class="nav-item" data-view="activity">Activity<span class="nav-count" id="nc-activity"></span></button>
+    </nav>
     <div class="sidebar-foot">
       <span class="presence-dot" id="mason-dot"></span>
       <span class="nav-label">Mason <small id="mason-state">visitor</small></span>
@@ -144,6 +211,7 @@ canvas{display:block;width:100%;image-rendering:pixelated;touch-action:manipulat
       <div><strong id="attention-who"></strong><span id="attention-why"></span></div>
     </section>
 
+    <div class="view" data-view="floor">
     <section>
       <div class="section-toolbar">
         <div class="section-title">The floor <span id="room-count"></span></div>
@@ -182,10 +250,46 @@ canvas{display:block;width:100%;image-rendering:pixelated;touch-action:manipulat
     </section>
 
     <section class="health-row">
-      <div><span class="health-label">Ingress health</span><b id="h-ingress">not connected</b></div>
-      <div><span class="health-label">Deadletters</span><b id="h-dead">not connected</b></div>
-      <div><span class="health-label">Usage &amp; cost</span><b id="h-cost">meter not connected</b></div>
+      <div><span class="health-label">Memory</span><b id="h-mem">—</b></div>
+      <div><span class="health-label">Disk</span><b id="h-disk">—</b></div>
+      <div><span class="health-label">Load</span><b id="h-load">—</b></div>
+      <div><span class="health-label">Dead-lettered</span><b id="h-dead">—</b></div>
+      <div><span class="health-label">Token meter</span><b id="h-cost">—</b></div>
     </section>
+
+    </div><!-- /floor view -->
+
+    <div class="view" data-view="triage" hidden>
+      <div class="panel-head"><h2>Triage</h2><span class="panel-note" id="triage-scope"></span></div>
+      <p class="panel-note">Ordered by what needs a person, not by recency. Dead-lettered work fails
+      quietly and nobody audits red, so it sits at the top.</p>
+      <div id="triage-body"></div>
+    </div>
+
+    <div class="view" data-view="usage" hidden>
+      <div class="panel-head"><h2>Token usage</h2><span class="panel-note" id="usage-since"></span></div>
+      <p class="panel-note">Counted at the call site from each agent's own transcript store. Dollar
+      figures appear only where a provider actually bills per token — the flat-rate
+      subscriptions have no usage API, so they report turns and tokens and no money.
+      A $0 there would be a lie.</p>
+      <div class="tiles" id="usage-tiles"></div>
+      <div class="panel-head"><h2>By agent</h2></div>
+      <div class="now-table-wrap"><table class="dt" id="usage-agents"></table></div>
+      <div class="panel-head" style="margin-top:22px"><h2>By model</h2></div>
+      <div class="now-table-wrap"><table class="dt" id="usage-models"></table></div>
+      <div class="panel-head" style="margin-top:22px"><h2>Turns per day</h2></div>
+      <div id="usage-days"></div>
+      <div class="panel-head" style="margin-top:22px"><h2>Quota pressure</h2></div>
+      <p class="panel-note">Provider quotas expose no remaining-percentage, so this is what is
+      actually observable: refusals, 429s and fallback hops.</p>
+      <div id="usage-quota"></div>
+    </div>
+
+    <div class="view" data-view="activity" hidden>
+      <div class="panel-head"><h2>Activity</h2><span class="panel-note" id="activity-count"></span></div>
+      <p class="panel-note">Commits and write-ahead log entries from the fleet, newest first.</p>
+      <ol class="feed" id="activity-body"></ol>
+    </div>
 
     <footer class="page-footer">
       <span>OpenClaw / Mission control</span>
@@ -200,9 +304,9 @@ canvas{display:block;width:100%;image-rendering:pixelated;touch-action:manipulat
 // content-hashed bundles and fatal for these stable filenames: without a new
 // URL, a redeploy can never invalidate them and the browser will not even
 // revalidate. BUMP THIS ON EVERY CHANGE to these modules. Do not "tidy" it away.
-const V = '5';
+const V = '8';
 const { createWorld } = await import(`./world.js?v=${V}`);
-const { loadManifest, fetchState, toModel } = await import(`./feed.js?v=${V}`);
+const { loadManifest, fetchAll, toModel, toUsage, toTriage, toActivity, toSystem } = await import(`./feed.js?v=${V}`);
 const { counts } = await import(`./core.js?v=${V}`);
 
 const $ = id => document.getElementById(id);
@@ -283,12 +387,138 @@ function select(id) {
   render();
 }
 
+const fmt = n => n >= 1e9 ? (n/1e9).toFixed(1)+'B' : n >= 1e6 ? (n/1e6).toFixed(1)+'M'
+  : n >= 1e3 ? (n/1e3).toFixed(1)+'k' : String(n ?? 0);
+const ageLabel = h => h == null ? '—' : h < 1 ? `${Math.round(h*60)}m` : h < 48 ? `${h.toFixed(1)}h` : `${Math.round(h/24)}d`;
+
+function renderUsage(u) {
+  $('usage-since').textContent = u.connected && u.since
+    ? `${u.turns.toLocaleString()} turns since ${new Date(u.since).toLocaleDateString()}`
+    : 'meter not connected';
+  if (!u.connected) {
+    $('usage-tiles').innerHTML = '<div class="tile unknown"><span>Meter</span><strong>not connected</strong></div>';
+    $('usage-agents').innerHTML = ''; $('usage-models').innerHTML = ''; $('usage-quota').innerHTML = '';
+    return;
+  }
+  // Money appears ONLY for the share a provider actually bills per token. The
+  // flat-rate turns are reported as turns, never as $0.
+  $('usage-tiles').innerHTML = `
+    <div class="tile"><span>Turns</span><strong>${u.turns.toLocaleString()}</strong><small>7 days</small></div>
+    <div class="tile"><span>Tokens in</span><strong>${fmt(u.tokensIn)}</strong><small>${fmt(u.cacheRead)} from cache</small></div>
+    <div class="tile"><span>Tokens out</span><strong>${fmt(u.tokensOut)}</strong></div>
+    <div class="tile"><span>Billed spend</span><strong>$${u.billedUsd.toFixed(2)}</strong><small>${u.billedTurns.toLocaleString()} metered turns</small></div>
+    <div class="tile unknown"><span>Flat-rate</span><strong>${u.subscriptionTurns.toLocaleString()} turns</strong><small>no usage API, not priceable</small></div>`;
+
+  const max = Math.max(1, ...u.byAgent.map(a => a.turns));
+  $('usage-agents').innerHTML = `<thead><tr><th>Agent</th><th class="num">Turns</th><th class="num">In</th>
+    <th class="num">Out</th><th class="num">Cache</th><th>Share</th></tr></thead><tbody>` +
+    u.byAgent.map(a => `<tr><td class="mono">${a.id}</td><td class="num">${a.turns.toLocaleString()}</td>
+      <td class="num">${fmt(a.tokens_in)}</td><td class="num">${fmt(a.tokens_out)}</td>
+      <td class="num">${fmt(a.cache_read)}</td>
+      <td style="min-width:90px"><div class="bar"><i style="width:${(a.turns/max*100).toFixed(1)}%"></i></div></td></tr>`).join('') +
+    '</tbody>';
+
+  $('usage-models').innerHTML = `<thead><tr><th>Model</th><th class="num">Turns</th><th class="num">In</th>
+    <th class="num">Out</th><th>Billing</th></tr></thead><tbody>` +
+    u.byModel.map(m => `<tr><td class="mono">${m.model}</td><td class="num">${m.turns.toLocaleString()}</td>
+      <td class="num">${fmt(m.tokens_in)}</td><td class="num">${fmt(m.tokens_out)}</td>
+      <td>${m.cost_basis === 'provider-billed' ? '$' + (m.cost_usd ?? 0).toFixed(4)
+           : m.cost_basis === 'subscription' ? '<span class="muted">flat-rate</span>'
+           : '<span class="muted">unpriced</span>'}</td></tr>`).join('') + '</tbody>';
+
+  // Daily turn volume. A sparkline of real counts, not a decorative curve.
+  const days = Object.entries(u.byDay).sort(([a],[b]) => a.localeCompare(b));
+  const dmax = Math.max(1, ...days.map(([,d]) => d.turns));
+  $('usage-days').innerHTML = !days.length ? '<p class="empty">No daily history.</p>'
+    : '<div class="spark">' + days.map(([day, d]) => `
+        <div class="spark-col" title="${day}: ${d.turns} turns">
+          <div class="spark-bar" style="height:${Math.max(2, d.turns/dmax*100)}%"></div>
+          <span>${day.slice(5)}</span><b>${d.turns >= 1000 ? (d.turns/1000).toFixed(1)+'k' : d.turns}</b>
+        </div>`).join('') + '</div>';
+
+  // Quota pressure is a per-day COUNT of turns that failed, were refused, or hit
+  // a 429 - the only quota signal that exists, since providers expose no
+  // remaining-percentage. Bare dates with a number mean nothing; label the unit
+  // and name the worst day, because that is the one worth investigating.
+  const q = u.quotaPressure ?? {};
+  const qd = Object.entries(q).sort(([a],[b]) => a.localeCompare(b));
+  const qtotal = qd.reduce((n, [, v]) => n + v, 0);
+  const worst = qd.reduce((w, e) => (!w || e[1] > w[1]) ? e : w, null);
+  const qmax = Math.max(1, ...qd.map(([, v]) => v));
+  $('usage-quota').innerHTML = !qtotal
+    ? '<p class="empty">No refusals, 429s or fallback hops in this window.</p>'
+    : `<div class="tiles">
+         <div class="tile"><span>Failed / refused / 429</span><strong>${qtotal}</strong><small>turns, last 7 days</small></div>
+         <div class="tile"><span>Worst day</span><strong>${worst[1]}</strong><small>${worst[0]}</small></div>
+       </div>
+       <div class="spark">` + qd.map(([day, v]) => `
+         <div class="spark-col" title="${day}: ${v} affected turns">
+           <div class="spark-bar warm" style="height:${Math.max(2, v/qmax*100)}%"></div>
+           <span>${day.slice(5)}</span><b>${v}</b>
+         </div>`).join('') + '</div>';
+}
+
+function renderTriage(tr) {
+  $('triage-scope').textContent = tr.connected
+    ? `${tr.queues.reduce((n,q)=>n+q.count,0)} tasks across ${tr.queues.length} queues` : 'task feed not connected';
+  if (!tr.connected) { $('triage-body').innerHTML = '<p class="empty">Task feed not connected.</p>'; return; }
+  $('triage-body').innerHTML = tr.queues.map(q => {
+    const cap = q.key === 'outbox' ? 8 : 40;
+    return `<section class="queue ${q.tone}">
+      <div class="queue-head"><span class="n">${q.count}</span><h3>${q.label}</h3><span class="why">${
+        q.key === 'deadletter' && q.aged
+          ? `${q.fresh} from the last 30 days · ${q.aged} older, effectively archive`
+          : q.note}</span></div>
+      ${q.items.length ? q.items.slice(0, cap).map(t => `
+        <div class="task">
+          <div class="task-id">${t.id}</div>
+          <div class="task-age ${(t.ageH ?? 0) > 6 && q.key !== 'outbox' ? 'old' : ''}">${ageLabel(t.ageH)}</div>
+          <div class="task-meta">${t.agent} · ${t.type}${t.priority ? ' · ' + t.priority : ''}${t.status && t.status !== '—' ? ' · ' + t.status : ''}</div>
+        </div>`).join('') : '<p class="empty">Nothing here.</p>'}
+      ${q.items.length > cap ? `<p class="empty">+${q.items.length - cap} more</p>` : ''}
+    </section>`;
+  }).join('');
+}
+
+function renderActivity(ev) {
+  $('activity-count').textContent = `${ev.length} recent`;
+  $('activity-body').innerHTML = ev.map(e => `<li>
+    <time>${(e.ts ?? '').slice(5, 16)}</time>
+    <span class="src">${e.source ?? ''}</span>
+    <p>${e.text ?? ''}</p></li>`).join('') || '<li><p class="empty">No events.</p></li>';
+}
+
+function renderSystem(sys, tr, usage) {
+  $('h-mem').textContent  = sys.connected ? `${sys.memPct}% · ${(sys.memUsed/1024).toFixed(1)}/${(sys.memTotal/1024).toFixed(1)} GB` : 'not connected';
+  $('h-disk').textContent = sys.connected ? `${sys.diskPct}% · ${sys.diskUsed}/${sys.diskTotal} GB` : 'not connected';
+  $('h-load').textContent = sys.connected ? `${sys.load1} / ${sys.load5} / ${sys.load15}` : 'not connected';
+  const dead = tr.connected ? tr.queues.find(q => q.key === 'deadletter').count : null;
+  $('h-dead').textContent = dead == null ? 'not connected' : dead === 0 ? 'none' : `${dead} parked`;
+  $('h-cost').textContent = usage.connected ? `${usage.turns.toLocaleString()} turns / 7d` : 'not connected';
+}
+
+function setView(name) {
+  for (const v of document.querySelectorAll('.view')) v.hidden = v.dataset.view !== name;
+  for (const b of document.querySelectorAll('.nav-item')) b.classList.toggle('active', b.dataset.view === name);
+}
+
 async function poll() {
   try {
-    const state = await fetchState();
+    const { state, usage, tasks } = await fetchAll();
     model = toModel(state, manifest);
     selected ??= model.agents[0]?.id;
     world.update(model, selected);
+
+    const u = toUsage(usage), tr = toTriage(tasks, manifest), sys = toSystem(state);
+    renderUsage(u); renderTriage(tr); renderActivity(toActivity(state)); renderSystem(sys, tr, u);
+
+    const dead = tr.connected ? tr.queues.find(q => q.key === 'deadletter').count : 0;
+    const queued = tr.connected ? tr.queues.find(q => q.key === 'inbox').count : 0;
+    $('nc-triage').textContent = dead ? `${dead} dead` : (queued || '');
+    $('nc-triage').className = 'nav-count' + (dead ? ' bad' : '');
+    $('nc-usage').textContent = u.connected ? fmt(u.turns) : '';
+    $('nc-floor').textContent = String(model.agents.length);
+
     const missing = model.agents.filter(x => !x.connected).length;
     badge(missing ? `live · ${missing} agent(s) unreported` : 'live', missing ? '' : 'live');
     render();
@@ -310,11 +540,11 @@ async function poll() {
     $('motion').setAttribute('aria-pressed', String(!on));
   };
   reduced.addEventListener('change', applyMotion);
-  // Pausing motion is a PRESENTATION preference. It does not pause an agent,
-  // and data still redraws underneath it.
+  // Pausing motion is a PRESENTATION preference. It does not pause an agent.
   $('motion').onclick = () => { paused = !paused; applyMotion(); };
   applyMotion();
 
+  for (const b of document.querySelectorAll('.nav-item')) b.onclick = () => setView(b.dataset.view);
   $('refresh').onclick = poll;
   $('c-blocked-btn').onclick = () => $('attention').scrollIntoView({ block: 'center' });
 
