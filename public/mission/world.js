@@ -14,7 +14,7 @@
 import {
   GEOMETRY, layoutAgents, project, unproject, routeBetween, alongRoute,
   sortDrawables, counts, packageSlots, avoidLabelCollisions,
-} from './core.js?v=14';
+} from './core.js?v=15';
 
 function createArt(ctx,projector){
 const ink='#1a242a',cream='#e7d4a5';let t=0;
