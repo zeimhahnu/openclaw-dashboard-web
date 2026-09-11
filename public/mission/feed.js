@@ -32,13 +32,14 @@ const get = async (path, fallback) => {
  * The three feeds are independent: a dead usage meter must not blank the floor.
  */
 export async function fetchAll() {
-  const [state, usage, tasks] = await Promise.all([
+  const [state, usage, tasks, active] = await Promise.all([
     get('/state/v3', null),
     get('/usage/tokens?days=7', null),
     get('/tasks/details', null),
+    get('/tasks/active', null),      // claimed work; /tasks/details has no processing queue
   ]);
   if (!state) throw new Error('gateway unreachable');
-  return { state, usage, tasks };
+  return { state, usage, tasks, active };
 }
 
 const parseTs = v => { const ms = Date.parse(v ?? ''); return Number.isNaN(ms) ? null : ms; };
@@ -193,38 +194,69 @@ const QUEUES = [
   { key: 'outbox', label: 'Shipped', tone: 'done', note: 'Completed. History, not triage.' },
 ];
 
-export function toTriage(tasks, manifest, now = Date.now()) {
+export function toTriage(tasks, active, manifest, now = Date.now()) {
   if (!tasks) return { connected: false, queues: [] };
   const nameOf = id => manifest.agents.find(a => (a.feedKey ?? a.id) === id || a.id === id)?.name ?? id;
 
-  const queues = QUEUES.map(q => {
+  const item = (t, agentKey) => {
+    const created = parseTs(t.createdAt) ?? parseTs(t.completedAt);
+    return {
+      id: typeof t === 'string' ? t.replace(/\.json$/, '') : t.id,
+      type: t.type || '—', status: t.status || '—', priority: t.priority || null,
+      agent: nameOf(agentKey),
+      ageH: t.age_h ?? (created ? (now - created) / 3.6e6 : null),
+    };
+  };
+
+  const build = (key, pick) => {
     const items = [];
-    for (const [agentKey, byQueue] of Object.entries(tasks)) {
-      for (const t of (byQueue?.[q.key] ?? [])) {
-        const created = parseTs(t.createdAt) ?? parseTs(t.completedAt);
-        items.push({
-          id: t.id, type: t.type || '—', status: t.status || '—',
-          priority: t.priority || null,
-          agent: nameOf(agentKey),
-          ageH: t.age_h ?? (created ? (now - created) / 3.6e6 : null),
-          description: t.description || '',
-          // A task file without acceptance/verify is malformed: it can be
-          // marked complete with nothing to check it against. Surface that.
-          malformed: !t.description && q.key !== 'outbox',
-        });
-      }
+    let total = 0;
+    for (const [agentKey, q] of Object.entries(tasks)) {
+      // TOTAL comes from the gateway's own count, never from the list length:
+      // the list is capped at `list_limit` and counting it under-reports, which
+      // is the one direction a triage board must never be wrong in.
+      total += q?.total?.[key] ?? 0;
+      for (const t of (pick(q, agentKey) ?? [])) items.push(item(t, agentKey));
     }
-    // Dead letters sort NEWEST first: a failure from this morning is
-    // actionable, one from three months ago is archaeology. Everything else
-    // sorts oldest-first, because the longest-waiting item is the problem.
-    items.sort((a, b) => q.key === 'deadletter'
+    return { items, total };
+  };
+
+  const dead = build('deadletter', q => q?.deadletter);
+  const queued = build('inbox', q => q?.inbox);
+  const shipped = build('outbox', q => q?.outbox);
+
+  // In flight is a separate endpoint: /tasks/details serves no processing queue,
+  // so reading one from it silently reported zero claimed work forever.
+  const flight = { items: [], total: 0 };
+  for (const [agentKey, files] of Object.entries(active ?? {})) {
+    for (const f of files ?? []) { flight.items.push(item(f, agentKey)); flight.total++; }
+  }
+
+  const cap = tasks[Object.keys(tasks)[0]]?.list_limit ?? null;
+  const QS = [
+    { key: 'deadletter', label: 'Dead-lettered', tone: 'bad', ...dead,
+      note: 'Failed and parked. Nothing retries these on its own.' },
+    { key: 'processing', label: 'In flight', tone: 'busy', ...flight,
+      note: 'Claimed by a runner.' },
+    { key: 'inbox', label: 'Queued', tone: 'calm', ...queued,
+      note: 'Waiting for a runner to claim.' },
+    { key: 'outbox', label: 'Shipped', tone: 'done', ...shipped,
+      note: 'Completed. History, not triage.' },
+  ];
+
+  for (const q of QS) {
+    q.items.sort((a, b) => q.key === 'deadletter'
       ? (a.ageH ?? 0) - (b.ageH ?? 0)
       : (b.ageH ?? 0) - (a.ageH ?? 0));
-    const aged = items.filter(i => (i.ageH ?? 0) > 720).length;   // > 30 days
-    return { ...q, items, count: items.length, aged, fresh: items.length - aged };
-  });
-
-  return { connected: true, queues, needsAttention: queues[0].count + queues.find(q => q.key === 'processing').items.filter(i => (i.ageH ?? 0) > 6).length };
+    q.count = q.total;
+    q.shown = q.items.length;
+    // The gateway hands back the most recent N. Say so rather than implying the
+    // list is the whole queue.
+    q.capped = q.shown < q.total;
+    q.aged = q.items.filter(i => (i.ageH ?? 0) > 720).length;
+    q.fresh = q.shown - q.aged;
+  }
+  return { connected: true, queues: QS, listLimit: cap };
 }
 
 /** Recent lifecycle events, newest first. */

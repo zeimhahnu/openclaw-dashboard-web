@@ -314,7 +314,7 @@ nav{display:grid;gap:3px}
 // content-hashed bundles and fatal for these stable filenames: without a new
 // URL, a redeploy can never invalidate them and the browser will not even
 // revalidate. BUMP THIS ON EVERY CHANGE to these modules. Do not "tidy" it away.
-const V = '12';
+const V = '13';
 const { createWorld } = await import(`./world.js?v=${V}`);
 const { loadManifest, fetchAll, toModel, toUsage, toTriage, toActivity, toSystem } = await import(`./feed.js?v=${V}`);
 const { counts } = await import(`./core.js?v=${V}`);
@@ -480,16 +480,16 @@ function renderTriage(tr) {
     const cap = q.key === 'outbox' ? 8 : 40;
     return `<section class="queue ${q.tone}">
       <div class="queue-head"><span class="n">${q.count}</span><h3>${q.label}</h3><span class="why">${
-        q.key === 'deadletter' && q.aged
-          ? `${q.fresh} from the last 30 days · ${q.aged} older, effectively archive`
-          : q.note}</span></div>
+        q.capped ? `showing the ${q.shown} most recent` : q.note}${
+        q.key === 'deadletter' && q.aged ? ` · ${q.fresh} of those from the last 30 days` : ''
+      }</span></div>
       ${q.items.length ? q.items.slice(0, cap).map(t => `
         <div class="task">
           <div class="task-id">${t.id}</div>
           <div class="task-age ${(t.ageH ?? 0) > 6 && q.key !== 'outbox' ? 'old' : ''}">${ageLabel(t.ageH)}</div>
           <div class="task-meta">${t.agent} · ${t.type}${t.priority ? ' · ' + t.priority : ''}${t.status && t.status !== '—' ? ' · ' + t.status : ''}</div>
         </div>`).join('') : '<p class="empty">Nothing here.</p>'}
-      ${q.items.length > cap ? `<p class="empty">+${q.items.length - cap} more</p>` : ''}
+      ${q.count > Math.min(cap, q.shown) ? `<p class="empty">+${q.count - Math.min(cap, q.shown)} more not listed</p>` : ''}
     </section>`;
   }).join('');
 }
@@ -526,12 +526,12 @@ function setView(name, push = true) {
 
 async function poll() {
   try {
-    const { state, usage, tasks } = await fetchAll();
+    const { state, usage, tasks, active } = await fetchAll();
     model = toModel(state, manifest);
     selected ??= model.agents[0]?.id;
     world.update(model, selected);
 
-    const u = toUsage(usage), tr = toTriage(tasks, manifest), sys = toSystem(state);
+    const u = toUsage(usage), tr = toTriage(tasks, active, manifest), sys = toSystem(state);
     renderUsage(u); renderTriage(tr); renderActivity(toActivity(state)); renderSystem(sys, tr, u);
 
     const dead = tr.connected ? tr.queues.find(q => q.key === 'deadletter').count : 0;
