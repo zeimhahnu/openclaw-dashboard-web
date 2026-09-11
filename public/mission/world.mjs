@@ -6,7 +6,7 @@
 // The travelling parcel stays in the aisle BETWEEN tiles, so nothing ever needs
 // to be sorted against anything.
 
-import { layoutRooms, stageSize, routeBetween, alongRoute, frameFor, STATE_STYLE } from './core.mjs';
+import { layoutRooms, stageSize, routeBetween, alongRoute, frameFor, animates, STATE_STYLE } from './core.mjs';
 
 const MAX_FPS = 30;
 
@@ -42,13 +42,14 @@ export function createWorld(canvas, manifest, onSelect) {
       const img = await loadSheet(`assets/${a.sheet}`);
       if (!img) return;                                   // placeholder path
       const cfg = { ...defaults, ...a };
-      const cols = cfg.cols, rows = cfg.rows, top = cfg.top ?? 0;
-      sheets.set(a.id, {
-        img, cols, rows, top,
-        cellW: img.naturalWidth / cols,
-        cellH: (img.naturalHeight - top) / rows,
-        frameMs: cfg.frameMs, restFrame: cfg.restFrame, workLoop: cfg.workLoop,
-      });
+      const cellW = img.naturalWidth / cfg.cols;
+      const cellH = img.naturalHeight / cfg.rows;
+      // rowTop/frameH crop both rows to a common content bottom. The title
+      // banner overlaps only the top row, pushing its rooms 24-36px lower; without
+      // this the floor visibly jumps as the loop crosses rows.
+      const frameH = cfg.frameH ?? cellH;
+      const rowTop = cfg.rowTop ?? Array.from({ length: cfg.rows }, () => 0);
+      sheets.set(a.id, { img, cols: cfg.cols, cellW, cellH, frameH, rowTop, states: cfg.states });
     }));
   }
 
@@ -58,7 +59,7 @@ export function createWorld(canvas, manifest, onSelect) {
     const cols = cssW < 640 ? 1 : cssW < 980 ? 2 : 3;
     const tileW = Math.floor((cssW - 48 - (cols - 1) * 18) / cols);
     const first = sheets.values().next().value;
-    const aspect = first ? first.cellH / first.cellW : 2 / 3;
+    const aspect = first ? first.frameH / first.cellW : 2 / 3;
     rooms = layoutRooms(model.agents, { tileW, tileH: Math.round(tileW * aspect), cols });
     stage = stageSize(rooms);
     const dpr = Math.min(devicePixelRatio || 1, 2);
@@ -91,14 +92,16 @@ export function createWorld(canvas, manifest, onSelect) {
 
     const state = r.state ?? 'offline';
     const style = STATE_STYLE[state] ?? STATE_STYLE.offline;
-    const animate = state === 'working' && !paused && !reduced;
-    const idx = frameFor(animate ? 'working' : 'rest', sheet, t);
-    const sx = (idx % sheet.cols) * sheet.cellW;
-    const sy = sheet.top + Math.floor(idx / sheet.cols) * sheet.cellH;
+    // Paused or reduced motion holds the FIRST frame of the state's own set, so
+    // a stopped world still shows the right pose rather than a generic one.
+    const idx = frameFor(state, sheet, (paused || reduced) ? 0 : t);
+    const col = idx % sheet.cols, row = Math.floor(idx / sheet.cols);
+    const sx = col * sheet.cellW;
+    const sy = row * sheet.cellH + (sheet.rowTop[row] ?? 0);
 
     ctx.save();
     if (style.filter !== 'none') ctx.filter = style.filter;
-    ctx.drawImage(sheet.img, sx, sy, sheet.cellW, sheet.cellH, r.x, r.y, r.w, r.h);
+    ctx.drawImage(sheet.img, sx, sy, sheet.cellW, sheet.frameH, r.x, r.y, r.w, r.h);
     ctx.restore();
 
     if (r.id === selected) {
@@ -156,8 +159,13 @@ export function createWorld(canvas, manifest, onSelect) {
     draw(t);
   }
 
+  /** Nothing on the floor moves when every room is blocked, asleep or offline. */
+  function anyAnimated() {
+    return rooms.some(r => animates(r.state ?? 'offline', sheets.get(r.id)));
+  }
+
   function start() {
-    if (running || document.hidden) return;
+    if (running || document.hidden || paused || reduced || !anyAnimated()) return;
     running = true; raf = requestAnimationFrame(frame);
   }
   function stop() {
@@ -182,12 +190,12 @@ export function createWorld(canvas, manifest, onSelect) {
       resize(); draw();
       // A paused or reduced-motion world still redraws on data — pausing motion
       // is a presentation preference, it does not pause the agents.
-      if (!paused && !reduced) start(); else stop();
+      stop(); start();
     },
     select(id) { selected = id; draw(); },
     get selected() { return selected; },
     get rooms() { return rooms; },
-    setPaused(v) { paused = v; v || reduced ? stop() : start(); draw(); },
+    setPaused(v) { paused = v; stop(); start(); draw(); },
     get reduced() { return reduced; },
     playHandoff(from, to) {
       if (paused || reduced) { handoff = null; draw(); return; }

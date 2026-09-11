@@ -148,20 +148,43 @@ export function applyEvent(model, event) {
   return next;
 }
 
-/** Which sheet frame to show. Order comes from the manifest so it is tunable. */
-export function frameFor(state, sheet, tMs) {
-  const loop = sheet?.workLoop ?? [0];
-  if (state !== 'working' || !loop.length) return sheet?.restFrame ?? 0;
-  // A one-frame loop still shows its own frame while working — it just holds.
-  const ms = sheet.frameMs ?? 420;
-  return loop[Math.floor(tMs / ms) % loop.length];
+/**
+ * The frame set for a state, from the manifest. Frame ORDER and tempo are data,
+ * so a loop can be retimed or re-ordered without touching code.
+ *
+ * A one-entry `frames` array is the frozen case and needs no special handling:
+ * `x % 1 === 0` always, so `ms` is simply irrelevant for it.
+ */
+export function framesFor(state, sheet) {
+  const s = sheet?.states;
+  if (!s) return { frames: [0] };
+  return s[state] ?? s.idle ?? { frames: [0] };
 }
 
-/** Visual treatment per state. The world dims; it never invents a new pose. */
+/** Which frame to show now. */
+export function frameFor(state, sheet, tMs) {
+  const { frames, ms = 1000 } = framesFor(state, sheet);
+  if (!frames?.length) return 0;
+  return frames[Math.floor(Math.max(0, tMs) / ms) % frames.length];
+}
+
+/** True when this state actually moves — lets the renderer stop a still floor. */
+export function animates(state, sheet) {
+  return framesFor(state, sheet).frames.length > 1;
+}
+
+/**
+ * Visual treatment per state. The world dims and badges; it never invents a pose
+ * the artwork does not contain.
+ *
+ * `asleep` and `offline` must not look alike: asleep is a warm dim, meaning
+ * deliberately off; offline is desaturated, meaning we cannot see. Conflating
+ * them would let a dead feed read as a resting agent.
+ */
 export const STATE_STYLE = Object.freeze({
   working: { filter: 'none', badge: null },
-  idle: { filter: 'saturate(.82) brightness(.96)', badge: null },
-  blocked: { filter: 'saturate(.55) brightness(.8)', badge: '!' },
-  asleep: { filter: 'saturate(.3) brightness(.62)', badge: 'z' },
-  offline: { filter: 'grayscale(1) brightness(.5)', badge: '?' },
+  idle: { filter: 'none', badge: null },
+  blocked: { filter: 'saturate(.6) brightness(.86)', badge: '!' },
+  asleep: { filter: 'brightness(.5) saturate(.75) sepia(.25)', badge: 'z' },
+  offline: { filter: 'grayscale(.92) brightness(.6)', badge: '?' },
 });

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   layoutRooms, stageSize, routeBetween, alongRoute,
-  counts, effectiveState, applyEvent, frameFor,
+  counts, effectiveState, applyEvent, frameFor, animates,
 } from './core.mjs';
 
 const agents = ['a', 'b', 'c', 'd'].map(id => ({ id, state: 'idle' }));
@@ -93,14 +93,70 @@ test('receipt moves a package, it does not create a completed output', () => {
   assert.equal(c.sent, 1);
 });
 
-test('frames rest unless working, and cycle in manifest order', () => {
-  const sheet = { workLoop: [0, 2, 4], frameMs: 100, restFrame: 1 };
-  assert.equal(frameFor('idle', sheet, 999), 1);
-  assert.equal(frameFor('blocked', sheet, 999), 1);
+const sheet = {
+  states: {
+    working: { frames: [0, 2, 4], ms: 100 },
+    idle: { frames: [5, 5, 5, 1], ms: 500 },
+    blocked: { frames: [3] },
+    asleep: { frames: [1] },
+    offline: { frames: [1] },
+  },
+};
+
+test('frames cycle in manifest order, at the state\'s own tempo', () => {
   assert.equal(frameFor('working', sheet, 0), 0);
   assert.equal(frameFor('working', sheet, 150), 2);
   assert.equal(frameFor('working', sheet, 250), 4);
   assert.equal(frameFor('working', sheet, 350), 0, 'wraps');
-  // A sheet with one frame never animates, and never divides by zero.
-  assert.equal(frameFor('working', { workLoop: [3] }, 999), 3);
+  // Idle runs on its own slower clock, and a repeated frame weights it.
+  assert.equal(frameFor('idle', sheet, 0), 5);
+  assert.equal(frameFor('idle', sheet, 1200), 5);
+  assert.equal(frameFor('idle', sheet, 1600), 1, 'the blink lands on the 4th beat');
+});
+
+test('a stopped state never animates — this is the rule that keeps the floor honest', () => {
+  // A stuck agent that keeps working tells the viewer it is working, and the
+  // floor outvotes the table.
+  for (const t of [0, 500, 5_000, 60_000]) {
+    assert.equal(frameFor('blocked', sheet, t), 3);
+    assert.equal(frameFor('asleep', sheet, t), 1);
+  }
+  assert.equal(animates('blocked', sheet), false);
+  assert.equal(animates('asleep', sheet), false);
+  assert.equal(animates('offline', sheet), false);
+  assert.equal(animates('working', sheet), true);
+  assert.equal(animates('idle', sheet), true, 'idle breathes');
+});
+
+test('idle is unmistakably slower than working', () => {
+  const w = sheet.states.working, i = sheet.states.idle;
+  assert.ok(i.ms >= w.ms * 3, `idle ${i.ms}ms must read as a different tempo to working ${w.ms}ms`);
+});
+
+test('an unknown state falls back to idle, and a missing sheet to frame 0', () => {
+  assert.equal(frameFor('wedged', sheet, 0), 5);
+  assert.equal(frameFor('working', undefined, 999), 0);
+  assert.equal(frameFor('working', { states: { working: { frames: [] } } }, 999), 0);
+});
+
+test('every shipped sheet defines all five states, and never animates a stopped one', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const m = JSON.parse(await readFile(new URL('./assets/MANIFEST.json', import.meta.url), 'utf8'));
+  const total = m.sheetDefaults.cols * m.sheetDefaults.rows;
+  for (const a of m.agents.filter(a => a.sheet)) {
+    for (const s of ['working', 'idle', 'blocked', 'asleep', 'offline']) {
+      const set = a.states?.[s];
+      assert.ok(set?.frames?.length, `${a.id} is missing the ${s} state`);
+      assert.ok(set.frames.every(f => Number.isInteger(f) && f >= 0 && f < total),
+        `${a.id}.${s} references a frame outside the ${total}-frame sheet`);
+      if (s !== 'working' && s !== 'idle') {
+        assert.equal(set.frames.length, 1, `${a.id}.${s} must be a single held frame`);
+      }
+    }
+    assert.ok(a.states.idle.ms >= a.states.working.ms * 2,
+      `${a.id}: idle must read slower than working`);
+    // Row alignment: without these the floor jumps when the loop crosses rows.
+    assert.ok(a.frameH > 0 && Array.isArray(a.rowTop) && a.rowTop.length === 2,
+      `${a.id} is missing measured row alignment`);
+  }
 });

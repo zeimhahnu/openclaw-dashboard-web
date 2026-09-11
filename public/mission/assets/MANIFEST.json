@@ -1,20 +1,22 @@
 {
-  "version": 1,
-  "note": "Roster is data. Adding an agent is an edit HERE, never in the page markup. An entry with no sheet renders a labelled placeholder — degraded, not broken.",
+  "version": 2,
+  "note": "Roster is data. Adding an agent is an edit HERE, never in the page markup. An entry with no sheet renders a labelled placeholder - degraded, not broken.",
 
-  "background": "#16292e",
-  "_background": "Must match the flat backdrop baked into the sheets, so the dark padding around each room cell disappears. Resample if the art is regenerated.",
+  "background": "#172629",
+  "_background": "Sampled from the sheets, so the padding around each room cell disappears against the stage. Resample if the art is regenerated.",
 
-  "sheetDefaults": {
-    "cols": 3,
-    "rows": 2,
-    "top": 48,
-    "_top": "px of title banner at the top of each sheet, excluded from the frame grid",
-    "frameMs": 420,
-    "restFrame": 0,
-    "workLoop": [0, 1, 2, 3, 4, 5],
-    "_workLoop": "Frame ORDER for the working loop. The renders are variations, not curated keyframes — reorder here until the loop reads smoothly. Code never hardcodes a frame count."
-  },
+  "_states": [
+    "CADENCE CARRIES THE STATE. Across six rooms you read rate-of-motion before you read what a character is doing, so the tempo difference between working and idle IS the signal - not the poses.",
+    "working: the full action loop, brisk. idle: calm frames, ~5x slower - present and breathing, visibly not working.",
+    "blocked / asleep / offline: ONE frame, no motion. A stuck agent that keeps hammering tells the viewer it is working, and the floor is a bigger visual surface than the table - it would win. A frozen frame is the only honest render of stopped work.",
+    "A one-entry `frames` array IS the frozen case - it needs no special handling, and `ms` is ignored for it.",
+    "Repeating a frame in an array weights it: pip's idle sits on the open-eyed frame three beats, then blinks.",
+    "asleep and offline must never look alike. asleep is a warm dim (deliberately off); offline is desaturated (we cannot see). offline is a FEED condition layered over a state, not evidence the agent is sleeping."
+  ],
+
+  "_geometry": "Each sheet is 1536x1024: a 3x2 grid of exact 512px cells. The title banner overlaps the TOP row only, which pushes its rooms 24-36px lower than the bottom row's. rowTop/frameH crop both rows to a common content bottom so the floor does not jump when the loop crosses from frame 2 to frame 3. Measured, not guessed - see _geometry.json.",
+
+  "sheetDefaults": { "cols": 3, "rows": 2 },
 
   "agents": [
     {
@@ -23,7 +25,16 @@
       "name": "Goop",
       "room": "Workshop",
       "lane": "BUILD",
-      "sheet": "goop.png"
+      "sheet": "goop.png",
+      "frameH": 433,
+      "rowTop": [52, 28],
+      "states": {
+        "working": { "frames": [0, 1, 2, 3, 5], "ms": 360, "_": "hold, raise, top of swing, STRIKE (sparks), recover" },
+        "idle":    { "frames": [0, 5], "ms": 2000, "_": "hammer resting on the piece" },
+        "blocked": { "frames": [2], "_": "hammer frozen at the top of the swing - work arrested mid-motion" },
+        "asleep":  { "frames": [0] },
+        "offline": { "frames": [0] }
+      }
     },
     {
       "id": "iris",
@@ -31,7 +42,16 @@
       "name": "Iris",
       "room": "Reading room",
       "lane": "CRITIQUE",
-      "sheet": "iris.png"
+      "sheet": "iris.png",
+      "frameH": 437,
+      "rowTop": [52, 20],
+      "states": {
+        "working": { "frames": [0, 1, 2, 3], "ms": 420, "_": "lift the piece, raise to the lamp, inspect, bring down" },
+        "idle":    { "frames": [4, 5], "ms": 2000 },
+        "blocked": { "frames": [3], "_": "still holding it up, still not satisfied" },
+        "asleep":  { "frames": [5] },
+        "offline": { "frames": [5] }
+      }
     },
     {
       "id": "rook",
@@ -39,7 +59,16 @@
       "name": "Rook",
       "room": "Weighing room",
       "lane": "RANK",
-      "sheet": "rook.png"
+      "sheet": "rook.png",
+      "frameH": 459,
+      "rowTop": [52, 17],
+      "states": {
+        "working": { "frames": [0, 4, 1, 2, 3], "ms": 400, "_": "read the brief, reach, place the weight, watch it tilt, consider" },
+        "idle":    { "frames": [5, 0], "ms": 2100, "_": "scales empty and level" },
+        "blocked": { "frames": [3], "_": "wing to beak - cannot call it" },
+        "asleep":  { "frames": [5] },
+        "offline": { "frames": [5] }
+      }
     },
     {
       "id": "vera",
@@ -47,7 +76,16 @@
       "name": "Vera",
       "room": "Map room",
       "lane": "ANALYSE",
-      "sheet": "vera.png"
+      "sheet": "vera.png",
+      "frameH": 451,
+      "rowTop": [52, 20],
+      "states": {
+        "working": { "frames": [0, 1, 2, 4, 5], "ms": 420, "_": "consult, point, trace the route, write it down, read back" },
+        "idle":    { "frames": [3, 5], "ms": 2000 },
+        "blocked": { "frames": [3], "_": "hands off the map, standing over it" },
+        "asleep":  { "frames": [5] },
+        "offline": { "frames": [5] }
+      }
     },
     {
       "id": "lil-claw",
@@ -55,7 +93,16 @@
       "name": "Lil Claw",
       "room": "Dispatch",
       "lane": "ROUTE",
-      "sheet": "lil-claw.png"
+      "sheet": "lil-claw.png",
+      "frameH": 440,
+      "rowTop": [52, 16],
+      "states": {
+        "working": { "frames": [3, 1, 2, 4, 5], "ms": 380, "_": "reach, take the slip, read it, file it into the tray, release" },
+        "idle":    { "frames": [5, 0], "ms": 1900 },
+        "blocked": { "frames": [2], "_": "holding a slip with nowhere to route it" },
+        "asleep":  { "frames": [5] },
+        "offline": { "frames": [5] }
+      }
     },
     {
       "id": "pip",
@@ -63,7 +110,16 @@
       "name": "Pip",
       "room": "Hearth",
       "lane": "QUIET",
-      "sheet": "pip.png"
+      "sheet": "pip.png",
+      "frameH": 437,
+      "rowTop": [52, 19],
+      "states": {
+        "working": { "frames": [0, 3, 1, 5], "ms": 520, "_": "reading. Pip's lane is QUIET - still the slowest working tempo on the floor, but it must stay clearly faster than her own idle" },
+        "idle":    { "frames": [5, 5, 5, 2], "ms": 1700, "_": "three beats still, then a blink - about one every 7s, which is roughly a real blink rate" },
+        "blocked": { "frames": [0], "_": "eyes wide, not reading" },
+        "asleep":  { "frames": [4], "_": "the ONLY genuine asleep pose in the set - eyes closed, content. Everyone else's asleep is a dimmed rest frame." },
+        "offline": { "frames": [0] }
+      }
     },
     {
       "id": "mason",
